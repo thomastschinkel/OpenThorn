@@ -168,23 +168,6 @@
   color: var(--text-secondary);
 }
 
-/* ── History Button ──────────────────────────────── */
-.historyBtn {
-  width: 32px;
-  height: 32px;
-  border-radius: var(--radius-sm);
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  color: var(--text-secondary);
-  transition: all var(--duration-fast) var(--ease-out);
-}
-
-.historyBtn:hover {
-  background: var(--bg-hover);
-  color: var(--text-primary);
-}
-
 /* ── Voice Button ─────────────────────────────────── */
 .voiceBtn {
   width: 32px;
