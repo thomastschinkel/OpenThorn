@@ -1,3 +1,11 @@
+/**
+ * Provider Configuration — Data Layer
+ *
+ * SECURITY NOTE: API keys are stored in Supabase with RLS enabled.
+ * In production, upgrade RLS from `FOR ALL USING (true)` to require
+ * authenticated users (auth.uid()). Consider encrypting keys with
+ * pgcrypto or Supabase Vault for sensitive deployments.
+ */
 import { supabase } from './supabase'
 
 export interface ProviderPreset {
@@ -89,13 +97,52 @@ export async function deleteProvider(id: string): Promise<void> {
   if (error) throw error
 }
 
+function validateBaseUrl(url: string): { ok: true; normalized: string } | { ok: false; message: string } {
+  let parsed: URL
+  try { parsed = new URL(url.endsWith('/') ? url : url + '/') } catch { return { ok: false, message: 'Invalid URL format' } }
+
+  const hostname = parsed.hostname.toLowerCase()
+
+  // Block local / internal addresses (SSRF prevention)
+  const blocked = [
+    'localhost', '127.0.0.1', '0.0.0.0', '[::1]', '[::]',
+    '10.0.0.0/8', '172.16.0.0/12', '192.168.0.0/16', '169.254.0.0/16',
+    'metadata.google.internal', 'metadata',
+  ]
+
+  if (blocked.some((b) => hostname === b || hostname.startsWith(b.replace('/8', '').replace('/12', '').replace('/16', '').split('.')[0] + '.')))) {
+    // Check private ranges precisely
+    const ipParts = hostname.split('.').map(Number)
+    if (ipParts.length === 4 && !ipParts.some(isNaN)) {
+      if (ipParts[0] === 10) return { ok: false, message: 'Private network URLs are not allowed' }
+      if (ipParts[0] === 172 && ipParts[1] >= 16 && ipParts[1] <= 31) return { ok: false, message: 'Private network URLs are not allowed' }
+      if (ipParts[0] === 192 && ipParts[1] === 168) return { ok: false, message: 'Private network URLs are not allowed' }
+      if (ipParts[0] === 127) return { ok: false, message: 'Loopback URLs are not allowed' }
+      if (ipParts[0] === 169 && ipParts[1] === 254) return { ok: false, message: 'Link-local URLs are not allowed' }
+    }
+    if (hostname === 'localhost' || hostname === 'metadata.google.internal') {
+      return { ok: false, message: 'Internal hostnames are not allowed' }
+    }
+  }
+
+  if (!['https:', 'http:'].includes(parsed.protocol)) {
+    return { ok: false, message: 'Only HTTP and HTTPS URLs are supported' }
+  }
+
+  return { ok: true, normalized: parsed.origin }
+}
+
 export async function testProviderConnection(
   baseUrl: string,
   apiKey: string,
   model: string
 ): Promise<{ ok: boolean; message: string }> {
+  // Validate URL before making any request
+  const validated = validateBaseUrl(baseUrl)
+  if (!validated.ok) return validated
+
   try {
-    const res = await fetch(`${baseUrl}/chat/completions`, {
+    const res = await fetch(`${validated.normalized}/chat/completions`, {
       method: 'POST',
       headers: {
         'Content-Type': 'application/json',
