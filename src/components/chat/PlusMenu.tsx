@@ -1,4 +1,5 @@
 import { useState, useRef, useEffect } from 'react'
+import { useApp } from '../../App'
 import styles from './PlusMenu.module.css'
 
 interface MenuItem {
@@ -47,6 +48,7 @@ function iconPath(name: string): string {
 export default function PlusMenu() {
   const [open, setOpen] = useState(false)
   const menuRef = useRef<HTMLDivElement>(null)
+  const { navigateTo } = useApp()
 
   useEffect(() => {
     if (!open) return
@@ -83,7 +85,16 @@ export default function PlusMenu() {
             <div key={gi}>
               {gi > 0 && <div className={styles.divider} />}
               {group.map((item) => (
-                <button key={item.label} className={styles.item}>
+                <button
+                  key={item.label}
+                  className={styles.item}
+                  onClick={() => {
+                    if (item.label === 'Settings' || item.label === 'Configure Providers') {
+                      setOpen(false)
+                      navigateTo('settings')
+                    }
+                  }}
+                >
                   <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round">
                     <path d={iconPath(item.icon)} />
                   </svg>
