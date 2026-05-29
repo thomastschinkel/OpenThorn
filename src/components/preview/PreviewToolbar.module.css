@@ -17,7 +17,7 @@
   display: flex;
   align-items: center;
   gap: 7px;
-  background: var(--bg-field);
+  background: #1e1e1e;
   border: 1px solid var(--border-default);
   border-radius: var(--radius-md);
   padding: 6px 12px;
