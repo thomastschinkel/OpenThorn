@@ -54,7 +54,6 @@
   font-size: 13.5px;
   line-height: 1.6;
   color: var(--text-primary);
-  white-space: pre-wrap;
   word-break: break-word;
 }
 
@@ -62,12 +61,126 @@
   background: var(--accent);
   color: #fff;
   border-bottom-right-radius: 4px;
+  white-space: pre-wrap;
 }
 
 .ai .content {
   background: var(--bg-elevated);
   border: 1px solid var(--border-subtle);
   border-bottom-left-radius: 4px;
+}
+
+/* ── Markdown Styles ──────────────────────────────── */
+.markdown h1,
+.markdown h2,
+.markdown h3 {
+  margin: 14px 0 6px;
+  font-weight: 600;
+  line-height: 1.3;
+}
+
+.markdown h1 { font-size: 16px; }
+.markdown h2 { font-size: 14.5px; }
+.markdown h3 { font-size: 13.5px; }
+
+.markdown h1:first-child,
+.markdown h2:first-child,
+.markdown h3:first-child {
+  margin-top: 0;
+}
+
+.markdown p {
+  margin: 6px 0;
+}
+
+.markdown p:first-child {
+  margin-top: 0;
+}
+
+.markdown p:last-child {
+  margin-bottom: 0;
+}
+
+.markdown ul,
+.markdown ol {
+  margin: 6px 0;
+  padding-left: 20px;
+}
+
+.markdown li {
+  margin: 2px 0;
+}
+
+.markdown strong {
+  font-weight: 600;
+  color: #fff;
+}
+
+.markdown code {
+  font-family: var(--font-mono);
+  font-size: 12px;
+  padding: 1.5px 5px;
+  border-radius: 4px;
+  background: rgba(255, 255, 255, 0.06);
+  color: #e4e4e7;
+}
+
+.markdown pre {
+  margin: 10px 0;
+  padding: 12px;
+  border-radius: var(--radius-md);
+  background: var(--bg-field);
+  border: 1px solid var(--border-subtle);
+  overflow-x: auto;
+}
+
+.markdown pre code {
+  padding: 0;
+  background: none;
+  font-size: 12px;
+  line-height: 1.5;
+}
+
+.markdown blockquote {
+  margin: 8px 0;
+  padding-left: 12px;
+  border-left: 2px solid var(--accent);
+  color: var(--text-secondary);
+  font-style: italic;
+}
+
+.markdown a {
+  color: var(--accent);
+  text-decoration: none;
+}
+
+.markdown a:hover {
+  text-decoration: underline;
+}
+
+.markdown hr {
+  margin: 12px 0;
+  border: none;
+  border-top: 1px solid var(--border-subtle);
+}
+
+.markdown table {
+  width: 100%;
+  margin: 8px 0;
+  border-collapse: collapse;
+  font-size: 12.5px;
+}
+
+.markdown th,
+.markdown td {
+  padding: 6px 10px;
+  border: 1px solid var(--border-subtle);
+  text-align: left;
+}
+
+.markdown th {
+  background: var(--bg-field);
+  font-weight: 600;
 }
 
 .actions {

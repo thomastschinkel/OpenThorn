@@ -17,7 +17,6 @@
   border-radius: var(--radius-lg);
   box-shadow: var(--shadow-input);
   transition: border-color var(--duration-fast) var(--ease-out);
-  overflow: hidden;
 }
 
 .inputWrapper:focus-within {

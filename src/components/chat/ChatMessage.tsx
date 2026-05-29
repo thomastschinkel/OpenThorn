@@ -1,3 +1,5 @@
+import ReactMarkdown from 'react-markdown'
+import remarkGfm from 'remark-gfm'
 import type { Message } from '../chat/ChatPanel'
 import styles from './ChatMessage.module.css'
 
@@ -21,7 +23,15 @@ export default function ChatMessage({ message }: Props) {
         </div>
       )}
       <div className={styles.bubble}>
-        <div className={styles.content}>{message.text}</div>
+        <div className={`${styles.content} ${!isUser ? styles.markdown : ''}`}>
+          {isUser ? (
+            message.text
+          ) : (
+            <ReactMarkdown remarkPlugins={[remarkGfm]}>
+              {message.text}
+            </ReactMarkdown>
+          )}
+        </div>
         {!isUser && (
           <div className={styles.actions}>
             <button className={styles.actionBtn} title="Copy">
