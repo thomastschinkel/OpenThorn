@@ -1,5 +1,6 @@
 import { useState, useRef, useEffect } from 'react'
 import PlusMenu from './PlusMenu'
+import ProviderSelector from './ProviderSelector'
 import styles from './ChatInput.module.css'
 
 interface Props {
@@ -11,6 +12,8 @@ export default function ChatInput({ mode, onToggleMode }: Props) {
   const [text, setText] = useState('')
   const [listening, setListening] = useState(false)
   const [modeOpen, setModeOpen] = useState(false)
+  const [providerId, setProviderId] = useState<string | null>(null)
+  const [model, setModel] = useState<string | null>(null)
   const modeRef = useRef<HTMLDivElement>(null)
 
   useEffect(() => {
@@ -45,6 +48,12 @@ export default function ChatInput({ mode, onToggleMode }: Props) {
 
           <div className={styles.actions}>
             <PlusMenu />
+
+            <ProviderSelector
+              selectedProviderId={providerId}
+              selectedModel={model}
+              onSelect={(pid, m) => { setProviderId(pid); setModel(m) }}
+            />
 
             {/* Mode dropdown */}
             <div className={styles.modeDropdown} ref={modeRef}>

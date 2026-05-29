@@ -1,4 +1,5 @@
 import { useState } from 'react'
+import ProviderConfig from './ProviderConfig'
 import styles from './SettingsPage.module.css'
 
 const sidebarNav: { title: string; items: { label: string; icon: string }[] }[] = [
@@ -125,6 +126,10 @@ export default function SettingsPage({ onBack }: Props) {
           </header>
 
           <div className={styles.contentBody}>
+            {activeItem === 'Provider Config' ? (
+              <ProviderConfig />
+            ) : (
+              <>
             {/* Overview stats grid */}
             <div className={styles.overviewGrid}>
               <div className={styles.statCard}>
@@ -223,6 +228,8 @@ export default function SettingsPage({ onBack }: Props) {
                 View Logs
               </button>
             </div>
+              </>
+            )}
           </div>
         </main>
       </div>
