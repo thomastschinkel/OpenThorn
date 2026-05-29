@@ -121,12 +121,6 @@ export async function* streamChat(
 
   const baseUrl = provider.base_url ?? 'https://api.openai.com/v1'
   const url = adapter.buildUrl(baseUrl, model)
-
-  // Append API key for Gemini (it goes in the URL)
-  const finalUrl = adapter.name === 'gemini'
-    ? `${url}${provider.api_key}`
-    : url
-
   const headers = adapter.buildHeaders(provider.api_key)
   const body = adapter.buildPayload({
     model,
@@ -139,7 +133,7 @@ export async function* streamChat(
   let fullResponse = ''
 
   try {
-    const res = await fetch(finalUrl, {
+    const res = await fetch(url, {
       method: 'POST',
       headers,
       body: JSON.stringify(body),
@@ -272,6 +266,7 @@ Conversation:\n${messages.map((m) => `${m.role}: ${m.text.slice(0, 400)}`).join(
     headers,
     body: JSON.stringify(payload),
     signal: AbortSignal.timeout(30000),
+    redirect: 'manual',
   })
 
   if (!res.ok) throw new Error('Summarization failed')

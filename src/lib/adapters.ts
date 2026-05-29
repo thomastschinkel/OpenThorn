@@ -127,8 +127,8 @@ const geminiAdapter: ProviderAdapter = {
   name: 'gemini',
   supportsCaching: true,
 
-  buildHeaders(_apiKey: string) {
-    return { 'Content-Type': 'application/json' }
+  buildHeaders(apiKey: string) {
+    return { 'Content-Type': 'application/json', 'x-goog-api-key': apiKey }
   },
 
   buildPayload(req: UnifiedRequest) {
@@ -164,7 +164,7 @@ const geminiAdapter: ProviderAdapter = {
   },
 
   buildUrl(baseUrl: string, model: string) {
-    return `${baseUrl}/models/${model}:streamGenerateContent?alt=sse&key=`
+    return `${baseUrl}/models/${model}:streamGenerateContent?alt=sse`
   },
 }
 
