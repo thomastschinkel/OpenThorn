@@ -3,6 +3,7 @@
   flex-direction: column;
   height: 100%;
   background: var(--bg-panel);
+  position: relative;
 }
 
 /* ── Header ───────────────────────────────────────── */
@@ -10,42 +11,35 @@
   display: flex;
   align-items: center;
   justify-content: space-between;
-  padding: 12px 18px;
+  padding: 11px 16px;
   border-bottom: 1px solid var(--border-subtle);
-  background: linear-gradient(180deg, rgba(255, 255, 255, 0.015) 0%, transparent 100%);
+  background: linear-gradient(180deg, rgba(255, 255, 255, 0.012) 0%, transparent 100%);
   flex-shrink: 0;
+  min-height: 49px;
 }
 
-.brand {
-  display: flex;
-  align-items: center;
-  gap: 10px;
-}
+.brand { display: flex; align-items: center; gap: 9px; }
 
 .logoImg {
-  width: 26px;
-  height: 26px;
+  width: 24px;
+  height: 24px;
   border-radius: var(--radius-sm);
   object-fit: contain;
-  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.3);
+  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.35);
 }
 
 /* ── Header Actions ───────────────────────────────── */
-.headerActions {
-  display: flex;
-  align-items: center;
-  gap: 4px;
-}
+.headerActions { display: flex; align-items: center; gap: 3px; }
 
 .historyBtn {
-  width: 32px;
-  height: 32px;
+  width: 30px;
+  height: 30px;
   border-radius: var(--radius-sm);
   display: flex;
   align-items: center;
   justify-content: center;
-  color: var(--text-secondary);
-  transition: all var(--duration-fast) var(--ease-out);
+  color: var(--text-tertiary);
+  transition: all 0.15s cubic-bezier(0.16, 1, 0.3, 1);
 }
 
 .historyBtn:hover {
@@ -54,28 +48,24 @@
 }
 
 /* ── Project Menu ─────────────────────────────────── */
-.projectMenuWrap {
-  position: relative;
-}
+.projectMenuWrap { position: relative; }
 
 .projectBtn {
   display: flex;
   align-items: center;
-  gap: 5px;
-  padding: 5px 9px;
+  gap: 4px;
+  padding: 4px 8px;
   border-radius: var(--radius-sm);
   cursor: pointer;
-  transition: background var(--duration-fast) var(--ease-out);
+  transition: background 0.15s cubic-bezier(0.16, 1, 0.3, 1);
 }
 
 .projectBtn:hover,
-.projectBtnOpen {
-  background: var(--bg-hover);
-}
+.projectBtnOpen { background: var(--bg-hover); }
 
 .projectName {
   font-family: var(--font-body);
-  font-size: 14px;
+  font-size: 13.5px;
   font-weight: 600;
   color: var(--text-primary);
   letter-spacing: -0.01em;
@@ -83,118 +73,97 @@
 
 .chevron {
   color: var(--text-tertiary);
-  transition: transform var(--duration-fast) var(--ease-out);
+  transition: transform 0.15s cubic-bezier(0.16, 1, 0.3, 1);
 }
 
-.projectBtnOpen .chevron {
-  transform: rotate(180deg);
-}
+.projectBtnOpen .chevron { transform: rotate(180deg); }
 
 .projectMenu {
   position: absolute;
   top: calc(100% + 8px);
   left: -4px;
-  width: 240px;
+  width: 236px;
   background: var(--bg-panel);
   border: 1px solid var(--border-strong);
   border-radius: var(--radius-lg);
   box-shadow: var(--shadow-elevated);
-  backdrop-filter: blur(24px);
-  padding: 6px;
+  backdrop-filter: blur(22px);
+  padding: 5px;
   z-index: 200;
-  animation: dropIn var(--duration-normal) var(--ease-out);
+  animation: dropIn 0.22s cubic-bezier(0.16, 1, 0.3, 1);
 }
 
 @keyframes dropIn {
-  from {
-    opacity: 0;
-    transform: translateY(-8px) scale(0.96);
-  }
-  to {
-    opacity: 1;
-    transform: translateY(0) scale(1);
-  }
+  from { opacity: 0; transform: translateY(-6px) scale(0.97); }
+  to { opacity: 1; transform: translateY(0) scale(1); }
 }
 
 .projectMenuItem {
   display: flex;
   align-items: center;
-  gap: 10px;
+  gap: 9px;
   width: 100%;
-  padding: 8px 10px;
+  padding: 7px 9px;
   border-radius: var(--radius-sm);
   font-size: 13px;
   color: var(--text-primary);
-  transition: all var(--duration-fast) var(--ease-out);
+  transition: all 0.12s cubic-bezier(0.16, 1, 0.3, 1);
   text-align: left;
 }
 
-.projectMenuItem:hover {
-  background: var(--bg-hover);
-}
+.projectMenuItem:hover { background: var(--bg-hover); }
 
 .projectMenuItem svg {
   flex-shrink: 0;
-  color: var(--text-secondary);
-  transition: color var(--duration-fast);
+  color: var(--text-tertiary);
+  transition: color 0.12s;
 }
 
-.projectMenuItem:hover svg {
-  color: var(--text-primary);
-}
+.projectMenuItem:hover svg { color: var(--text-primary); }
 
 .menuDivider {
   height: 1px;
   background: var(--border-subtle);
-  margin: 4px 6px;
+  margin: 3px 6px;
 }
 
 /* ── Appearance ───────────────────────────────────── */
-.appearanceGroup {
-  padding: 6px 6px 2px;
-}
+.appearanceGroup { padding: 5px 6px 1px; }
 
 .appearanceLabel {
-  font-size: 10.5px;
+  font-size: 10px;
   font-weight: 600;
   color: var(--text-tertiary);
   text-transform: uppercase;
-  letter-spacing: 0.06em;
-  padding: 0 4px;
-  margin-bottom: 2px;
+  letter-spacing: 0.07em;
+  padding: 0 3px;
+  margin-bottom: 1px;
   display: block;
 }
 
-.appearanceOptions {
-  display: flex;
-  gap: 2px;
-  margin-top: 6px;
-}
+.appearanceOptions { display: flex; gap: 1px; margin-top: 5px; }
 
 .appearanceBtn {
   display: flex;
   align-items: center;
   gap: 5px;
-  padding: 6px 11px;
+  padding: 5px 10px;
   border-radius: var(--radius-sm);
-  font-size: 12px;
+  font-size: 11.5px;
   font-weight: 500;
   color: var(--text-secondary);
-  transition: all var(--duration-fast) var(--ease-out);
+  transition: all 0.12s cubic-bezier(0.16, 1, 0.3, 1);
 }
 
-.appearanceBtn:hover {
-  background: var(--bg-hover);
-  color: var(--text-primary);
-}
+.appearanceBtn:hover { background: var(--bg-hover); color: var(--text-primary); }
 
 .appearanceActive {
-  background: rgba(79, 143, 255, 0.08);
+  background: rgba(80, 148, 255, 0.07);
   color: var(--accent);
 }
 
 .appearanceActive:hover {
-  background: rgba(79, 143, 255, 0.12);
+  background: rgba(80, 148, 255, 0.11);
   color: var(--accent);
 }
 

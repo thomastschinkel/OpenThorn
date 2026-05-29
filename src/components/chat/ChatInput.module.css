@@ -1,14 +1,12 @@
 .wrapper {
-  padding: 14px 18px 18px;
+  padding: 16px 18px 18px;
   border-top: 1px solid var(--border-subtle);
-  background: linear-gradient(180deg, var(--bg-panel) 0%, rgba(14, 14, 22, 0.6) 100%);
-  backdrop-filter: blur(12px);
+  background: linear-gradient(180deg, rgba(10, 10, 20, 0.6) 0%, var(--bg-panel) 100%);
+  backdrop-filter: blur(10px);
 }
 
 /* ── Input Row ────────────────────────────────────── */
-.inputRow {
-  position: relative;
-}
+.inputRow { position: relative; }
 
 .inputWrapper {
   display: flex;
@@ -17,12 +15,13 @@
   border: 1px solid var(--border-default);
   border-radius: var(--radius-xl);
   box-shadow: var(--shadow-input), 0 1px 0 var(--border-glow);
-  transition: border-color var(--duration-fast) var(--ease-out), box-shadow var(--duration-fast) var(--ease-out);
+  transition: border-color 0.2s cubic-bezier(0.16, 1, 0.3, 1),
+              box-shadow 0.2s cubic-bezier(0.16, 1, 0.3, 1);
 }
 
 .inputWrapper:focus-within {
-  border-color: rgba(79, 143, 255, 0.2);
-  box-shadow: var(--shadow-input), 0 0 0 4px rgba(79, 143, 255, 0.04);
+  border-color: rgba(80, 148, 255, 0.22);
+  box-shadow: var(--shadow-input), 0 0 0 4px rgba(80, 148, 255, 0.035);
 }
 
 .textarea {
@@ -30,34 +29,31 @@
   padding: 14px 14px 2px;
   resize: none;
   font-size: 13.5px;
-  line-height: 1.6;
+  line-height: 1.65;
   background: transparent;
   color: var(--text-primary);
 }
 
-.textarea::placeholder {
-  color: var(--text-disabled);
-}
+.textarea::placeholder { color: var(--text-disabled); }
 
 /* ── Action Buttons ───────────────────────────────── */
 .actions {
   display: flex;
   align-items: center;
-  gap: 3px;
-  padding: 6px 10px 10px;
+  gap: 2px;
+  padding: 6px 10px 9px;
 }
 
 .divider {
   width: 1px;
-  height: 18px;
+  height: 16px;
   background: var(--border-default);
-  margin: 0 5px;
+  margin: 0 6px;
+  border-radius: 1px;
 }
 
 /* ── Mode Dropdown ────────────────────────────────── */
-.modeDropdown {
-  position: relative;
-}
+.modeDropdown { position: relative; }
 
 .modeBtn {
   display: flex;
@@ -66,29 +62,22 @@
   height: 28px;
   padding: 0 9px;
   border-radius: var(--radius-sm);
-  font-size: 12px;
+  font-size: 11.5px;
   font-weight: 500;
   color: var(--text-secondary);
-  background: rgba(79, 143, 255, 0.06);
-  border: 1px solid rgba(79, 143, 255, 0.08);
-  transition: all var(--duration-fast) var(--ease-out);
+  background: rgba(80, 148, 255, 0.05);
+  border: 1px solid rgba(80, 148, 255, 0.07);
+  transition: all 0.15s cubic-bezier(0.16, 1, 0.3, 1);
 }
 
 .modeBtn:hover {
   color: var(--accent);
-  background: rgba(79, 143, 255, 0.1);
-  border-color: rgba(79, 143, 255, 0.15);
+  background: rgba(80, 148, 255, 0.09);
+  border-color: rgba(80, 148, 255, 0.14);
 }
 
-.modeBtn svg:first-child {
-  color: var(--accent);
-  flex-shrink: 0;
-}
-
-.chevron {
-  opacity: 0.4;
-  flex-shrink: 0;
-}
+.modeBtn svg:first-child { color: var(--accent); flex-shrink: 0; }
+.chevron { opacity: 0.35; flex-shrink: 0; }
 
 .modeMenu {
   position: absolute;
@@ -99,85 +88,59 @@
   border: 1px solid var(--border-strong);
   border-radius: var(--radius-lg);
   box-shadow: var(--shadow-elevated);
-  backdrop-filter: blur(24px);
-  padding: 6px;
+  backdrop-filter: blur(22px);
+  padding: 5px;
   z-index: 100;
-  animation: dropUp var(--duration-normal) var(--ease-out);
+  animation: dropUp 0.22s cubic-bezier(0.16, 1, 0.3, 1);
 }
 
 @keyframes dropUp {
-  from {
-    opacity: 0;
-    transform: translateY(8px) scale(0.96);
-  }
-  to {
-    opacity: 1;
-    transform: translateY(0) scale(1);
-  }
+  from { opacity: 0; transform: translateY(6px) scale(0.97); }
+  to { opacity: 1; transform: translateY(0) scale(1); }
 }
 
 .modeOption {
   display: flex;
   align-items: flex-start;
-  gap: 10px;
+  gap: 9px;
   width: 100%;
-  padding: 10px 10px;
+  padding: 9px 10px;
   border-radius: var(--radius-sm);
   font-size: 13px;
   color: var(--text-primary);
-  transition: all var(--duration-fast) var(--ease-out);
+  transition: all 0.12s cubic-bezier(0.16, 1, 0.3, 1);
   text-align: left;
 }
 
-.modeOption:hover {
-  background: var(--bg-hover);
-}
+.modeOption:hover { background: var(--bg-hover); }
 
 .modeOption svg {
   margin-top: 1px;
   flex-shrink: 0;
-  color: var(--text-secondary);
-  transition: color var(--duration-fast);
+  color: var(--text-tertiary);
+  transition: color 0.12s;
 }
 
 .modeOptionActive {
-  background: rgba(79, 143, 255, 0.06);
+  background: rgba(80, 148, 255, 0.05);
 }
+.modeOptionActive svg { color: var(--accent); }
+.modeOptionActive:hover { background: rgba(80, 148, 255, 0.09); }
 
-.modeOptionActive svg {
-  color: var(--accent);
-}
-
-.modeOptionActive:hover {
-  background: rgba(79, 143, 255, 0.1);
-}
-
-.modeOptionText {
-  display: flex;
-  flex-direction: column;
-  gap: 2px;
-}
-
-.modeOptionLabel {
-  font-weight: 600;
-  font-size: 13px;
-}
-
-.modeOptionDesc {
-  font-size: 11.5px;
-  color: var(--text-secondary);
-}
+.modeOptionText { display: flex; flex-direction: column; gap: 1px; }
+.modeOptionLabel { font-weight: 600; font-size: 13px; }
+.modeOptionDesc { font-size: 11px; color: var(--text-secondary); }
 
 /* ── Voice Button ─────────────────────────────────── */
 .voiceBtn {
-  width: 32px;
-  height: 32px;
+  width: 30px;
+  height: 30px;
   border-radius: var(--radius-sm);
   display: flex;
   align-items: center;
   justify-content: center;
-  color: var(--text-secondary);
-  transition: all var(--duration-fast) var(--ease-out);
+  color: var(--text-tertiary);
+  transition: all 0.15s cubic-bezier(0.16, 1, 0.3, 1);
 }
 
 .voiceBtn:hover {
@@ -188,92 +151,83 @@
 .voiceBtn.listening {
   color: var(--red);
   background: var(--red-soft);
-  animation: pulse 1.5s ease-in-out infinite;
+  animation: pulse 1.4s ease-in-out infinite;
 }
 
 @keyframes pulse {
-  0%, 100% { box-shadow: 0 0 0 0 rgba(239, 68, 68, 0.3); }
-  50% { box-shadow: 0 0 0 8px rgba(239, 68, 68, 0); }
+  0%, 100% { box-shadow: 0 0 0 0 rgba(239, 68, 68, 0.25); }
+  50% { box-shadow: 0 0 0 7px rgba(239, 68, 68, 0); }
 }
 
 /* ── Send Button ──────────────────────────────────── */
 .sendBtn {
-  width: 32px;
-  height: 32px;
+  width: 30px;
+  height: 30px;
   border-radius: var(--radius-sm);
   display: flex;
   align-items: center;
   justify-content: center;
   color: var(--text-disabled);
-  transition: all var(--duration-fast) var(--ease-spring);
+  transition: all 0.18s cubic-bezier(0.34, 1.56, 0.64, 1);
   margin-left: auto;
 }
 
 .sendBtn:hover:not(:disabled) {
   background: var(--bg-hover);
-  transform: scale(1.05);
+  transform: scale(1.06);
 }
 
 .sendBtn.hasText {
   color: #fff;
   background: var(--accent);
-  box-shadow: 0 2px 8px rgba(79, 143, 255, 0.25);
+  box-shadow: 0 2px 10px rgba(80, 148, 255, 0.28);
 }
 
 .sendBtn.hasText:hover {
   background: var(--accent-strong);
-  box-shadow: 0 4px 16px rgba(79, 143, 255, 0.35);
-  transform: scale(1.08);
+  box-shadow: 0 4px 18px rgba(80, 148, 255, 0.38);
+  transform: scale(1.1);
 }
+
+.sendBtn.hasText:active { transform: scale(0.96); }
 
 /* ── Listening Bar ────────────────────────────────── */
 .listeningBar {
-  margin-top: 12px;
+  margin-top: 11px;
   display: flex;
   flex-direction: column;
   align-items: center;
-  gap: 10px;
-  padding: 12px;
+  gap: 9px;
+  padding: 11px;
   background: var(--bg-elevated);
   border-radius: var(--radius-md);
-  border: 1px solid rgba(239, 68, 68, 0.12);
-  animation: slideUp var(--duration-normal) var(--ease-out);
+  border: 1px solid rgba(239, 68, 68, 0.1);
+  animation: slideUp 0.22s cubic-bezier(0.16, 1, 0.3, 1);
 }
 
 @keyframes slideUp {
-  from {
-    opacity: 0;
-    transform: translateY(8px);
-  }
-  to {
-    opacity: 1;
-    transform: translateY(0);
-  }
+  from { opacity: 0; transform: translateY(6px); }
+  to { opacity: 1; transform: translateY(0); }
 }
 
-.waveform {
-  display: flex;
-  align-items: center;
-  gap: 2px;
-  height: 24px;
-}
+.waveform { display: flex; align-items: center; gap: 2px; height: 22px; }
 
 .bar {
   width: 2px;
-  height: 8px;
+  height: 7px;
   background: var(--red);
   border-radius: 1px;
-  animation: wave 0.8s ease-in-out infinite alternate;
+  animation: wave 0.75s ease-in-out infinite alternate;
 }
 
 @keyframes wave {
-  from { height: 4px; opacity: 0.4; }
-  to { height: 22px; opacity: 1; }
+  from { height: 3px; opacity: 0.35; }
+  to { height: 20px; opacity: 1; }
 }
 
 .listeningText {
-  font-size: 11px;
+  font-size: 10.5px;
   color: var(--red);
   font-weight: 500;
-  letter-spacing: 0.05em;
+  letter-spacing: 0.06em;
 }
