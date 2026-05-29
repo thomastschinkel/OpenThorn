@@ -87,82 +87,112 @@ export default function SettingsPage({ onBack }: Props) {
 
   return (
     <div className={styles.page}>
-      {/* Sidebar */}
-      <aside className={styles.sidebar}>
-        <div className={styles.sidebarHeader}>
-          <button className={styles.backBtn} onClick={onBack} title="Back to Bloom">
-            <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
-              <line x1="19" y1="12" x2="5" y2="12"/>
-              <polyline points="12 19 5 12 12 5"/>
-            </svg>
-          </button>
-          <span className={styles.sidebarTitle}>Settings</span>
-        </div>
+      <button className={styles.floatingBack} onClick={onBack} title="Back to Bloom">
+        <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+          <line x1="19" y1="12" x2="5" y2="12"/>
+          <polyline points="12 19 5 12 12 5"/>
+        </svg>
+      </button>
 
-        <nav className={styles.nav}>
-          {sidebarNav.map((section) => (
-            <div key={section.title} className={styles.navSection}>
-              <div className={styles.navSectionTitle}>{section.title}</div>
-              {section.items.map((item) => (
-                <button
-                  key={item.label}
-                  className={`${styles.navItem} ${activeItem === item.label ? styles.navItemActive : ''}`}
-                  onClick={() => setActiveItem(item.label)}
-                >
-                  <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round">
-                    <path d={iconPath(item.icon)} />
-                  </svg>
-                  <span>{item.label}</span>
-                </button>
-              ))}
-            </div>
-          ))}
-        </nav>
-
-        <div className={styles.sidebarFooter}>
-          <div className={styles.workspaceBadge}>
-            <span className={styles.workspaceDot} />
-            <span>Bloom Workspace</span>
+      <div className={styles.layout}>
+        <aside className={styles.sidebar}>
+          <div className={styles.brandMark}>
+            <span className={styles.brandDot} />
+            <span className={styles.brandDot} />
+            <span className={styles.brandDot} />
           </div>
-        </div>
-      </aside>
 
-      {/* Content */}
-      <main className={styles.content}>
-        <div className={styles.contentHeader}>
-          <h1 className={styles.contentTitle}>{activeItem}</h1>
-          <p className={styles.contentDesc}>
-            {activeItem === 'Your Account' && 'Manage your personal account details, email, and profile.'}
-            {activeItem === 'Devices & Apps' && 'View and manage connected devices and third-party applications.'}
-            {activeItem === 'General' && 'Configure general project settings and preferences.'}
-            {activeItem === 'Git' && 'Connect and manage your Git repositories.'}
-            {activeItem === 'Domains' && 'Manage custom domains for your projects.'}
-            {activeItem === 'Provider Config' && 'Configure your AI provider API keys and endpoints.'}
-            {activeItem === 'People' && 'Manage workspace members and their access levels.'}
-            {activeItem === 'Knowledge' && 'Upload and manage knowledge sources for AI context.'}
-            {activeItem === 'Skills' && 'Create and manage custom AI skills.'}
-            {activeItem === 'Templates' && 'Manage your project templates and starters.'}
-            {activeItem === 'Workspace domains' && 'Configure deployment domains for your workspace.'}
-            {activeItem === 'Privacy & Security' && 'Manage privacy settings and security configurations.'}
-            {activeItem === 'Security Center' && 'View security alerts, audit logs, and compliance reports.'}
-          </p>
-        </div>
+          <nav className={styles.nav}>
+            {sidebarNav.map((section) => (
+              <div key={section.title} className={styles.navGroup}>
+                <span className={styles.navGroupLabel}>{section.title}</span>
+                <div className={styles.navItems}>
+                  {section.items.map((item) => (
+                    <button
+                      key={item.label}
+                      className={`${styles.navItem} ${activeItem === item.label ? styles.navItemActive : ''}`}
+                      onClick={() => setActiveItem(item.label)}
+                    >
+                      <span className={styles.navItemIcon}>
+                        <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round">
+                          <path d={iconPath(item.icon)} />
+                        </svg>
+                      </span>
+                      {item.label}
+                      {activeItem === item.label && <span className={styles.activeIndicator} />}
+                    </button>
+                  ))}
+                </div>
+              </div>
+            ))}
+          </nav>
 
-        <div className={styles.contentBody}>
-          <div className={styles.placeholderCard}>
-            <div className={styles.placeholderIcon}>
-              <svg width="32" height="32" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round">
-                <path d={iconPath(sidebarNav.flatMap(s => s.items).find(i => i.label === activeItem)?.icon ?? 'general')} />
-              </svg>
+          <div className={styles.sidebarMeta}>
+            <span className={styles.metaLabel}>Workspace</span>
+            <span className={styles.metaValue}>Bloom</span>
+          </div>
+        </aside>
+
+        <main className={styles.main}>
+          <header className={styles.contentHeader}>
+            <div className={styles.headerTop}>
+              <h1 className={styles.title}>{activeItem}</h1>
+              <span className={styles.version}>v0.1</span>
             </div>
-            <h2 className={styles.placeholderTitle}>{activeItem} settings</h2>
-            <p className={styles.placeholderText}>
-              This section will contain the configuration options for {activeItem.toLowerCase()}.
-              It is not yet implemented.
+            <p className={styles.subtitle}>
+              {activeItem === 'Your Account' && 'Manage your personal account details, email, and profile.'}
+              {activeItem === 'Devices & Apps' && 'View and manage connected devices and third-party applications.'}
+              {activeItem === 'General' && 'Configure general project settings and preferences.'}
+              {activeItem === 'Git' && 'Connect and manage your Git repositories.'}
+              {activeItem === 'Domains' && 'Manage custom domains for your projects.'}
+              {activeItem === 'Provider Config' && 'Configure your AI provider API keys and endpoints.'}
+              {activeItem === 'People' && 'Manage workspace members and their access levels.'}
+              {activeItem === 'Knowledge' && 'Upload and manage knowledge sources for AI context.'}
+              {activeItem === 'Skills' && 'Create and manage custom AI skills.'}
+              {activeItem === 'Templates' && 'Manage your project templates and starters.'}
+              {activeItem === 'Workspace domains' && 'Configure deployment domains for your workspace.'}
+              {activeItem === 'Privacy & Security' && 'Manage privacy settings and security configurations.'}
+              {activeItem === 'Security Center' && 'View security alerts, audit logs, and compliance reports.'}
             </p>
+          </header>
+
+          <div className={styles.contentBody}>
+            <div className={styles.settingsGroup}>
+              <div className={styles.settingsRow}>
+                <div className={styles.settingInfo}>
+                  <span className={styles.settingLabel}>Status</span>
+                  <span className={styles.settingDesc}>Current configuration state</span>
+                </div>
+                <div className={styles.settingValue}>
+                  <span className={styles.statusDot} />
+                  Not configured
+                </div>
+              </div>
+
+              <div className={styles.settingsRow}>
+                <div className={styles.settingInfo}>
+                  <span className={styles.settingLabel}>Last modified</span>
+                  <span className={styles.settingDesc}>When this section was last updated</span>
+                </div>
+                <div className={styles.settingValue}>
+                  <span className={styles.monoText}>—</span>
+                </div>
+              </div>
+            </div>
+
+            <div className={styles.emptyState}>
+              <div className={styles.emptyVisual}>
+                <div className={styles.emptyRing} />
+                <div className={styles.emptyInner} />
+              </div>
+              <div className={styles.emptyText}>
+                <span className={styles.emptyLabel}>{activeItem}</span>
+                <span className={styles.emptyDesc}>Configuration will be available here soon. We're building this section to give you full control over your workspace.</span>
+              </div>
+            </div>
           </div>
-        </div>
-      </main>
+        </main>
+      </div>
     </div>
   )
 }
