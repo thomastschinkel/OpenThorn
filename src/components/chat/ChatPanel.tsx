@@ -41,11 +41,7 @@ export default function ChatPanel() {
       {/* Header */}
       <header className={styles.header}>
         <div className={styles.brand}>
-          <svg width="22" height="22" viewBox="0 0 32 32" fill="none">
-            <rect width="32" height="32" rx="8" fill="#3b82f6"/>
-            <path d="M8 16c0-4.4 3.6-8 8-8s8 3.6 8 8" stroke="#fff" strokeWidth="3" strokeLinecap="round" fill="none"/>
-            <circle cx="16" cy="18" r="5" fill="#fff"/>
-          </svg>
+          <img src="/logo.png" alt="Bloom" className={styles.logoImg} />
           <span className={styles.logo}>Bloom</span>
           <span className={styles.badge}>BYOK</span>
         </div>
