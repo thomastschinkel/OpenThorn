@@ -1,4 +1,4 @@
-import { useState } from 'react'
+import { useState, useRef, useEffect } from 'react'
 import PlusMenu from './PlusMenu'
 import styles from './ChatInput.module.css'
 
@@ -10,34 +10,22 @@ interface Props {
 export default function ChatInput({ mode, onToggleMode }: Props) {
   const [text, setText] = useState('')
   const [listening, setListening] = useState(false)
+  const [modeOpen, setModeOpen] = useState(false)
+  const modeRef = useRef<HTMLDivElement>(null)
+
+  useEffect(() => {
+    if (!modeOpen) return
+    const onClick = (e: MouseEvent) => {
+      if (modeRef.current && !modeRef.current.contains(e.target as Node)) {
+        setModeOpen(false)
+      }
+    }
+    window.addEventListener('click', onClick)
+    return () => window.removeEventListener('click', onClick)
+  }, [modeOpen])
 
   return (
     <div className={styles.wrapper}>
-      {/* Mode Toggle */}
-      <div className={styles.toggleRow}>
-        <div className={styles.pill}>
-          <button
-            className={`${styles.pillBtn} ${mode === 'plan' ? styles.pillActive : ''}`}
-            onClick={() => onToggleMode('plan')}
-          >
-            <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
-              <path d="M12 20h9 M16.5 3.5a2.121 2.121 0 0 1 3 3L7 19l-4 1 1-4L16.5 3.5z"/>
-            </svg>
-            Plan
-          </button>
-          <button
-            className={`${styles.pillBtn} ${mode === 'build' ? styles.pillActive : ''}`}
-            onClick={() => onToggleMode('build')}
-          >
-            <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
-              <polyline points="16 18 22 12 16 6"/>
-              <polyline points="8 6 2 12 8 18"/>
-            </svg>
-            Build
-          </button>
-        </div>
-      </div>
-
       {/* Input Row */}
       <div className={styles.inputRow}>
         <div className={styles.inputWrapper}>
@@ -50,7 +38,6 @@ export default function ChatInput({ mode, onToggleMode }: Props) {
             onKeyDown={(e) => {
               if (e.key === 'Enter' && !e.shiftKey) {
                 e.preventDefault()
-                // send logic here later
                 setText('')
               }
             }}
@@ -58,6 +45,60 @@ export default function ChatInput({ mode, onToggleMode }: Props) {
 
           <div className={styles.actions}>
             <PlusMenu />
+
+            {/* Mode dropdown */}
+            <div className={styles.modeDropdown} ref={modeRef}>
+              <button
+                className={styles.modeBtn}
+                onClick={() => setModeOpen(!modeOpen)}
+                title="Toggle mode"
+              >
+                {mode === 'build' ? (
+                  <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+                    <polyline points="16 18 22 12 16 6"/>
+                    <polyline points="8 6 2 12 8 18"/>
+                  </svg>
+                ) : (
+                  <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+                    <path d="M12 20h9 M16.5 3.5a2.121 2.121 0 0 1 3 3L7 19l-4 1 1-4L16.5 3.5z"/>
+                  </svg>
+                )}
+                <span>{mode === 'build' ? 'Build' : 'Plan'}</span>
+                <svg className={styles.chevron} width="10" height="10" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round">
+                  <polyline points="6 9 12 15 18 9"/>
+                </svg>
+              </button>
+
+              {modeOpen && (
+                <div className={styles.modeMenu}>
+                  <button
+                    className={`${styles.modeOption} ${mode === 'plan' ? styles.modeOptionActive : ''}`}
+                    onClick={() => { onToggleMode('plan'); setModeOpen(false) }}
+                  >
+                    <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+                      <path d="M12 20h9 M16.5 3.5a2.121 2.121 0 0 1 3 3L7 19l-4 1 1-4L16.5 3.5z"/>
+                    </svg>
+                    <div className={styles.modeOptionText}>
+                      <span className={styles.modeOptionLabel}>Plan</span>
+                      <span className={styles.modeOptionDesc}>Sketch architecture first</span>
+                    </div>
+                  </button>
+                  <button
+                    className={`${styles.modeOption} ${mode === 'build' ? styles.modeOptionActive : ''}`}
+                    onClick={() => { onToggleMode('build'); setModeOpen(false) }}
+                  >
+                    <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+                      <polyline points="16 18 22 12 16 6"/>
+                      <polyline points="8 6 2 12 8 18"/>
+                    </svg>
+                    <div className={styles.modeOptionText}>
+                      <span className={styles.modeOptionLabel}>Build</span>
+                      <span className={styles.modeOptionDesc}>Generate working code</span>
+                    </div>
+                  </button>
+                </div>
+              )}
+            </div>
 
             <div className={styles.divider} />
 

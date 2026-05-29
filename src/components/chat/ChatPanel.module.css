@@ -28,40 +28,12 @@
   object-fit: contain;
 }
 
-.logo {
-  font-family: var(--font-display);
-  font-size: 17px;
-  font-weight: 700;
+.projectName {
+  font-family: var(--font-body);
+  font-size: 14px;
+  font-weight: 600;
   color: var(--text-primary);
-  letter-spacing: -0.02em;
-}
-
-.badge {
-  font-family: var(--font-mono);
-  font-size: 10px;
-  font-weight: 500;
-  padding: 3px 8px;
-  border-radius: 100px;
-  background: var(--accent-soft);
-  color: var(--accent);
-  border: 1px solid rgba(59, 130, 246, 0.15);
-  letter-spacing: 0.04em;
-}
-
-.headerActions {
-  display: flex;
-  align-items: center;
-  gap: 8px;
-}
-
-.modeLabel {
-  font-size: 11px;
-  color: var(--text-secondary);
-  font-weight: 500;
-  background: var(--bg-field);
-  padding: 4px 10px;
-  border-radius: 100px;
-  border: 1px solid var(--border-subtle);
+  letter-spacing: -0.01em;
 }
 
 /* ── Messages ─────────────────────────────────────── */

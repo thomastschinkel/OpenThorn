@@ -4,47 +4,6 @@
   background: var(--bg-panel);
 }
 
-/* ── Mode Toggle ──────────────────────────────────── */
-.toggleRow {
-  display: flex;
-  justify-content: center;
-  margin-bottom: 10px;
-}
-
-.pill {
-  display: flex;
-  background: var(--bg-field);
-  border-radius: var(--radius-lg);
-  padding: 3px;
-  border: 1px solid var(--border-subtle);
-}
-
-.pillBtn {
-  display: flex;
-  align-items: center;
-  gap: 6px;
-  padding: 5px 14px;
-  border-radius: var(--radius-md);
-  font-size: 12.5px;
-  font-weight: 600;
-  color: var(--text-secondary);
-  transition: all var(--duration-fast) var(--ease-out);
-}
-
-.pillBtn:hover {
-  color: var(--text-primary);
-}
-
-.pillActive {
-  background: var(--accent);
-  color: #fff;
-  box-shadow: var(--shadow-glow);
-}
-
-.pillActive:hover {
-  color: #fff;
-}
-
 /* ── Input Row ────────────────────────────────────── */
 .inputRow {
   position: relative;
@@ -84,7 +43,7 @@
 .actions {
   display: flex;
   align-items: center;
-  gap: 4px;
+  gap: 2px;
   padding: 6px 10px 10px;
 }
 
@@ -95,6 +54,114 @@
   margin: 0 4px;
 }
 
+/* ── Mode Dropdown ────────────────────────────────── */
+.modeDropdown {
+  position: relative;
+}
+
+.modeBtn {
+  display: flex;
+  align-items: center;
+  gap: 5px;
+  height: 30px;
+  padding: 0 8px 0 7px;
+  border-radius: var(--radius-md);
+  font-size: 12.5px;
+  font-weight: 500;
+  color: var(--text-secondary);
+  background: var(--accent-soft);
+  border: 1px solid rgba(59, 130, 246, 0.12);
+  transition: all var(--duration-fast) var(--ease-out);
+}
+
+.modeBtn:hover {
+  color: var(--accent);
+  background: rgba(59, 130, 246, 0.14);
+}
+
+.modeBtn svg:first-child {
+  color: var(--accent);
+}
+
+.chevron {
+  opacity: 0.5;
+  margin-left: 2px;
+}
+
+.modeMenu {
+  position: absolute;
+  bottom: calc(100% + 6px);
+  left: 0;
+  width: 210px;
+  background: var(--bg-panel);
+  border: 1px solid var(--border-default);
+  border-radius: var(--radius-lg);
+  box-shadow: var(--shadow-elevated);
+  backdrop-filter: blur(20px);
+  padding: 6px;
+  z-index: 100;
+  animation: dropUp var(--duration-normal) var(--ease-out);
+}
+
+@keyframes dropUp {
+  from {
+    opacity: 0;
+    transform: translateY(6px) scale(0.97);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0) scale(1);
+  }
+}
+
+.modeOption {
+  display: flex;
+  align-items: flex-start;
+  gap: 10px;
+  width: 100%;
+  padding: 10px;
+  border-radius: var(--radius-md);
+  font-size: 13px;
+  color: var(--text-primary);
+  transition: background var(--duration-fast) var(--ease-out);
+  text-align: left;
+}
+
+.modeOption:hover {
+  background: var(--bg-hover);
+}
+
+.modeOption svg {
+  margin-top: 1px;
+  flex-shrink: 0;
+  color: var(--text-secondary);
+}
+
+.modeOptionActive {
+  background: var(--bg-elevated);
+}
+
+.modeOptionActive svg {
+  color: var(--accent);
+}
+
+.modeOptionText {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+}
+
+.modeOptionLabel {
+  font-weight: 600;
+  font-size: 13px;
+}
+
+.modeOptionDesc {
+  font-size: 11.5px;
+  color: var(--text-secondary);
+}
+
+/* ── Voice Button ─────────────────────────────────── */
 .voiceBtn {
   width: 34px;
   height: 34px;
@@ -122,6 +189,7 @@
   50% { box-shadow: 0 0 0 8px rgba(239, 68, 68, 0); }
 }
 
+/* ── Send Button ──────────────────────────────────── */
 .sendBtn {
   width: 34px;
   height: 34px;

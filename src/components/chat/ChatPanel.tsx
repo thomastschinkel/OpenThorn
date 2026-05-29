@@ -41,14 +41,8 @@ export default function ChatPanel() {
       {/* Header */}
       <header className={styles.header}>
         <div className={styles.brand}>
-          <img src="/logo.png" alt="Bloom" className={styles.logoImg} />
-          <span className={styles.logo}>Bloom</span>
-          <span className={styles.badge}>BYOK</span>
-        </div>
-        <div className={styles.headerActions}>
-          <span className={styles.modeLabel}>
-            {mode === 'build' ? 'Building…' : 'Planning…'}
-          </span>
+          <img src="/logo.png" alt="Logo" className={styles.logoImg} />
+          <span className={styles.projectName}>Flowly</span>
         </div>
       </header>
 
