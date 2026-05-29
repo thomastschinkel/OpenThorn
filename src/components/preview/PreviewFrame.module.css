@@ -1,0 +1,231 @@
+.wrapper {
+  flex: 1;
+  overflow: auto;
+  background: linear-gradient(135deg, #0d0d14 0%, #131320 50%, #0d0d14 100%);
+  display: flex;
+  align-items: flex-start;
+  justify-content: center;
+  padding: 0;
+  position: relative;
+}
+
+.wrapper::before {
+  content: '';
+  position: absolute;
+  inset: 0;
+  background:
+    radial-gradient(ellipse at 30% 20%, rgba(99, 102, 241, 0.04) 0%, transparent 60%),
+    radial-gradient(ellipse at 70% 60%, rgba(59, 130, 246, 0.03) 0%, transparent 60%);
+  pointer-events: none;
+}
+
+.framed {
+  padding: 24px;
+}
+
+.container {
+  height: 100%;
+  display: flex;
+  flex-direction: column;
+  transition: width var(--duration-slow) var(--ease-in-out);
+}
+
+/* ── Device Frame ─────────────────────────────────── */
+.frame {
+  flex-shrink: 0;
+  background: #1a1a22;
+  border: 2px solid #2a2a35;
+  border-bottom: none;
+  border-radius: 16px 16px 0 0;
+  padding: 0;
+  position: relative;
+  overflow: hidden;
+}
+
+.notch {
+  width: 120px;
+  height: 24px;
+  background: #111118;
+  border-radius: 0 0 14px 14px;
+  margin: 0 auto;
+}
+
+.urlBar {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  padding: 8px 16px;
+  background: rgba(255, 255, 255, 0.03);
+}
+
+.dots {
+  display: flex;
+  gap: 5px;
+}
+
+.dot {
+  width: 8px;
+  height: 8px;
+  border-radius: 50%;
+  background: #3f3f46;
+}
+
+.dot:nth-child(1) { background: #ef4444; }
+.dot:nth-child(2) { background: #f59e0b; }
+.dot:nth-child(3) { background: #22c55e; }
+
+.url {
+  font-family: var(--font-mono);
+  font-size: 10px;
+  color: var(--text-disabled);
+  background: rgba(255, 255, 255, 0.04);
+  padding: 3px 10px;
+  border-radius: 4px;
+  width: 100%;
+}
+
+/* ── Content Area ─────────────────────────────────── */
+.content {
+  flex: 1;
+  background: #fff;
+  overflow: auto;
+  border: 2px solid #2a2a35;
+  border-radius: 0 0 16px 16px;
+}
+
+.framed .content {
+  border-radius: 0 0 16px 16px;
+}
+
+/* No frame mode (PC) */
+.wrapper:not(.framed) .content {
+  border: none;
+  border-radius: 0;
+}
+
+/* ── Demo Site ────────────────────────────────────── */
+.demoSite {
+  min-height: 100%;
+  background: #0a0a0f;
+  color: #e4e4e7;
+  font-family: system-ui, -apple-system, sans-serif;
+  padding-bottom: 40px;
+}
+
+.demoNav {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 16px 24px;
+  border-bottom: 1px solid rgba(255, 255, 255, 0.06);
+}
+
+.demoLogo {
+  font-size: 18px;
+  font-weight: 700;
+  color: #fff;
+  letter-spacing: -0.02em;
+}
+
+.demoLinks {
+  display: flex;
+  align-items: center;
+  gap: 20px;
+  font-size: 13px;
+  color: #a1a1aa;
+}
+
+.demoCTA {
+  background: #6366f1;
+  color: #fff;
+  padding: 7px 16px;
+  border-radius: 8px;
+  font-weight: 500;
+}
+
+.demoMain {
+  text-align: center;
+  padding: 60px 24px 40px;
+}
+
+.demoHeading {
+  font-size: 42px;
+  font-weight: 700;
+  line-height: 1.15;
+  margin-bottom: 16px;
+  color: #fff;
+}
+
+.demoGradient {
+  background: linear-gradient(135deg, #6366f1, #a855f7, #3b82f6);
+  -webkit-background-clip: text;
+  -webkit-text-fill-color: transparent;
+  background-clip: text;
+}
+
+.demoSub {
+  font-size: 16px;
+  color: #71717a;
+  max-width: 500px;
+  margin: 0 auto 28px;
+  line-height: 1.6;
+}
+
+.demoBtns {
+  display: flex;
+  gap: 12px;
+  justify-content: center;
+}
+
+.demoPrimary {
+  background: #6366f1;
+  color: #fff;
+  padding: 10px 24px;
+  border-radius: 10px;
+  font-size: 14px;
+  font-weight: 600;
+  border: none;
+  cursor: pointer;
+}
+
+.demoSecondary {
+  background: transparent;
+  color: #a1a1aa;
+  padding: 10px 24px;
+  border-radius: 10px;
+  font-size: 14px;
+  font-weight: 500;
+  border: 1px solid rgba(255, 255, 255, 0.1);
+  cursor: pointer;
+}
+
+/* ── Feature Grid ─────────────────────────────────── */
+.demoGrid {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(140px, 1fr));
+  gap: 10px;
+  padding: 0 24px;
+  max-width: 600px;
+  margin: 0 auto;
+}
+
+.demoCard {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 8px;
+  padding: 16px 12px;
+  background: rgba(255, 255, 255, 0.03);
+  border: 1px solid rgba(255, 255, 255, 0.05);
+  border-radius: 12px;
+  font-size: 12px;
+  color: #a1a1aa;
+  text-align: center;
+}
+
+.demoIcon {
+  width: 32px;
+  height: 32px;
+  border-radius: 8px;
+  background: linear-gradient(135deg, rgba(99, 102, 241, 0.3), rgba(59, 130, 246, 0.2));
+}

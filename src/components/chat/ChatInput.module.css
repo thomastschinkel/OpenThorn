@@ -1,0 +1,202 @@
+.wrapper {
+  padding: 12px 16px 16px;
+  border-top: 1px solid var(--border-subtle);
+  background: var(--bg-panel);
+}
+
+/* ── Mode Toggle ──────────────────────────────────── */
+.toggleRow {
+  display: flex;
+  justify-content: center;
+  margin-bottom: 10px;
+}
+
+.pill {
+  display: flex;
+  background: var(--bg-field);
+  border-radius: var(--radius-lg);
+  padding: 3px;
+  border: 1px solid var(--border-subtle);
+}
+
+.pillBtn {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  padding: 5px 14px;
+  border-radius: var(--radius-md);
+  font-size: 12.5px;
+  font-weight: 600;
+  color: var(--text-secondary);
+  transition: all var(--duration-fast) var(--ease-out);
+}
+
+.pillBtn:hover {
+  color: var(--text-primary);
+}
+
+.pillActive {
+  background: var(--accent);
+  color: #fff;
+  box-shadow: var(--shadow-glow);
+}
+
+.pillActive:hover {
+  color: #fff;
+}
+
+/* ── Input Row ────────────────────────────────────── */
+.inputRow {
+  position: relative;
+}
+
+.inputWrapper {
+  display: flex;
+  flex-direction: column;
+  background: var(--bg-field);
+  border: 1px solid var(--border-default);
+  border-radius: var(--radius-lg);
+  box-shadow: var(--shadow-input);
+  transition: border-color var(--duration-fast) var(--ease-out);
+  overflow: hidden;
+}
+
+.inputWrapper:focus-within {
+  border-color: rgba(255, 255, 255, 0.15);
+  box-shadow: var(--shadow-input), 0 0 0 3px var(--accent-soft);
+}
+
+.textarea {
+  width: 100%;
+  padding: 12px 12px 4px;
+  resize: none;
+  font-size: 13.5px;
+  line-height: 1.6;
+  background: transparent;
+  color: var(--text-primary);
+}
+
+.textarea::placeholder {
+  color: var(--text-disabled);
+}
+
+/* ── Action Buttons ───────────────────────────────── */
+.actions {
+  display: flex;
+  align-items: center;
+  gap: 4px;
+  padding: 6px 10px 10px;
+}
+
+.divider {
+  width: 1px;
+  height: 20px;
+  background: var(--border-default);
+  margin: 0 4px;
+}
+
+.voiceBtn {
+  width: 34px;
+  height: 34px;
+  border-radius: var(--radius-md);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  color: var(--text-secondary);
+  transition: all var(--duration-fast) var(--ease-out);
+}
+
+.voiceBtn:hover {
+  background: var(--bg-elevated);
+  color: var(--text-primary);
+}
+
+.voiceBtn.listening {
+  color: var(--red);
+  background: rgba(239, 68, 68, 0.1);
+  animation: pulse 1.5s ease-in-out infinite;
+}
+
+@keyframes pulse {
+  0%, 100% { box-shadow: 0 0 0 0 rgba(239, 68, 68, 0.3); }
+  50% { box-shadow: 0 0 0 8px rgba(239, 68, 68, 0); }
+}
+
+.sendBtn {
+  width: 34px;
+  height: 34px;
+  border-radius: var(--radius-md);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  color: var(--text-disabled);
+  transition: all var(--duration-fast) var(--ease-out);
+  margin-left: auto;
+}
+
+.sendBtn:hover:not(:disabled) {
+  background: var(--bg-elevated);
+}
+
+.sendBtn.hasText {
+  color: var(--accent);
+  background: var(--accent-soft);
+}
+
+.sendBtn.hasText:hover {
+  background: var(--accent);
+  color: #fff;
+  box-shadow: var(--shadow-glow);
+}
+
+/* ── Listening Bar ────────────────────────────────── */
+.listeningBar {
+  margin-top: 10px;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 8px;
+  padding: 10px;
+  background: var(--bg-elevated);
+  border-radius: var(--radius-md);
+  border: 1px solid rgba(239, 68, 68, 0.15);
+  animation: slideUp var(--duration-normal) var(--ease-out);
+}
+
+@keyframes slideUp {
+  from {
+    opacity: 0;
+    transform: translateY(6px);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+
+.waveform {
+  display: flex;
+  align-items: center;
+  gap: 2px;
+  height: 24px;
+}
+
+.bar {
+  width: 2px;
+  height: 8px;
+  background: var(--red);
+  border-radius: 1px;
+  animation: wave 0.8s ease-in-out infinite alternate;
+}
+
+@keyframes wave {
+  from { height: 4px; opacity: 0.4; }
+  to { height: 20px; opacity: 1; }
+}
+
+.listeningText {
+  font-size: 11px;
+  color: var(--red);
+  font-weight: 500;
+  letter-spacing: 0.04em;
+}

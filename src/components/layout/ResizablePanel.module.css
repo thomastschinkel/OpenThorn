@@ -1,0 +1,63 @@
+.container {
+  display: flex;
+  height: 100%;
+  width: 100%;
+  position: relative;
+}
+
+.left,
+.right {
+  height: 100%;
+  overflow: hidden;
+  display: flex;
+  flex-direction: column;
+}
+
+.left {
+  border-right: 1px solid var(--border-subtle);
+}
+
+.divider {
+  width: 6px;
+  margin-left: -3px;
+  cursor: col-resize;
+  z-index: 10;
+  position: relative;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  flex-shrink: 0;
+}
+
+.divider::before {
+  content: '';
+  position: absolute;
+  top: 0;
+  bottom: 0;
+  width: 2px;
+  background: transparent;
+  transition: background var(--duration-normal) var(--ease-out);
+}
+
+.divider:hover::before,
+.divider.dragging::before {
+  background: var(--accent);
+}
+
+.handle {
+  width: 4px;
+  height: 32px;
+  border-radius: 2px;
+  background: var(--text-disabled);
+  opacity: 0;
+  transition: opacity var(--duration-normal) var(--ease-out);
+}
+
+.divider:hover .handle,
+.divider.dragging .handle {
+  opacity: 1;
+}
+
+.divider.dragging .handle {
+  background: var(--accent);
+}

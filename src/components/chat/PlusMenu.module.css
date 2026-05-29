@@ -1,0 +1,82 @@
+.wrapper {
+  position: relative;
+}
+
+.trigger {
+  width: 34px;
+  height: 34px;
+  border-radius: var(--radius-md);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  color: var(--text-secondary);
+  transition: all var(--duration-fast) var(--ease-out);
+}
+
+.trigger:hover,
+.trigger.active {
+  background: var(--bg-elevated);
+  color: var(--text-primary);
+}
+
+.menu {
+  position: absolute;
+  bottom: calc(100% + 8px);
+  left: 0;
+  width: 220px;
+  background: var(--bg-panel);
+  border: 1px solid var(--border-default);
+  border-radius: var(--radius-lg);
+  box-shadow: var(--shadow-elevated);
+  backdrop-filter: blur(20px);
+  padding: 6px;
+  z-index: 100;
+  animation: slideUp var(--duration-normal) var(--ease-out);
+}
+
+@keyframes slideUp {
+  from {
+    opacity: 0;
+    transform: translateY(6px) scale(0.97);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0) scale(1);
+  }
+}
+
+.item {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  width: 100%;
+  padding: 8px 10px;
+  border-radius: var(--radius-sm);
+  font-size: 13px;
+  color: var(--text-primary);
+  transition: background var(--duration-fast) var(--ease-out);
+}
+
+.item:hover {
+  background: var(--bg-elevated);
+}
+
+.item svg {
+  flex-shrink: 0;
+  color: var(--text-secondary);
+}
+
+.label {
+  flex: 1;
+  text-align: left;
+}
+
+.shortcut {
+  font-family: var(--font-mono);
+  font-size: 11px;
+  color: var(--text-disabled);
+  background: var(--bg-field);
+  padding: 2px 5px;
+  border-radius: 3px;
+  border: 1px solid var(--border-subtle);
+}

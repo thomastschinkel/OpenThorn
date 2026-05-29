@@ -1,0 +1,227 @@
+.toolbar {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 10px 14px;
+  border-bottom: 1px solid var(--border-subtle);
+  background: var(--bg-panel);
+  gap: 12px;
+  flex-shrink: 0;
+}
+
+/* ── Left ─────────────────────────────────────────── */
+.left {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  flex: 1;
+  min-width: 0;
+}
+
+.routeBar {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  background: var(--bg-field);
+  border: 1px solid var(--border-default);
+  border-radius: var(--radius-md);
+  padding: 7px 12px;
+  max-width: 220px;
+  flex: 1;
+  transition: border-color var(--duration-fast) var(--ease-out);
+}
+
+.routeBar:focus-within {
+  border-color: rgba(255, 255, 255, 0.15);
+  box-shadow: 0 0 0 3px var(--accent-soft);
+}
+
+.routeIcon {
+  color: var(--text-secondary);
+  flex-shrink: 0;
+}
+
+.routeInput {
+  width: 100%;
+  font-family: var(--font-mono);
+  font-size: 12.5px;
+  background: transparent;
+  color: var(--text-primary);
+}
+
+.routeInput::placeholder {
+  color: var(--text-disabled);
+}
+
+/* ── Center ───────────────────────────────────────── */
+.center {
+  flex-shrink: 0;
+}
+
+.devicePill {
+  display: flex;
+  background: var(--bg-field);
+  border-radius: var(--radius-md);
+  padding: 3px;
+  border: 1px solid var(--border-subtle);
+}
+
+.deviceBtn {
+  width: 30px;
+  height: 28px;
+  border-radius: 6px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  color: var(--text-secondary);
+  transition: all var(--duration-fast) var(--ease-out);
+}
+
+.deviceBtn:hover {
+  color: var(--text-primary);
+}
+
+.deviceActive {
+  background: var(--bg-elevated);
+  color: var(--accent);
+  box-shadow: 0 1px 3px rgba(0, 0, 0, 0.3);
+}
+
+/* ── Right ────────────────────────────────────────── */
+.right {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  flex: 1;
+  justify-content: flex-end;
+}
+
+.iconBtn {
+  width: 32px;
+  height: 32px;
+  border-radius: var(--radius-md);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  color: var(--text-secondary);
+  transition: all var(--duration-fast) var(--ease-out);
+}
+
+.iconBtn:hover,
+.iconBtn.active {
+  background: var(--bg-elevated);
+  color: var(--text-primary);
+}
+
+/* ── Menu dropdown ────────────────────────────────── */
+.menuWrap {
+  position: relative;
+}
+
+.dropdown {
+  position: absolute;
+  top: calc(100% + 6px);
+  right: 0;
+  width: 160px;
+  background: var(--bg-panel);
+  border: 1px solid var(--border-default);
+  border-radius: var(--radius-lg);
+  box-shadow: var(--shadow-elevated);
+  backdrop-filter: blur(20px);
+  padding: 6px;
+  z-index: 100;
+  animation: dropIn var(--duration-normal) var(--ease-out);
+}
+
+@keyframes dropIn {
+  from {
+    opacity: 0;
+    transform: translateY(-4px) scale(0.96);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0) scale(1);
+  }
+}
+
+.dropItem {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  width: 100%;
+  padding: 8px 10px;
+  border-radius: var(--radius-sm);
+  font-size: 13px;
+  color: var(--text-primary);
+  transition: background var(--duration-fast) var(--ease-out);
+}
+
+.dropItem:hover {
+  background: var(--bg-hover);
+}
+
+.dropItem svg {
+  color: var(--text-secondary);
+}
+
+/* ── Profile ──────────────────────────────────────── */
+.profile {
+  flex-shrink: 0;
+}
+
+.avatar {
+  width: 30px;
+  height: 30px;
+  border-radius: 50%;
+  background: linear-gradient(135deg, #6366f1, #8b5cf6);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 12px;
+  font-weight: 700;
+  color: #fff;
+  cursor: pointer;
+  transition: transform var(--duration-fast) var(--ease-out);
+}
+
+.avatar:hover {
+  transform: scale(1.05);
+}
+
+/* ── Action buttons ───────────────────────────────── */
+.actionBtn {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  padding: 7px 13px;
+  border-radius: var(--radius-md);
+  font-size: 12.5px;
+  font-weight: 500;
+  color: var(--text-secondary);
+  transition: all var(--duration-fast) var(--ease-out);
+  border: 1px solid var(--border-default);
+}
+
+.actionBtn:hover {
+  background: var(--bg-elevated);
+  color: var(--text-primary);
+  border-color: var(--border-strong);
+}
+
+.publishBtn {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  padding: 7px 14px;
+  border-radius: var(--radius-md);
+  font-size: 12.5px;
+  font-weight: 600;
+  color: #fff;
+  background: var(--accent);
+  transition: all var(--duration-fast) var(--ease-out);
+}
+
+.publishBtn:hover {
+  box-shadow: var(--shadow-glow);
+  transform: translateY(-1px);
+}
