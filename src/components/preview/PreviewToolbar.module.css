@@ -163,6 +163,38 @@
 
 .dropItem svg {
   color: var(--text-secondary);
+  flex-shrink: 0;
+}
+
+.dropDivider {
+  height: 1px;
+  background: var(--border-subtle);
+  margin: 4px 6px;
+}
+
+/* ── More submenu ─────────────────────────────────── */
+.moreWrap {
+  position: relative;
+}
+
+.subChevron {
+  margin-left: auto;
+  opacity: 0.5;
+}
+
+.subDropdown {
+  position: absolute;
+  right: calc(100% + 4px);
+  top: -60px;
+  width: 170px;
+  background: var(--bg-panel);
+  border: 1px solid var(--border-strong);
+  border-radius: var(--radius-lg);
+  box-shadow: var(--shadow-elevated);
+  backdrop-filter: blur(24px);
+  padding: 6px;
+  z-index: 110;
+  animation: dropIn var(--duration-normal) var(--ease-out);
 }
 
 /* ── Profile ──────────────────────────────────────── */
