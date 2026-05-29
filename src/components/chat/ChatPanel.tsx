@@ -1,5 +1,6 @@
 import { useState, useRef, useEffect } from 'react'
 import { useApp } from '../../App'
+import { sendChatMessage } from '../../lib/chat'
 import ChatMessage from './ChatMessage'
 import ChatInput from './ChatInput'
 import styles from './ChatPanel.module.css'
@@ -10,27 +11,18 @@ export interface Message {
   text: string
 }
 
-const demoMessages: Message[] = [
-  {
-    id: '1',
-    role: 'assistant',
-    text: "Hey! I'm Bloom, your AI coding companion. I can help you build full-stack web applications — describe what you'd like to create and I'll generate it for you.\n\nSwitch between **Plan** mode to sketch out architecture, or **Build** mode to generate working code.\n\nWhat do you want to build today?",
-  },
-  {
-    id: '2',
-    role: 'user',
-    text: 'Build me a modern landing page for a SaaS startup called "Flowly" — an AI-powered project management tool.',
-  },
-  {
-    id: '3',
-    role: 'assistant',
-    text: "Great idea! Here's what I built:\n\n✅ **Hero section** with a gradient headline and CTA\n✅ **Features grid** showcasing 6 key capabilities\n✅ **Pricing table** with 3 tiers\n✅ **Testimonials carousel** with 4 customer quotes\n✅ **Footer** with links and newsletter signup\n\nI used a clean dark theme with indigo accents. The layout is fully responsive — check it out in the preview on the right! 👉",
-  },
-]
+const welcomeMessage: Message = {
+  id: 'welcome',
+  role: 'assistant',
+  text: "Hey! I'm Bloom, your AI coding companion. I help you build full-stack web applications — just describe what you want to create and I'll generate it for you.\n\n**Plan** mode lets us sketch the architecture first. **Build** mode generates working code directly.\n\nWhat do you want to build today?",
+}
 
 export default function ChatPanel() {
-  const [messages] = useState<Message[]>(demoMessages)
+  const [messages, setMessages] = useState<Message[]>([welcomeMessage])
   const [mode, setMode] = useState<'plan' | 'build'>('build')
+  const [providerId, setProviderId] = useState<string | null>(null)
+  const [model, setModel] = useState<string | null>(null)
+  const [sending, setSending] = useState(false)
   const [projectMenuOpen, setProjectMenuOpen] = useState(false)
   const [appearance, setAppearance] = useState<'light' | 'dark' | 'system'>('dark')
   const { navigateTo } = useApp()
@@ -198,7 +190,37 @@ export default function ChatPanel() {
       </div>
 
       {/* Input */}
-      <ChatInput mode={mode} onToggleMode={setMode} />
+      <ChatInput
+        mode={mode}
+        onToggleMode={setMode}
+        providerId={providerId}
+        model={model}
+        onProviderSelect={(pid, m) => { setProviderId(pid); setModel(m) }}
+        onSend={async (text) => {
+          const userMsg: Message = { id: Date.now().toString(), role: 'user', text }
+          setMessages((prev) => [...prev, userMsg])
+          if (!providerId || !model) return
+          setSending(true)
+          try {
+            const result = await sendChatMessage(
+              [...messages, userMsg],
+              providerId,
+              model
+            )
+            setMessages((prev) => [
+              ...prev,
+              { id: (Date.now() + 1).toString(), role: 'assistant', text: result.message },
+            ])
+          } catch (e) {
+            setMessages((prev) => [
+              ...prev,
+              { id: (Date.now() + 1).toString(), role: 'assistant', text: `Error: ${(e as Error).message}` },
+            ])
+          } finally {
+            setSending(false)
+          }
+        }}
+      />
     </div>
   )
 }

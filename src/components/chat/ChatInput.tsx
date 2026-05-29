@@ -6,14 +6,16 @@ import styles from './ChatInput.module.css'
 interface Props {
   mode: 'plan' | 'build'
   onToggleMode: (m: 'plan' | 'build') => void
+  onSend: (text: string) => void
+  providerId: string | null
+  model: string | null
+  onProviderSelect: (providerId: string, model: string) => void
 }
 
-export default function ChatInput({ mode, onToggleMode }: Props) {
+export default function ChatInput({ mode, onToggleMode, onSend, providerId, model, onProviderSelect }: Props) {
   const [text, setText] = useState('')
   const [listening, setListening] = useState(false)
   const [modeOpen, setModeOpen] = useState(false)
-  const [providerId, setProviderId] = useState<string | null>(null)
-  const [model, setModel] = useState<string | null>(null)
   const modeRef = useRef<HTMLDivElement>(null)
 
   useEffect(() => {
@@ -41,7 +43,10 @@ export default function ChatInput({ mode, onToggleMode }: Props) {
             onKeyDown={(e) => {
               if (e.key === 'Enter' && !e.shiftKey) {
                 e.preventDefault()
-                setText('')
+                if (text.trim()) {
+                  onSend(text.trim())
+                  setText('')
+                }
               }
             }}
           />
@@ -52,7 +57,7 @@ export default function ChatInput({ mode, onToggleMode }: Props) {
             <ProviderSelector
               selectedProviderId={providerId}
               selectedModel={model}
-              onSelect={(pid, m) => { setProviderId(pid); setModel(m) }}
+              onSelect={onProviderSelect}
             />
 
             {/* Mode dropdown */}
@@ -133,6 +138,12 @@ export default function ChatInput({ mode, onToggleMode }: Props) {
               className={`${styles.sendBtn} ${text.trim() ? styles.hasText : ''}`}
               disabled={!text.trim()}
               title="Send"
+              onClick={() => {
+                if (text.trim()) {
+                  onSend(text.trim())
+                  setText('')
+                }
+              }}
             >
               <svg width="17" height="17" viewBox="0 0 24 24" fill="currentColor">
                 <path d="m21.426 11.095-17-8A.999.999 0 0 0 3.03 4.242L4.969 12 3.03 19.758a.998.998 0 0 0 1.396 1.147l17-8a1 1 0 0 0 0-1.81z"/>

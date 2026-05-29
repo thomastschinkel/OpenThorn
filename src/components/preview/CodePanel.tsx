@@ -5,7 +5,7 @@ import css from 'react-syntax-highlighter/dist/esm/languages/hljs/css'
 import javascript from 'react-syntax-highlighter/dist/esm/languages/hljs/javascript'
 import json from 'react-syntax-highlighter/dist/esm/languages/hljs/json'
 import { atomOneDark } from 'react-syntax-highlighter/dist/esm/styles/hljs'
-import { sampleFiles, type ProjectFile } from '../../data/sampleFiles'
+import { getProject, type ProjectFile } from '../../lib/project'
 import styles from './CodePanel.module.css'
 
 SyntaxHighlighter.registerLanguage('html', html)
@@ -15,22 +15,37 @@ SyntaxHighlighter.registerLanguage('json', json)
 
 export type CodeView = 'files' | 'code'
 
+function guessLanguage(name: string): string {
+  const ext = name.split('.').pop()?.toLowerCase()
+  switch (ext) {
+    case 'html': case 'htm': return 'html'
+    case 'css': return 'css'
+    case 'js': case 'mjs': case 'cjs': return 'javascript'
+    case 'json': return 'json'
+    case 'ts': case 'tsx': return 'typescript'
+    case 'py': return 'python'
+    default: return 'text'
+  }
+}
+
 interface Props {
   initialView?: CodeView
   onClose: () => void
 }
 
 export default function CodePanel({ initialView = 'code', onClose }: Props) {
-  const [activeFile, setActiveFile] = useState<ProjectFile>(sampleFiles[0])
+  const files = getProject().files
+  const [activeFile, setActiveFile] = useState<ProjectFile | null>(files[0] ?? null)
   const [view, setView] = useState<CodeView>(initialView)
 
   const fileIcon = (file: ProjectFile): string => {
-    const ext = file.name.split('.').pop()
+    const ext = file.name.split('.').pop()?.toLowerCase()
     switch (ext) {
-      case 'html': return '⬡'
+      case 'html': case 'htm': return '⬡'
       case 'css': return '🎨'
-      case 'js': return '⚡'
+      case 'js': case 'mjs': return '⚡'
       case 'json': return '{ }'
+      case 'ts': case 'tsx': return 'TS'
       default: return '📄'
     }
   }
@@ -74,15 +89,15 @@ export default function CodePanel({ initialView = 'code', onClose }: Props) {
         {/* File Tree */}
         <div className={styles.fileTree}>
           <div className={styles.fileTreeHeader}>Project Files</div>
-          {sampleFiles.map((file) => (
+          {files.map((file) => (
             <button
-              key={file.path}
-              className={`${styles.fileItem} ${activeFile.path === file.path ? styles.fileActive : ''}`}
+              key={file.name}
+              className={`${styles.fileItem} ${activeFile?.name === file.name ? styles.fileActive : ''}`}
               onClick={() => { setActiveFile(file); setView('code') }}
             >
               <span className={styles.fileIcon}>{fileIcon(file)}</span>
               <span className={styles.fileName}>{file.name}</span>
-              <span className={styles.filePath}>{file.path}</span>
+              <span className={styles.filePath}>{file.name}</span>
             </button>
           ))}
         </div>
@@ -91,12 +106,12 @@ export default function CodePanel({ initialView = 'code', onClose }: Props) {
         {view === 'code' && (
           <div className={styles.codeViewer}>
             <div className={styles.codeHeader}>
-              <span className={styles.codeFileName}>{activeFile.path}</span>
-              <span className={styles.codeLang}>{activeFile.language}</span>
+              <span className={styles.codeFileName}>{activeFile?.name}</span>
+              <span className={styles.codeLang}>{activeFile ? guessLanguage(activeFile.name) : ''}</span>
             </div>
             <div className={styles.codeContent}>
               <SyntaxHighlighter
-                language={activeFile.language}
+                language={activeFile ? guessLanguage(activeFile.name) : 'text'}
                 style={atomOneDark}
                 showLineNumbers
                 wrapLines

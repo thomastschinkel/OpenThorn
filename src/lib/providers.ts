@@ -97,35 +97,37 @@ export async function deleteProvider(id: string): Promise<void> {
   if (error) throw error
 }
 
+function isPrivateIp(hostname: string): boolean {
+  const ipParts = hostname.split('.').map(Number)
+  if (ipParts.length !== 4 || ipParts.some(isNaN)) return false
+  // 10.0.0.0/8
+  if (ipParts[0] === 10) return true
+  // 172.16.0.0/12
+  if (ipParts[0] === 172 && ipParts[1] >= 16 && ipParts[1] <= 31) return true
+  // 192.168.0.0/16
+  if (ipParts[0] === 192 && ipParts[1] === 168) return true
+  // 127.0.0.0/8 (loopback)
+  if (ipParts[0] === 127) return true
+  // 169.254.0.0/16 (link-local)
+  if (ipParts[0] === 169 && ipParts[1] === 254) return true
+  return false
+}
+
 function validateBaseUrl(url: string): { ok: true; normalized: string } | { ok: false; message: string } {
   let parsed: URL
   try { parsed = new URL(url.endsWith('/') ? url : url + '/') } catch { return { ok: false, message: 'Invalid URL format' } }
 
   const hostname = parsed.hostname.toLowerCase()
 
-  // Block local / internal addresses (SSRF prevention)
-  const blocked = [
-    'localhost', '127.0.0.1', '0.0.0.0', '[::1]', '[::]',
-    '10.0.0.0/8', '172.16.0.0/12', '192.168.0.0/16', '169.254.0.0/16',
-    'metadata.google.internal', 'metadata',
-  ]
-
-  if (blocked.some((b) => hostname === b || hostname.startsWith(b.replace('/8', '').replace('/12', '').replace('/16', '').split('.')[0] + '.')))) {
-    // Check private ranges precisely
-    const ipParts = hostname.split('.').map(Number)
-    if (ipParts.length === 4 && !ipParts.some(isNaN)) {
-      if (ipParts[0] === 10) return { ok: false, message: 'Private network URLs are not allowed' }
-      if (ipParts[0] === 172 && ipParts[1] >= 16 && ipParts[1] <= 31) return { ok: false, message: 'Private network URLs are not allowed' }
-      if (ipParts[0] === 192 && ipParts[1] === 168) return { ok: false, message: 'Private network URLs are not allowed' }
-      if (ipParts[0] === 127) return { ok: false, message: 'Loopback URLs are not allowed' }
-      if (ipParts[0] === 169 && ipParts[1] === 254) return { ok: false, message: 'Link-local URLs are not allowed' }
-    }
-    if (hostname === 'localhost' || hostname === 'metadata.google.internal') {
-      return { ok: false, message: 'Internal hostnames are not allowed' }
-    }
+  if (hostname === 'localhost' || hostname === '0.0.0.0' || hostname === '[::1]' || hostname === '[::]' || hostname === 'metadata.google.internal') {
+    return { ok: false, message: 'Internal hostnames are not allowed' }
   }
 
-  if (!['https:', 'http:'].includes(parsed.protocol)) {
+  if (isPrivateIp(hostname)) {
+    return { ok: false, message: 'Private network URLs are not allowed' }
+  }
+
+  if (parsed.protocol !== 'https:' && parsed.protocol !== 'http:') {
     return { ok: false, message: 'Only HTTP and HTTPS URLs are supported' }
   }
 
@@ -154,7 +156,11 @@ export async function testProviderConnection(
         max_tokens: 1,
       }),
       signal: AbortSignal.timeout(8000),
+      redirect: 'manual',
     })
+    if (res.status >= 300 && res.status < 400) {
+      return { ok: false, message: 'Redirects are not allowed — use the final endpoint URL directly' }
+    }
     if (res.ok) return { ok: true, message: 'Connection successful' }
     const err = await res.json().catch(() => ({}))
     return { ok: false, message: (err as { error?: { message?: string } }).error?.message ?? `HTTP ${res.status}` }
