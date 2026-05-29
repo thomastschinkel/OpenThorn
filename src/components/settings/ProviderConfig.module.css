@@ -273,6 +273,17 @@
 }
 .modelChipOn:hover { color: var(--accent); background: rgba(80, 148, 255, 0.12); }
 
+.customModelRow { display: flex; gap: 6px; }
+.customModelRow .fieldInput { flex: 1; }
+
+.addModelBtn {
+  height: 36px; padding: 0 12px; border-radius: 6px;
+  font-size: 12px; font-weight: 500; color: rgba(255,255,255,0.5);
+  background: rgba(255,255,255,0.04); border: 1px solid rgba(255,255,255,0.08);
+  transition: all 0.12s; flex-shrink: 0;
+}
+.addModelBtn:hover { color: #fff; background: rgba(255,255,255,0.08); border-color: rgba(255,255,255,0.14); }
+
 /* ── Form footer ──────────────────────────────────── */
 .formFooter {
   display: flex;

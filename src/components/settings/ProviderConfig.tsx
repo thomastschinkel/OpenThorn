@@ -310,33 +310,63 @@ export default function ProviderConfig() {
                 </div>
               )}
 
-              {formPreset === 'custom' && (
-                <div className={styles.field}>
-                  <label className={styles.fieldLabel}>Default Model Name</label>
+              {/* Custom model ID input */}
+              <div className={styles.field}>
+                <label className={styles.fieldLabel}>Add Custom Model</label>
+                <div className={styles.customModelRow}>
                   <input
                     className={styles.fieldInput}
-                    value={formDefaultModel}
-                    onChange={(e) => setFormDefaultModel(e.target.value)}
-                    placeholder="e.g. meta-llama/llama-4-maverick"
+                    placeholder="e.g. deepseek-v4-flash"
+                    onKeyDown={(e) => {
+                      if (e.key === 'Enter') {
+                        const val = (e.target as HTMLInputElement).value.trim()
+                        if (val && !formEnabledModels.includes(val)) {
+                          setFormEnabledModels((prev) => [...prev, val])
+                          if (!formDefaultModel) setFormDefaultModel(val)
+                        }
+                        ;(e.target as HTMLInputElement).value = ''
+                      }
+                    }}
                   />
-                </div>
-              )}
-
-              {formPreset !== 'custom' && (
-                <div className={styles.field}>
-                  <label className={styles.fieldLabel}>Default Model</label>
-                  <select
-                    className={styles.fieldSelect}
-                    value={formDefaultModel}
-                    onChange={(e) => setFormDefaultModel(e.target.value)}
+                  <button
+                    className={styles.addModelBtn}
+                    onClick={() => {
+                      const input = document.querySelector(`.${styles.customModelRow} input`) as HTMLInputElement
+                      const val = input?.value.trim()
+                      if (val && !formEnabledModels.includes(val)) {
+                        setFormEnabledModels((prev) => [...prev, val])
+                        if (!formDefaultModel) setFormDefaultModel(val)
+                      }
+                      if (input) input.value = ''
+                    }}
                   >
-                    <option value="">— Select default —</option>
-                    {availableModels.map((m) => (
-                      <option key={m} value={m}>{m}</option>
-                    ))}
-                  </select>
+                    Add
+                  </button>
                 </div>
-              )}
+                {formEnabledModels.filter((m) => !availableModels.includes(m)).length > 0 && (
+                  <div className={styles.modelGrid} style={{ marginTop: 6 }}>
+                    {formEnabledModels.filter((m) => !availableModels.includes(m)).map((m) => (
+                      <button key={m} className={`${styles.modelChip} ${styles.modelChipOn}`} onClick={() => toggleModel(m)}>
+                        {m} ×
+                      </button>
+                    ))}
+                  </div>
+                )}
+              </div>
+
+              <div className={styles.field}>
+                <label className={styles.fieldLabel}>Default Model</label>
+                <select
+                  className={styles.fieldSelect}
+                  value={formDefaultModel}
+                  onChange={(e) => setFormDefaultModel(e.target.value)}
+                >
+                  <option value="">— Select default —</option>
+                  {formEnabledModels.map((m) => (
+                    <option key={m} value={m}>{m}</option>
+                  ))}
+                </select>
+              </div>
             </div>
 
             <div className={styles.formFooter}>
