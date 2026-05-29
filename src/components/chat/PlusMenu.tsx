@@ -7,16 +7,22 @@ interface MenuItem {
   shortcut?: string
 }
 
-const items: MenuItem[] = [
-  { label: 'Settings', icon: 'settings' },
-  { label: 'History', icon: 'history' },
-  { label: 'GitHub', icon: 'github' },
-  { label: 'GitLab', icon: 'gitlab' },
-  { label: 'Connectors', icon: 'connectors' },
-  { label: 'Take Screenshot', icon: 'screenshot', shortcut: '⌘S' },
-  { label: 'Add Reference', icon: 'reference' },
-  { label: 'Add Skill', icon: 'skill' },
-  { label: 'Attach File', icon: 'attach' },
+const groups: MenuItem[][] = [
+  [
+    { label: 'Settings', icon: 'settings' },
+  ],
+  [
+    { label: 'History', icon: 'history' },
+    { label: 'GitHub', icon: 'github' },
+    { label: 'GitLab', icon: 'gitlab' },
+    { label: 'Connectors', icon: 'connectors' },
+  ],
+  [
+    { label: 'Take Screenshot', icon: 'screenshot', shortcut: '⌘S' },
+    { label: 'Add Reference', icon: 'reference' },
+    { label: 'Add Skill', icon: 'skill' },
+    { label: 'Attach File', icon: 'attach' },
+  ],
 ]
 
 function iconPath(name: string): string {
@@ -69,14 +75,19 @@ export default function PlusMenu() {
 
       {open && (
         <div className={styles.menu}>
-          {items.map((item) => (
-            <button key={item.label} className={styles.item}>
-              <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round">
-                <path d={iconPath(item.icon)} />
-              </svg>
-              <span className={styles.label}>{item.label}</span>
-              {item.shortcut && <span className={styles.shortcut}>{item.shortcut}</span>}
-            </button>
+          {groups.map((group, gi) => (
+            <div key={gi}>
+              {gi > 0 && <div className={styles.divider} />}
+              {group.map((item) => (
+                <button key={item.label} className={styles.item}>
+                  <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round">
+                    <path d={iconPath(item.icon)} />
+                  </svg>
+                  <span className={styles.label}>{item.label}</span>
+                  {item.shortcut && <span className={styles.shortcut}>{item.shortcut}</span>}
+                </button>
+              ))}
+            </div>
           ))}
         </div>
       )}
