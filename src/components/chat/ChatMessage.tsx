@@ -1,5 +1,6 @@
 import ReactMarkdown from 'react-markdown'
 import remarkGfm from 'remark-gfm'
+import rehypeSanitize from 'rehype-sanitize'
 import type { Message } from '../chat/ChatPanel'
 import styles from './ChatMessage.module.css'
 
@@ -27,7 +28,7 @@ export default function ChatMessage({ message }: Props) {
           {isUser ? (
             message.text
           ) : (
-            <ReactMarkdown remarkPlugins={[remarkGfm]}>
+            <ReactMarkdown remarkPlugins={[remarkGfm]} rehypePlugins={[rehypeSanitize]}>
               {message.text}
             </ReactMarkdown>
           )}
