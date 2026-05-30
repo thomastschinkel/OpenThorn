@@ -112,10 +112,6 @@
   margin-top: 4px;
 }
 
-.folderIcon {
-  font-size: 12px;
-}
-
 .folderName {
   color: var(--text-tertiary);
 }
@@ -147,12 +143,21 @@
   background: rgba(79, 143, 255, 0.12);
 }
 
-.fileIcon {
-  font-size: 12px;
-  width: 20px;
-  text-align: center;
+.fileDot {
+  width: 8px;
+  height: 8px;
+  border-radius: 50%;
   flex-shrink: 0;
+  background: var(--text-disabled);
 }
+
+.typeHtml { background: #e44d26; }
+.typeCss { background: #42a5f5; }
+.typeJs { background: #f7df1e; }
+.typeTs { background: #3178c6; }
+.typeTsx { background: #5fc9f8; }
+.typeJson { background: #f5a623; }
+.typeOther { background: var(--text-disabled); }
 
 .fileName {
   font-weight: 500;

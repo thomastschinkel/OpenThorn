@@ -42,27 +42,25 @@ function guessLanguage(name: string): string {
   }
 }
 
-function fileIcon(name: string): string {
+function fileTypeClass(name: string): string {
   const ext = name.split('.').pop()?.toLowerCase()
   switch (ext) {
     case 'html':
     case 'htm':
-      return 'HTML'
+      return styles.typeHtml
     case 'css':
-      return 'CSS'
+      return styles.typeCss
     case 'js':
     case 'mjs':
-      return 'JS'
+      return styles.typeJs
     case 'ts':
-      return 'TS'
+      return styles.typeTs
     case 'tsx':
-      return 'TSX'
+      return styles.typeTsx
     case 'json':
-      return '{}'
-    case 'md':
-      return 'MD'
+      return styles.typeJson
     default:
-      return '--'
+      return styles.typeOther
   }
 }
 
@@ -181,7 +179,7 @@ export default function CodePanel({ initialView = 'code', onClose }: Props) {
                   setView('code')
                 }}
               >
-                <span className={styles.fileIcon}>{fileIcon(file.path)}</span>
+                <span className={`${styles.fileDot} ${fileTypeClass(file.path)}`} />
                 <span className={styles.fileName}>
                   {file.path.split('/').pop()}
                 </span>
