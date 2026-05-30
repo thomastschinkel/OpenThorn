@@ -55,13 +55,18 @@ function buildBundledPreview(
   // Combine all CSS
   const allCss = cssFiles.map(f => `/* ${f.path} */\n${f.content}`).join('\n\n')
 
-  // Bundle JSX files — strip imports (React/ReactDOM loaded via CDN)
+  // Bundle JSX files — strip imports/exports since all code shares scope
   // Babel standalone in the iframe handles JSX transpilation
   const allJs = jsxFiles
     .map(f => {
       let code = f.content
-      // Strip CSS imports (already injected)
-      code = code.replace(/^import\s+['"][^'"]+\.css['"]\s*;?\s*$/gm, '')
+      // Strip ALL import statements (React loaded via CDN, CSS injected separately)
+      code = code.replace(/^import\s+.*?from\s+['"][^'"]+['"]\s*;?\s*$/gm, '')
+      code = code.replace(/^import\s+['"][^'"]+['"]\s*;?\s*$/gm, '')
+      // Strip export default but keep the declaration
+      code = code.replace(/^export\s+default\s+/gm, '')
+      // Strip export from named exports
+      code = code.replace(/^export\s+(const|let|var|function|class)\s+/gm, '$1 ')
       return `// ${f.path}\n${code}`
     })
     .join('\n\n')
