@@ -32,12 +32,13 @@ const DEFAULT_FILES: WorkspaceFile[] = [
 <html lang="en">
   <head>
     <meta charset="UTF-8" />
+    <link rel="icon" type="image/svg+xml" href="/vite.svg" />
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-    <title>Bloom</title>
+    <title>Bloom Project</title>
   </head>
   <body>
     <div id="root"></div>
-    <script type="module" src="/src/main.jsx"></script>
+    <script type="module" src="/src/main.tsx"></script>
   </body>
 </html>`,
     lastModified: Date.now(),
@@ -52,7 +53,8 @@ const DEFAULT_FILES: WorkspaceFile[] = [
         type: 'module',
         scripts: {
           dev: 'vite',
-          build: 'vite build',
+          build: 'tsc -b && vite build',
+          typecheck: 'tsc --noEmit',
           preview: 'vite preview',
         },
         dependencies: {
@@ -60,10 +62,13 @@ const DEFAULT_FILES: WorkspaceFile[] = [
           'react-dom': '^19.2.0',
         },
         devDependencies: {
+          '@types/react': '^19.0.0',
+          '@types/react-dom': '^19.0.0',
           '@vitejs/plugin-react': '^6.0.0',
           autoprefixer: '^10.4.0',
           postcss: '^8.4.0',
           tailwindcss: '^3.4.0',
+          typescript: '~5.7.0',
           vite: '^8.0.0',
         },
       },
@@ -73,7 +78,36 @@ const DEFAULT_FILES: WorkspaceFile[] = [
     lastModified: Date.now(),
   },
   {
-    path: 'vite.config.js',
+    path: 'tsconfig.json',
+    content: JSON.stringify(
+      {
+        compilerOptions: {
+          target: 'ES2020',
+          useDefineForClassFields: true,
+          lib: ['ES2020', 'DOM', 'DOM.Iterable'],
+          module: 'ESNext',
+          skipLibCheck: true,
+          moduleResolution: 'bundler',
+          allowImportingTsExtensions: true,
+          isolatedModules: true,
+          moduleDetection: 'force',
+          noEmit: true,
+          jsx: 'react-jsx',
+          strict: true,
+          noUnusedLocals: true,
+          noUnusedParameters: true,
+          noFallthroughCasesInSwitch: true,
+          noUncheckedSideEffectImports: true,
+        },
+        include: ['src'],
+      },
+      null,
+      2
+    ),
+    lastModified: Date.now(),
+  },
+  {
+    path: 'vite.config.ts',
     content: `import { defineConfig } from 'vite'
 import react from '@vitejs/plugin-react'
 
@@ -83,15 +117,16 @@ export default defineConfig({
     lastModified: Date.now(),
   },
   {
-    path: 'tailwind.config.js',
-    content: `/** @type {import('tailwindcss').Config} */
+    path: 'tailwind.config.ts',
+    content: `import type { Config } from 'tailwindcss'
+
 export default {
-  content: ['./index.html', './src/**/*.{js,jsx}'],
+  content: ['./index.html', './src/**/*.{ts,tsx}'],
   theme: {
     extend: {},
   },
   plugins: [],
-}`,
+} satisfies Config`,
     lastModified: Date.now(),
   },
   {
@@ -105,27 +140,63 @@ export default {
     lastModified: Date.now(),
   },
   {
+    path: 'src/vite-env.d.ts',
+    content: `/// <reference types="vite/client" />
+`,
+    lastModified: Date.now(),
+  },
+  {
     path: 'src/index.css',
     content: `@tailwind base;
 @tailwind components;
 @tailwind utilities;
 
-body {
-  margin: 0;
-  font-family: system-ui, -apple-system, sans-serif;
-  -webkit-font-smoothing: antialiased;
-  -moz-osx-font-smoothing: grayscale;
+@layer base {
+  *,
+  *::before,
+  *::after {
+    box-sizing: border-box;
+  }
+
+  html {
+    -webkit-font-smoothing: antialiased;
+    -moz-osx-font-smoothing: grayscale;
+  }
+
+  body {
+    margin: 0;
+    font-family: system-ui, -apple-system, 'Segoe UI', Roboto, sans-serif;
+    line-height: 1.5;
+    color: #f8fafc;
+    background: #09090b;
+  }
+
+  #root {
+    min-height: 100vh;
+  }
+}
+
+@layer components {
+  .glass-panel {
+    background: rgba(255, 255, 255, 0.03);
+    border: 1px solid rgba(255, 255, 255, 0.06);
+    backdrop-filter: blur(12px);
+    border-radius: 12px;
+  }
 }`,
     lastModified: Date.now(),
   },
   {
-    path: 'src/main.jsx',
+    path: 'src/main.tsx',
     content: `import { StrictMode } from 'react'
 import { createRoot } from 'react-dom/client'
 import App from './App'
 import './index.css'
 
-createRoot(document.getElementById('root')).render(
+const root = document.getElementById('root')
+if (!root) throw new Error('Root element not found')
+
+createRoot(root).render(
   <StrictMode>
     <App />
   </StrictMode>,
@@ -133,13 +204,22 @@ createRoot(document.getElementById('root')).render(
     lastModified: Date.now(),
   },
   {
-    path: 'src/App.jsx',
+    path: 'src/App.tsx',
     content: `export default function App() {
   return (
-    <div className="min-h-screen bg-zinc-950 text-white flex items-center justify-center">
-      <div className="text-center">
-        <h1 className="text-3xl font-bold mb-2">Hello Bloom</h1>
-        <p className="text-zinc-400">Describe what you want to build to get started.</p>
+    <div className="min-h-screen flex items-center justify-center p-8">
+      <div className="text-center max-w-md">
+        <div className="inline-flex items-center justify-center w-16 h-16 rounded-2xl bg-white/5 border border-white/10 mb-6">
+          <svg width="28" height="28" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round" className="text-blue-400">
+            <path d="M12 2L2 7l10 5 10-5-10-5z" />
+            <path d="M2 17l10 5 10-5" />
+            <path d="M2 12l10 5 10-5" />
+          </svg>
+        </div>
+        <h1 className="text-2xl font-semibold tracking-tight mb-2">Hello Bloom</h1>
+        <p className="text-sm text-white/50 leading-relaxed">
+          Describe what you want to build — I&apos;ll create the files and you&apos;ll see a live preview here.
+        </p>
       </div>
     </div>
   )

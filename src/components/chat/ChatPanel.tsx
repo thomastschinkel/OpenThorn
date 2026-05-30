@@ -46,6 +46,22 @@ export default function ChatPanel() {
   const { navigateTo } = useApp()
   const bottomRef = useRef<HTMLDivElement>(null)
   const projectMenuRef = useRef<HTMLDivElement>(null)
+  const askResolverRef = useRef<((answer: string) => void) | null>(null)
+  const [pendingQuestion, setPendingQuestion] = useState<{
+    question: string
+    options: string[]
+  } | null>(null)
+
+  // Called by the agent loop when ask_user tool is invoked — returns a promise
+  // that resolves when the user picks an answer
+  const onAskUser = useCallback(
+    (question: string, options: string[]) =>
+      new Promise<string>((resolve) => {
+        askResolverRef.current = resolve
+        setPendingQuestion({ question, options })
+      }),
+    []
+  )
 
   useEffect(() => {
     bottomRef.current?.scrollIntoView({ behavior: 'smooth' })
@@ -131,7 +147,8 @@ export default function ChatPanel() {
           provider as ProviderConfig,
           model,
           mode,
-          messages
+          messages,
+          onAskUser
         )) {
           switch (event.type) {
             case 'text': {
@@ -496,6 +513,50 @@ export default function ChatPanel() {
         <div ref={bottomRef} />
       </div>
 
+      {/* Ask User question card */}
+      {pendingQuestion && (
+        <div className={styles.askCard}>
+          <p className={styles.askQuestion}>{pendingQuestion.question}</p>
+          <div className={styles.askOptions}>
+            {pendingQuestion.options.length > 0 ? (
+              pendingQuestion.options.map((opt) => (
+                <button
+                  key={opt}
+                  className={styles.askOption}
+                  onClick={() => {
+                    askResolverRef.current?.(opt)
+                    setPendingQuestion(null)
+                  }}
+                >
+                  {opt}
+                </button>
+              ))
+            ) : (
+              <form
+                onSubmit={(e) => {
+                  e.preventDefault()
+                  const input = (e.target as HTMLFormElement).querySelector('input')
+                  if (input) {
+                    askResolverRef.current?.(input.value || 'ok')
+                    setPendingQuestion(null)
+                  }
+                }}
+                className={styles.askForm}
+              >
+                <input
+                  className={styles.askInput}
+                  placeholder="Type your answer..."
+                  autoFocus
+                />
+                <button type="submit" className={styles.askSubmit}>
+                  Send
+                </button>
+              </form>
+            )}
+          </div>
+        </div>
+      )}
+
       {/* Input */}
       <ChatInput
         mode={mode}
@@ -520,33 +581,43 @@ export default function ChatPanel() {
  */
 function getToolStatus(
   name: string,
-  args: Record<string, string>
+  args: Record<string, string> | undefined
 ): string | null {
+  const a = args ?? ({} as Record<string, string>)
   switch (name) {
     case 'list_files':
       return 'Analyzing workspace...'
+    case 'search_files':
+      return `Searching for "${a.pattern ?? '...'}"...`
     case 'read_file':
-      return `Reading ${shortPath(args.path)}...`
-    case 'write_file': {
-      const existed = true // we don't know yet, but this is the optimistic label
-      return existed
-        ? `Modifying ${shortPath(args.path)}...`
-        : `Creating ${shortPath(args.path)}...`
-    }
+      return `Reading ${shortPath(a.path)}...`
+    case 'write_file':
+      return a.path
+        ? `Modifying ${shortPath(a.path)}...`
+        : 'Creating file...'
     case 'edit_file':
-      return `Editing ${shortPath(args.path)}...`
+      return `Editing ${shortPath(a.path)}...`
     case 'delete_file':
-      return `Removing ${shortPath(args.path)}...`
+      return `Removing ${shortPath(a.path)}...`
     case 'execute_build':
       return 'Verifying build...'
     case 'get_errors':
       return 'Checking build errors...'
+    case 'run_command':
+      return `Running \`${(a.command ?? '').slice(0, 50)}\`...`
+    case 'web_search':
+      return `Searching web for "${(a.query ?? '').slice(0, 40)}"...`
+    case 'web_fetch':
+      return `Fetching ${(a.url ?? '').slice(0, 50)}...`
+    case 'ask_user':
+      return `Asking: "${(a.question ?? '').slice(0, 50)}..."`
     default:
       return null
   }
 }
 
-function shortPath(path: string): string {
+function shortPath(path: string | undefined): string {
+  if (!path) return '(unknown)'
   const parts = path.split('/')
   return parts.length > 2 ? `…/${parts[parts.length - 2]}/${parts[parts.length - 1]}` : path
 }

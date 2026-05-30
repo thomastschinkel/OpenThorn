@@ -11,7 +11,7 @@
 import type { Message } from '../components/chat/ChatPanel'
 import type { ProviderConfig } from './providers'
 import { getAdapter } from './adapters'
-import { buildSystemPrompt, type AgentMode } from './system-prompt'
+import { buildSystemPrompt, enhanceUserPrompt, type AgentMode } from './system-prompt'
 import {
   TOOL_DEFINITIONS,
   executeTool,
@@ -22,16 +22,21 @@ import { getWorkspace } from './workspace'
 
 /* ── Event Types ──────────────────────────────────── */
 
+export interface AskUserEvent {
+  question: string
+  options: string[]
+}
+
 export interface AgentStreamEvent {
-  type: 'thinking' | 'tool_call' | 'tool_result' | 'text' | 'error' | 'done'
+  type: 'thinking' | 'tool_call' | 'tool_result' | 'text' | 'error' | 'done' | 'ask_user'
   content?: string
   toolCall?: ToolCall
   toolResult?: ToolResult
+  askUser?: AskUserEvent
 }
 
 /* ── Configuration ────────────────────────────────── */
 
-const MAX_ITERATIONS = 15
 const MAX_FIX_CYCLES = 3
 
 /* ── Message Types ────────────────────────────────── */
@@ -51,16 +56,21 @@ export async function* runAgentLoop(
   provider: ProviderConfig,
   model: string,
   mode: AgentMode = 'build',
-  existingMessages: Message[] = []
+  existingMessages: Message[] = [],
+  onAskUser?: (question: string, options: string[]) => Promise<string>
 ): AsyncGenerator<AgentStreamEvent> {
   const adapter = getAdapter(provider.provider_key)
-  const systemPrompt = buildSystemPrompt(getWorkspace().files, mode)
+  const workspaceFiles = getWorkspace().files
+  const systemPrompt = buildSystemPrompt(workspaceFiles, mode)
+
+  // Enhance the user's prompt with project context
+  const enhancedUserMessage = enhanceUserPrompt(userMessage, workspaceFiles)
 
   // Filter tools based on mode — plan mode gets read-only tools
   const availableTools =
     mode === 'plan'
       ? TOOL_DEFINITIONS.filter((t) =>
-          ['list_files', 'read_file', 'get_errors'].includes(
+          ['list_files', 'search_files', 'read_file', 'get_errors', 'web_search', 'web_fetch'].includes(
             t.function.name
           )
         )
@@ -72,7 +82,7 @@ export async function* runAgentLoop(
       role: m.role as string,
       content: m.text,
     })),
-    { role: 'user', content: userMessage },
+    { role: 'user', content: enhancedUserMessage },
   ]
 
   let iterations = 0
@@ -80,7 +90,7 @@ export async function* runAgentLoop(
   let lastBuildFailed = false
   let filesChangedThisTurn = false
 
-  while (iterations < MAX_ITERATIONS) {
+  while (true) {
     iterations++
 
     // ── Streaming API call ────────────────────────
@@ -213,6 +223,38 @@ export async function* runAgentLoop(
     messages.push(assistantMsg)
 
     for (const tc of toolCalls) {
+      // ── ask_user: pause and get user input ────────
+      if (tc.name === 'ask_user') {
+        const question = tc.arguments.question ?? 'Continue?'
+        const optionsStr = tc.arguments.options ?? ''
+        const options = optionsStr
+          .split(',')
+          .map((s) => s.trim())
+          .filter(Boolean)
+
+        const answer = onAskUser
+          ? await onAskUser(question, options)
+          : 'proceed' // auto-answer if no handler
+
+        const askResult: ToolResult = {
+          id: tc.id,
+          name: 'ask_user',
+          result: `User answered: "${answer}"`,
+          display: `💬 Asked: "${question.slice(0, 60)}" → "${answer}"`,
+        }
+
+        yield { type: 'tool_call', toolCall: tc }
+        yield { type: 'tool_result', toolResult: askResult }
+
+        messages.push({
+          role: 'tool',
+          content: askResult.result,
+          tool_call_id: tc.id,
+        })
+        continue
+      }
+
+      // ── Normal tool execution ─────────────────────
       yield { type: 'tool_call', toolCall: tc }
       const result = await executeTool(tc)
       yield { type: 'tool_result', toolResult: result }
@@ -247,10 +289,8 @@ export async function* runAgentLoop(
     }
   }
 
-  yield {
-    type: 'error',
-    content: `Reached maximum of ${MAX_ITERATIONS} tool iterations. Try breaking the task into smaller steps.`,
-  }
+  // Loop runs until agent finishes (no tool calls), build fails exhaustively, or API error
+  return
 }
 
 /* ── Non-Streaming Response Parsing ──────────────── */

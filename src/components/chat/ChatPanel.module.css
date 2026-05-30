@@ -177,3 +177,88 @@
   padding: 22px 0;
   scroll-behavior: smooth;
 }
+
+/* ── Ask User Card ────────────────────────────────── */
+.askCard {
+  background: rgba(80, 148, 255, 0.06);
+  border: 1px solid rgba(80, 148, 255, 0.15);
+  border-radius: var(--radius-lg);
+  padding: 14px 16px;
+  margin: 0 0 4px;
+  animation: askIn 0.2s ease;
+}
+
+@keyframes askIn {
+  from { opacity: 0; transform: translateY(-4px); }
+  to { opacity: 1; transform: translateY(0); }
+}
+
+.askQuestion {
+  font-size: 13px;
+  color: var(--text-primary);
+  margin: 0 0 10px;
+  line-height: 1.5;
+}
+
+.askOptions {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 6px;
+}
+
+.askOption {
+  padding: 6px 14px;
+  border-radius: var(--radius-sm);
+  font-size: 12px;
+  font-weight: 500;
+  color: var(--text-primary);
+  background: var(--bg-field);
+  border: 1px solid var(--border-default);
+  cursor: pointer;
+  transition: all 0.15s ease;
+}
+
+.askOption:hover {
+  background: var(--accent);
+  border-color: var(--accent);
+  color: #fff;
+}
+
+.askForm {
+  display: flex;
+  gap: 8px;
+  width: 100%;
+}
+
+.askInput {
+  flex: 1;
+  padding: 7px 12px;
+  border-radius: var(--radius-sm);
+  font-size: 13px;
+  color: var(--text-primary);
+  background: var(--bg-field);
+  border: 1px solid var(--border-default);
+  outline: none;
+  font-family: inherit;
+  transition: border-color 0.15s ease;
+}
+
+.askInput:focus {
+  border-color: var(--accent);
+}
+
+.askSubmit {
+  padding: 7px 16px;
+  border-radius: var(--radius-sm);
+  font-size: 12px;
+  font-weight: 600;
+  color: #fff;
+  background: var(--accent);
+  border: none;
+  cursor: pointer;
+  transition: all 0.15s ease;
+}
+
+.askSubmit:hover {
+  filter: brightness(1.15);
+}

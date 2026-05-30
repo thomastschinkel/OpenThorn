@@ -1,6 +1,14 @@
-import { useState, useEffect, useCallback } from 'react'
+import { useState, useEffect, useCallback, useRef } from 'react'
 import type { Device } from './PreviewPanel'
 import { getWorkspace, subscribeToWorkspace } from '../../lib/workspace'
+import {
+  boot,
+  ensureRunning,
+  subscribeWcState,
+  getWcState,
+  type WcState,
+  type WcPhase,
+} from '../../lib/webcontainer'
 import styles from './PreviewFrame.module.css'
 
 const deviceWidths: Record<Device, string> = {
@@ -13,122 +21,186 @@ interface Props {
   device: Device
 }
 
-/* ── Preview Builder ─────────────────────────────── */
+/* ── Instant srcdoc (shown while WebContainer boots) ─ */
 
-function buildPreviewSrcDoc(): string {
-  const { files } = getWorkspace()
+const PROGRESS_STEPS = [
+  { key: 'booting' as const, label: 'Booting container' },
+  { key: 'installing' as const, label: 'Installing dependencies' },
+  { key: 'starting' as const, label: 'Starting dev server' },
+]
 
-  const scaffoldPaths = [
-    'index.html', 'package.json', 'vite.config.js',
-    'tailwind.config.js', 'postcss.config.js', 'src/index.css',
-    'src/main.jsx', 'src/App.jsx',
-  ]
+function buildPlaceholderSrcDoc(title: string, phase: WcPhase): string {
+  const activeStep = (() => {
+    switch (phase) {
+      case 'idle':
+      case 'booting':
+        return 0
+      case 'ready':
+      case 'installing':
+        return 1
+      case 'starting':
+        return 2
+      default:
+        return 0
+    }
+  })()
 
-  const hasChanges =
-    files.length !== scaffoldPaths.length ||
-    files.some((f) => !scaffoldPaths.includes(f.path))
+  const steps = PROGRESS_STEPS.map((s, i) => {
+    const done = i < activeStep
+    const active = i === activeStep
+    const color = done ? '#22c55e' : active ? '#4f8fff' : '#3d3d4a'
+    const weight = active ? '600' : '400'
+    return `<div style="display:flex;align-items:center;gap:10px;margin-bottom:6px">
+      <div style="width:18px;height:18px;border-radius:50%;border:2px solid ${color};flex-shrink:0;display:flex;align-items:center;justify-content:center;transition:all 0.35s ease">
+        ${done ? '<svg width="10" height="10" viewBox="0 0 24 24" fill="none" stroke="#22c55e" stroke-width="3" stroke-linecap="round"><polyline points="4 12 9 17 20 6"/></svg>' : active ? '<div style="width:6px;height:6px;border-radius:50%;background:#4f8fff"></div>' : ''}
+      </div>
+      <span style="font-size:13px;color:${done ? '#a1a1aa' : active ? '#e8e8ed' : '#52525b'};font-weight:${weight};transition:all 0.35s ease">${s.label}</span>
+    </div>`
+  }).join('')
 
-  if (!hasChanges) {
-    return blankPage()
-  }
-
-  // Collect all source files
-  const jsxFiles = files.filter(f => f.path.endsWith('.jsx') || f.path.endsWith('.tsx'))
-  const cssFiles = files.filter(f => f.path.endsWith('.css'))
-  const indexHtml = files.find(f => f.path === 'index.html')
-
-  // Always build a bundled preview from source files
-  return buildBundledPreview(jsxFiles, cssFiles, indexHtml)
-}
-
-function blankPage(): string {
-  return '<!DOCTYPE html><html><head><meta charset="UTF-8"><meta name="viewport" content="width=device-width,initial-scale=1"><style>body{background:#0b0b0f;margin:0}</style></head><body></body></html>'
-}
-
-/* ── Bundle builder ──────────────────────────────── */
-
-function buildBundledPreview(
-  jsxFiles: { path: string; content: string }[],
-  cssFiles: { path: string; content: string }[],
-  indexHtml: { path: string; content: string } | undefined,
-): string {
-  // Combine all CSS
-  const allCss = cssFiles.map(f => `/* ${f.path} */\n${f.content}`).join('\n\n')
-
-  // Bundle JSX files — strip imports/exports since all code shares scope
-  // Babel standalone in the iframe handles JSX transpilation
-  const allJs = jsxFiles
-    .map(f => {
-      let code = f.content
-      // Replace CSS module imports with identity proxy (styles.xyz → "xyz")
-      code = code.replace(
-        /^import\s+(\w+)\s+from\s+['"](\.\/|\.\.\/)*[^'"]+\.module\.css['"]\s*;?\s*$/gm,
-        (_, name) => `const ${name} = new Proxy({}, {get: (_, k) => k})`
-      )
-      // Strip ALL other import statements (React loaded via CDN, plain CSS injected)
-      code = code.replace(/^import\s+.*?from\s+['"][^'"]+['"]\s*;?\s*$/gm, '')
-      code = code.replace(/^import\s+['"][^'"]+['"]\s*;?\s*$/gm, '')
-      // Strip export default but keep the declaration
-      code = code.replace(/^export\s+default\s+/gm, '')
-      // Strip export from named exports
-      code = code.replace(/^export\s+(const|let|var|function|class)\s+/gm, '$1 ')
-      return `// ${f.path}\n${code}`
-    })
-    .join('\n\n')
-
-  // Entry: render the App component
-  const initCode = `\nconst root = ReactDOM.createRoot(document.getElementById('root'));\nroot.render(<App />);`
+  const barPercent = Math.round((activeStep / (PROGRESS_STEPS.length - 1)) * 100)
 
   return `<!DOCTYPE html>
 <html lang="en">
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
-<meta http-equiv="Content-Security-Policy" content="default-src 'self' 'unsafe-inline' 'unsafe-eval' https:; script-src 'self' 'unsafe-inline' 'unsafe-eval' https:; style-src 'self' 'unsafe-inline' https:;">
-<title>${indexHtml ? extractTitle(indexHtml.content) : 'Bloom Project'}</title>
-<script src="https://cdnjs.cloudflare.com/ajax/libs/react/18.3.1/umd/react.production.min.js"></script>
-<script src="https://cdnjs.cloudflare.com/ajax/libs/react-dom/18.3.1/umd/react-dom.production.min.js"></script>
-<script src="https://cdnjs.cloudflare.com/ajax/libs/babel-standalone/7.24.0/babel.min.js"></script>
+<title>${title}</title>
 <style>
-/* Default preview styles */
-* { box-sizing: border-box; margin: 0; padding: 0; }
-html, body { width: 100%; height: 100%; overflow: hidden; background: #000; font-family: system-ui, sans-serif; }
-#root { width: 100%; height: 100%; }
-${allCss}
+  * { box-sizing: border-box; margin: 0; padding: 0; }
+  html, body { width: 100%; height: 100%; overflow: hidden; background: #09090b; }
+  body { display: flex; align-items: center; justify-content: center; font-family: system-ui, sans-serif; }
+  .card { width: 300px; padding: 28px 24px; }
+  .title { font-size: 14px; font-weight: 600; color: #e8e8ed; margin-bottom: 18px; }
+  .bar-track { width: 100%; height: 3px; background: #1e1e2e; border-radius: 2px; margin-bottom: 18px; overflow: hidden; }
+  .bar-fill { height: 100%; width: ${barPercent}%; background: #4f8fff; border-radius: 2px; transition: width 0.6s ease; }
 </style>
 </head>
 <body>
-<div id="root"></div>
-<script>
-// Make all React APIs available as globals since imports are stripped
-Object.assign(window, React);
-Object.assign(window, ReactDOM);
-</script>
-<script type="text/babel">
-${allJs}
-${initCode}
-</script>
+  <div class="card">
+    <div class="title">Spinning up preview</div>
+    <div class="bar-track"><div class="bar-fill"></div></div>
+    ${steps}
+  </div>
 </body>
 </html>`
 }
 
-function extractTitle(html: string): string {
-  const m = html.match(/<title>([^<]+)<\/title>/)
-  return m ? m[1] : 'Bloom Project'
+function buildErrorSrcDoc(message: string): string {
+  const safe = message
+    .replace(/`/g, '\\`')
+    .replace(/\$/g, '\\$')
+    .replace(/</g, '&lt;')
+    .replace(/>/g, '&gt;')
+    .slice(0, 800)
+
+  const isCrash = message.includes('crashed') || message.includes('connect to port')
+  const hint = isCrash
+    ? '<p style="font-size:12px;color:#a1a1aa;margin-top:16px;max-width:380px">This usually happens when new npm packages were added but not yet installed. Try sending another message to trigger a re-install, or reload the page.</p>'
+    : ''
+
+  return `<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Error</title>
+<style>
+  * { box-sizing: border-box; margin: 0; padding: 0; }
+  html, body { width: 100%; height: 100%; overflow: hidden; background: #0c0a09; }
+  body { display: flex; flex-direction: column; align-items: center; justify-content: center;
+    font-family: system-ui, sans-serif; color: #fca5a5; padding: 32px; text-align: center; }
+  h2 { font-size: 15px; font-weight: 600; margin-bottom: 12px; color: #f87171; }
+  pre { font-size: 11px; line-height: 1.5; color: #fca5a5; max-width: 440px;
+    white-space: pre-wrap; word-break: break-all; opacity: 0.8; }
+</style>
+</head>
+<body>
+  <h2>Preview failed</h2>
+  <pre>${safe}</pre>
+  ${hint}
+</body>
+</html>`
 }
 
-/* ── Component ───────────────────────────────────── */
+/* ── Component ────────────────────────────────────── */
 
 export default function PreviewFrame({ device }: Props) {
-  const [srcDoc, setSrcDoc] = useState(buildPreviewSrcDoc)
+  const [wcState, setWcState] = useState<WcState>(getWcState)
+  const iframeRef = useRef<HTMLIFrameElement>(null)
+  const bootedRef = useRef(false)
+  const prevUrlRef = useRef<string | null>(null)
 
-  const updatePreview = useCallback(() => {
-    setSrcDoc(buildPreviewSrcDoc())
+  // Subscribe to WebContainer state
+  useEffect(() => {
+    return subscribeWcState(setWcState)
   }, [])
 
+  // Boot WebContainer once on mount
   useEffect(() => {
-    return subscribeToWorkspace(() => updatePreview())
-  }, [updatePreview])
+    if (bootedRef.current) return
+    bootedRef.current = true
+    boot().catch(() => {
+      // error handled via wcState subscription
+    })
+  }, [])
+
+  // Sync workspace → WebContainer: write files via ensureRunning.
+  // Vite HMR handles updating the iframe content — no force-reload needed.
+  const syncWorkspace = useCallback(async () => {
+    const { files } = getWorkspace()
+    const wcFiles = files.map((f) => ({ path: f.path, content: f.content }))
+    try {
+      await ensureRunning(wcFiles)
+      // If URL changed (re-launch from pkg change), React handles the
+      // iframe transition via the key change in the render below.
+    } catch {
+      // error handled via wcState subscription
+    }
+  }, [])
+
+  // Watch workspace for changes
+  useEffect(() => {
+    return subscribeToWorkspace(() => {
+      syncWorkspace()
+    })
+  }, [syncWorkspace])
+
+  // Kick off first sync after boot
+  useEffect(() => {
+    if (wcState.phase === 'ready') {
+      syncWorkspace()
+    }
+  }, [wcState.phase, syncWorkspace])
+
+  /* ── Derive iframe props from state ─────────────── */
+
+  const title =
+    getWorkspace().files.find((f) => f.path === 'index.html')?.content.match(
+      /<title>([^<]+)<\/title>/
+    )?.[1] ?? 'Bloom'
+
+  const isRunning = wcState.phase === 'running' && wcState.url
+  const urlChanged = isRunning && wcState.url !== prevUrlRef.current
+  if (urlChanged && wcState.url) {
+    prevUrlRef.current = wcState.url
+  }
+
+  // When running: use src (no srcDoc). When not running: use srcDoc (no src).
+  // Never set both simultaneously — browser prioritizes srcDoc over src.
+  const iframeSrc = isRunning ? wcState.url! : undefined
+  const iframeSrcDoc =
+    wcState.phase === 'error'
+      ? buildErrorSrcDoc(wcState.error ?? 'Unknown error')
+      : !isRunning
+        ? buildPlaceholderSrcDoc(title, wcState.phase)
+        : undefined
+
+  // Only change the iframe key when the URL changes (new dev server).
+  // Normal file edits go through Vite HMR — the iframe stays alive.
+  const iframeKey = isRunning ? wcState.url! : 'placeholder'
+
+  /* ── Render ─────────────────────────────────────── */
 
   return (
     <div className={`${styles.wrapper} ${device !== 'pc' ? styles.framed : ''}`}>
@@ -142,16 +214,21 @@ export default function PreviewFrame({ device }: Props) {
                 <span className={styles.dot} />
                 <span className={styles.dot} />
               </div>
-              <span className={styles.url}>http://localhost:5173</span>
+              <span className={styles.url}>
+                {wcState.url ? new URL(wcState.url).hostname : 'localhost'}
+              </span>
             </div>
           </div>
         )}
         <div className={styles.content}>
           <iframe
-            srcDoc={srcDoc}
+            key={iframeKey}
+            ref={iframeRef}
+            src={iframeSrc}
+            srcDoc={iframeSrcDoc}
             className={styles.iframe}
             title="Website preview"
-            sandbox="allow-scripts allow-same-origin"
+            sandbox="allow-scripts allow-same-origin allow-forms"
           />
         </div>
       </div>
