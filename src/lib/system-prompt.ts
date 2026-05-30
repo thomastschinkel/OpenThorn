@@ -27,10 +27,10 @@ Use CDN for libraries (esm.sh). Make index.html self-contained and working.
 - get_errors() — read build errors.
 
 ## CODE RULES
-- Strict TypeScript. No any. No TODOs. No stubs.
-- React components in src/components/ with co-located CSS modules.
-- CDN imports in index.html (esm.sh). Everything must work in the iframe.
-- Write complete, working code. Every function implemented. Every style defined.
+- Write plain JavaScript (JSX). No TypeScript — the preview runs in a browser without a build step.
+- Use Tailwind CSS for ALL styling (className="..."). No CSS modules, no separate CSS files.
+- Tailwind classes go directly in JSX. The full Tailwind utility set is available.
+- Write complete, working code. Every function implemented. No stubs, no placeholders.
 
 ## FLOW
 1. list_files — understand current state
@@ -73,13 +73,13 @@ export function buildSystemPrompt(
   const context = [
     '',
     '## WORKSPACE',
-    'Vite + React + TypeScript project.',
+    'Vite + React + Tailwind CSS project (JavaScript, not TypeScript).',
     '',
     'Files:',
     fileTree,
     '',
-    'Scaffold files exist (index.html, package.json, tsconfig.json,',
-    'vite.config.ts, src/main.tsx, src/App.tsx). Add your code to src/.',
+    'Scaffold: index.html, package.json, vite.config.js, tailwind.config.js,',
+    'postcss.config.js, src/main.jsx, src/App.jsx, src/index.css.',
   ].join('\n')
 
   const modeInstruction = MODE_INSTRUCTIONS[mode] ?? MODE_INSTRUCTIONS.build

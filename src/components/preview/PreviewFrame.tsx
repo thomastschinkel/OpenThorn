@@ -24,12 +24,12 @@ function buildPreviewSrcDoc(): string {
   const scaffoldPaths = [
     'index.html',
     'package.json',
-    'tsconfig.json',
-    'vite.config.ts',
-    'src/main.tsx',
-    'src/App.tsx',
-    'src/App.module.css',
-    'src/styles/globals.css',
+    'vite.config.js',
+    'tailwind.config.js',
+    'postcss.config.js',
+    'src/index.css',
+    'src/main.jsx',
+    'src/App.jsx',
   ]
 
   // Check if any scaffold file was modified or new files were created
@@ -71,16 +71,14 @@ function buildPreviewSrcDoc(): string {
     if (f.path.endsWith('.css') && !doc.includes(f.path)) {
       doc = doc.replace('</head>', `  <style>/* ${f.path} */\n${f.content}\n</style>\n</head>`)
     }
-    // Replace .tsx/.ts script references with text/babel for transpilation
-    if ((f.path.endsWith('.tsx') || f.path.endsWith('.ts')) && doc.includes(f.path)) {
-      const js = stripTypes(f.content)
+    // Replace .jsx/.tsx/.ts script references with inline Babel-transpiled code
+    if ((f.path.endsWith('.jsx') || f.path.endsWith('.tsx') || f.path.endsWith('.ts')) && doc.includes(f.path)) {
+      const js = f.path.endsWith('.jsx') ? f.content : stripTypes(f.content)
       const escapedPath = f.path.replace(/\./g, '\\.')
-      // Replace src references
       doc = doc.replace(
         new RegExp(`<script[^>]*src=["']/${escapedPath}["'][^>]*></script>`, 'g'),
         `<script type="text/babel" data-type="module">\n${js}\n</script>`
       )
-      // Also replace importmap-style module references
       doc = doc.replace(
         new RegExp(`<script[^>]*src=["']\\./${escapedPath}["'][^>]*></script>`, 'g'),
         `<script type="text/babel" data-type="module">\n${js}\n</script>`
@@ -88,9 +86,8 @@ function buildPreviewSrcDoc(): string {
     }
   }
 
-  // Convert remaining type="module" scripts to text/babel if they contain JSX
-  // This handles inline scripts that reference React components
-  if (files.some((f) => f.path.endsWith('.tsx'))) {
+  // Convert type="module" scripts to text/babel for JSX transpilation
+  if (files.some((f) => f.path.endsWith('.jsx') || f.path.endsWith('.tsx'))) {
     doc = doc.replace(
       /<script type="module"/g,
       '<script type="text/babel" data-type="module"'

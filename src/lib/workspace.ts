@@ -33,11 +33,11 @@ const DEFAULT_FILES: WorkspaceFile[] = [
   <head>
     <meta charset="UTF-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-    <title>Bloom Project</title>
+    <title>Bloom</title>
   </head>
   <body>
     <div id="root"></div>
-    <script type="module" src="/src/main.tsx"></script>
+    <script type="module" src="/src/main.jsx"></script>
   </body>
 </html>`,
     lastModified: Date.now(),
@@ -48,11 +48,11 @@ const DEFAULT_FILES: WorkspaceFile[] = [
       {
         name: 'bloom-project',
         private: true,
-        version: '0.0.0',
+        version: '1.0.0',
         type: 'module',
         scripts: {
           dev: 'vite',
-          build: 'tsc -b && vite build',
+          build: 'vite build',
           preview: 'vite preview',
         },
         dependencies: {
@@ -60,10 +60,10 @@ const DEFAULT_FILES: WorkspaceFile[] = [
           'react-dom': '^19.2.0',
         },
         devDependencies: {
-          '@types/react': '^19.0.0',
-          '@types/react-dom': '^19.0.0',
           '@vitejs/plugin-react': '^6.0.0',
-          typescript: '~6.0.0',
+          autoprefixer: '^10.4.0',
+          postcss: '^8.4.0',
+          tailwindcss: '^3.4.0',
           vite: '^8.0.0',
         },
       },
@@ -73,33 +73,7 @@ const DEFAULT_FILES: WorkspaceFile[] = [
     lastModified: Date.now(),
   },
   {
-    path: 'tsconfig.json',
-    content: JSON.stringify(
-      {
-        compilerOptions: {
-          target: 'ES2022',
-          lib: ['ES2022', 'DOM', 'DOM.Iterable'],
-          module: 'ESNext',
-          skipLibCheck: true,
-          moduleResolution: 'bundler',
-          allowImportingTsExtensions: true,
-          isolatedModules: true,
-          noEmit: true,
-          jsx: 'react-jsx',
-          strict: true,
-          noUnusedLocals: true,
-          noUnusedParameters: true,
-          noFallthroughCasesInSwitch: true,
-        },
-        include: ['src'],
-      },
-      null,
-      2
-    ),
-    lastModified: Date.now(),
-  },
-  {
-    path: 'vite.config.ts',
+    path: 'vite.config.js',
     content: `import { defineConfig } from 'vite'
 import react from '@vitejs/plugin-react'
 
@@ -109,13 +83,49 @@ export default defineConfig({
     lastModified: Date.now(),
   },
   {
-    path: 'src/main.tsx',
+    path: 'tailwind.config.js',
+    content: `/** @type {import('tailwindcss').Config} */
+export default {
+  content: ['./index.html', './src/**/*.{js,jsx}'],
+  theme: {
+    extend: {},
+  },
+  plugins: [],
+}`,
+    lastModified: Date.now(),
+  },
+  {
+    path: 'postcss.config.js',
+    content: `export default {
+  plugins: {
+    tailwindcss: {},
+    autoprefixer: {},
+  },
+}`,
+    lastModified: Date.now(),
+  },
+  {
+    path: 'src/index.css',
+    content: `@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+body {
+  margin: 0;
+  font-family: system-ui, -apple-system, sans-serif;
+  -webkit-font-smoothing: antialiased;
+  -moz-osx-font-smoothing: grayscale;
+}`,
+    lastModified: Date.now(),
+  },
+  {
+    path: 'src/main.jsx',
     content: `import { StrictMode } from 'react'
 import { createRoot } from 'react-dom/client'
 import App from './App'
-import './styles/globals.css'
+import './index.css'
 
-createRoot(document.getElementById('root')!).render(
+createRoot(document.getElementById('root')).render(
   <StrictMode>
     <App />
   </StrictMode>,
@@ -123,56 +133,16 @@ createRoot(document.getElementById('root')!).render(
     lastModified: Date.now(),
   },
   {
-    path: 'src/App.tsx',
-    content: `import styles from './App.module.css'
-
-export default function App() {
+    path: 'src/App.jsx',
+    content: `export default function App() {
   return (
-    <div className={styles.app}>
-      <h1>Hello Bloom</h1>
-      <p>Describe what you want to build to get started.</p>
+    <div className="min-h-screen bg-zinc-950 text-white flex items-center justify-center">
+      <div className="text-center">
+        <h1 className="text-3xl font-bold mb-2">Hello Bloom</h1>
+        <p className="text-zinc-400">Describe what you want to build to get started.</p>
+      </div>
     </div>
   )
-}`,
-    lastModified: Date.now(),
-  },
-  {
-    path: 'src/App.module.css',
-    content: `.app {
-  display: flex;
-  flex-direction: column;
-  align-items: center;
-  justify-content: center;
-  min-height: 100vh;
-  font-family: system-ui, sans-serif;
-  text-align: center;
-  padding: 2rem;
-}
-
-.app h1 {
-  font-size: 2rem;
-  margin-bottom: 0.5rem;
-}
-
-.app p {
-  color: #888;
-}`,
-    lastModified: Date.now(),
-  },
-  {
-    path: 'src/styles/globals.css',
-    content: `*,
-*::before,
-*::after {
-  box-sizing: border-box;
-  margin: 0;
-  padding: 0;
-}
-
-body {
-  font-family: system-ui, -apple-system, sans-serif;
-  -webkit-font-smoothing: antialiased;
-  -moz-osx-font-smoothing: grayscale;
 }`,
     lastModified: Date.now(),
   },
