@@ -8,8 +8,8 @@ import ChatMessage from './ChatMessage'
 import ChatInput from './ChatInput'
 import styles from './ChatPanel.module.css'
 
-export interface MessageSegment {
-  type: 'text' | 'file_change' | 'thinking'
+export interface ContentBlock {
+  type: 'text' | 'file_change' | 'status'
   content?: string
   icon?: string
   action?: string
@@ -20,7 +20,7 @@ export interface Message {
   id: string
   role: 'user' | 'assistant'
   text: string
-  segments?: MessageSegment[]
+  blocks?: ContentBlock[]
 }
 
 const welcomeMessage: Message = {
@@ -51,7 +51,6 @@ export default function ChatPanel() {
       setMessages((prev) => [...prev, userMsg])
       if (!providerId || !model) return
 
-      // Fetch provider config from Supabase
       const { data: provider } = await supabase
         .from('providers')
         .select('*')
@@ -63,9 +62,49 @@ export default function ChatPanel() {
       const assistantId = (Date.now() + 1).toString()
       setStreaming(true)
 
-      // Accumulate agent events into a streaming message
-      const segments: MessageSegment[] = []
-      let fullText = ''
+      // Ordered content blocks — text, file cards, status interleaved chronologically
+      const blocks: ContentBlock[] = []
+
+      // Current streaming text block (gets flushed when a tool call starts)
+      let currentTextBlock: ContentBlock | null = null
+
+      function flushText() {
+        if (currentTextBlock && currentTextBlock.content?.trim()) {
+          blocks.push({ ...currentTextBlock })
+          currentTextBlock = null
+        }
+      }
+
+      function updateMessage() {
+        const displayBlocks = [...blocks]
+        if (currentTextBlock && currentTextBlock.content?.trim()) {
+          displayBlocks.push({ ...currentTextBlock })
+        }
+        const fullText = displayBlocks
+          .filter((b) => b.type === 'text')
+          .map((b) => b.content)
+          .join('\n\n')
+
+        setMessages((prev) => {
+          const existing = prev.find((m) => m.id === assistantId)
+          if (existing) {
+            return prev.map((m) =>
+              m.id === assistantId
+                ? { ...m, text: fullText, blocks: displayBlocks }
+                : m
+            )
+          }
+          return [
+            ...prev,
+            {
+              id: assistantId,
+              role: 'assistant' as const,
+              text: fullText,
+              blocks: displayBlocks,
+            },
+          ]
+        })
+      }
 
       try {
         for await (const event of runAgentLoop(
@@ -76,63 +115,27 @@ export default function ChatPanel() {
         )) {
           switch (event.type) {
             case 'text': {
-              fullText += event.content ?? ''
-              // Show this as the streaming message
-              setMessages((prev) => {
-                const existing = prev.find((m) => m.id === assistantId)
-                if (existing) {
-                  return prev.map((m) =>
-                    m.id === assistantId
-                      ? { ...m, text: fullText, segments: [...segments] }
-                      : m
-                  )
-                }
-                return [
-                  ...prev,
-                  {
-                    id: assistantId,
-                    role: 'assistant',
-                    text: fullText,
-                    segments: [...segments],
-                  },
-                ]
-              })
+              if (!currentTextBlock) {
+                currentTextBlock = { type: 'text', content: '' }
+              }
+              currentTextBlock.content += event.content ?? ''
+              updateMessage()
               break
             }
 
             case 'tool_call': {
               const tc = event.toolCall
               if (!tc) break
-              // Add thinking segment for tool call
-              if (tc.name === 'list_files') {
-                segments.push({ type: 'thinking', content: 'Analyzing workspace...' })
-              } else if (tc.name === 'read_file') {
-                segments.push({ type: 'thinking', content: `Reading ${tc.arguments.path}...` })
-              } else if (tc.name === 'execute_build') {
-                segments.push({ type: 'thinking', content: 'Verifying build...' })
-              } else if (tc.name === 'get_errors') {
-                segments.push({ type: 'thinking', content: 'Checking errors...' })
+
+              // Flush current text before showing tool work
+              flushText()
+
+              // Add a status block describing what's happening
+              const statusText = getToolStatus(tc.name, tc.arguments)
+              if (statusText) {
+                blocks.push({ type: 'status', content: statusText })
               }
-              // Update streaming message
-              setMessages((prev) => {
-                const existing = prev.find((m) => m.id === assistantId)
-                if (existing) {
-                  return prev.map((m) =>
-                    m.id === assistantId
-                      ? { ...m, text: fullText, segments: [...segments] }
-                      : m
-                  )
-                }
-                return [
-                  ...prev,
-                  {
-                    id: assistantId,
-                    role: 'assistant',
-                    text: fullText,
-                    segments: [...segments],
-                  },
-                ]
-              })
+              updateMessage()
               break
             }
 
@@ -140,124 +143,83 @@ export default function ChatPanel() {
               const tr = event.toolResult
               if (!tr) break
 
-              // Remove any matching thinking segment
-              const thinkingIdx = segments.findLastIndex(
-                (s) => s.type === 'thinking'
+              // Remove the matching status block (replace with result)
+              const statusIdx = findLastIndex(
+                blocks,
+                (b) => b.type === 'status'
               )
-              if (thinkingIdx >= 0) {
-                segments.splice(thinkingIdx, 1)
+              if (statusIdx >= 0) {
+                blocks.splice(statusIdx, 1)
               }
 
-              // Parse the display string to determine file change type
-              const display = tr.display
-              const iconMatch = display.match(/^([\u{1F300}-\u{1F9FF}\u{2700}-\u{27BF}\u{2600}-\u{26FF}✅❌🔨🔍])/u)
-              const icon = iconMatch ? iconMatch[0] : '📄'
-
+              // Add file change card or status based on result
               if (
                 tr.name === 'write_file' ||
                 tr.name === 'edit_file' ||
                 tr.name === 'delete_file'
               ) {
-                const action =
-                  tr.name === 'write_file'
-                    ? display.includes('Created')
-                      ? 'Created'
-                      : 'Modified'
+                const display = tr.display
+                const isNew = display.includes('📄')
+                const isDeleted = display.includes('🗑️')
+                const icon = isDeleted ? '🗑️' : isNew ? '📄' : '✏️'
+                const action = isDeleted
+                  ? 'Deleted'
+                  : isNew
+                    ? 'Created'
                     : tr.name === 'edit_file'
                       ? 'Edited'
-                      : 'Deleted'
-                segments.push({
+                      : 'Modified'
+
+                // Extract path from display string
+                const pathMatch = display.match(
+                  /(?:Created|Modified|Edited|Deleted)\s+(.+)$/
+                )
+                const path = pathMatch ? pathMatch[1].trim() : tr.display
+
+                blocks.push({
                   type: 'file_change',
                   icon,
                   action,
-                  path: tr.name === 'delete_file'
-                    ? tr.display.replace(/^.*Deleted\s+/, '').trim() || tr.display
-                    : tr.display.replace(/^[^ ]+\s+(Created|Modified|Edited)\s+/, '').trim(),
+                  path,
                 })
-              } else if (tr.name === 'execute_build' || tr.name === 'get_errors') {
-                // Show build status as a compact note
-                segments.push({
-                  type: 'thinking',
-                  content: display,
+              } else if (
+                tr.name === 'execute_build' ||
+                tr.name === 'get_errors'
+              ) {
+                blocks.push({
+                  type: 'status',
+                  content: tr.display,
                 })
               }
 
-              // Update streaming message
-              setMessages((prev) => {
-                const existing = prev.find((m) => m.id === assistantId)
-                if (existing) {
-                  return prev.map((m) =>
-                    m.id === assistantId
-                      ? { ...m, text: fullText, segments: [...segments] }
-                      : m
-                  )
-                }
-                return [
-                  ...prev,
-                  {
-                    id: assistantId,
-                    role: 'assistant',
-                    text: fullText,
-                    segments: [...segments],
-                  },
-                ]
-              })
+              updateMessage()
               break
             }
 
             case 'error': {
-              fullText += `\n\n❌ **Error:** ${event.content}`
-              setMessages((prev) => {
-                const existing = prev.find((m) => m.id === assistantId)
-                if (existing) {
-                  return prev.map((m) =>
-                    m.id === assistantId
-                      ? { ...m, text: fullText, segments: [...segments] }
-                      : m
-                  )
-                }
-                return [
-                  ...prev,
-                  {
-                    id: assistantId,
-                    role: 'assistant',
-                    text: fullText,
-                    segments: [...segments],
-                  },
-                ]
+              flushText()
+              blocks.push({
+                type: 'status',
+                content: `❌ ${event.content}`,
               })
+              updateMessage()
               break
             }
 
             case 'done': {
-              // Agent finished successfully
+              flushText()
+              updateMessage()
               break
             }
           }
         }
       } catch (e) {
-        setMessages((prev) => {
-          const existing = prev.find((m) => m.id === assistantId)
-          const errorText = fullText
-            ? `${fullText}\n\n❌ **Error:** ${(e as Error).message}`
-            : `❌ **Error:** ${(e as Error).message}`
-          if (existing) {
-            return prev.map((m) =>
-              m.id === assistantId
-                ? { ...m, text: errorText, segments: [...segments] }
-                : m
-            )
-          }
-          return [
-            ...prev,
-            {
-              id: assistantId,
-              role: 'assistant',
-              text: errorText,
-              segments: [...segments],
-            },
-          ]
+        flushText()
+        blocks.push({
+          type: 'status',
+          content: `❌ ${(e as Error).message}`,
         })
+        updateMessage()
       } finally {
         setStreaming(false)
       }
@@ -268,7 +230,10 @@ export default function ChatPanel() {
   useEffect(() => {
     if (!projectMenuOpen) return
     const onClick = (e: MouseEvent) => {
-      if (projectMenuRef.current && !projectMenuRef.current.contains(e.target as Node)) {
+      if (
+        projectMenuRef.current &&
+        !projectMenuRef.current.contains(e.target as Node)
+      ) {
         setProjectMenuOpen(false)
       }
     }
@@ -295,8 +260,17 @@ export default function ChatPanel() {
               onClick={() => setProjectMenuOpen(!projectMenuOpen)}
             >
               <span className={styles.projectName}>Bloom Project</span>
-              <svg className={styles.chevron} width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round">
-                <polyline points="6 9 12 15 18 9"/>
+              <svg
+                className={styles.chevron}
+                width="12"
+                height="12"
+                viewBox="0 0 24 24"
+                fill="none"
+                stroke="currentColor"
+                strokeWidth="2.5"
+                strokeLinecap="round"
+              >
+                <polyline points="6 9 12 15 18 9" />
               </svg>
             </button>
 
@@ -310,42 +284,99 @@ export default function ChatPanel() {
                     setProjectMenuOpen(false)
                   }}
                 >
-                  <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
-                    <path d="M21.5 2.5l-18 19M8.5 2.5l13 13M2.5 8.5l13 13"/>
+                  <svg
+                    width="15"
+                    height="15"
+                    viewBox="0 0 24 24"
+                    fill="none"
+                    stroke="currentColor"
+                    strokeWidth="2"
+                    strokeLinecap="round"
+                    strokeLinejoin="round"
+                  >
+                    <path d="M21.5 2.5l-18 19M8.5 2.5l13 13M2.5 8.5l13 13" />
                   </svg>
                   New Project
                 </button>
 
                 <button className={styles.projectMenuItem}>
-                  <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
-                    <rect x="3" y="3" width="7" height="7" rx="1"/>
-                    <rect x="14" y="3" width="7" height="7" rx="1"/>
-                    <rect x="3" y="14" width="7" height="7" rx="1"/>
-                    <rect x="14" y="14" width="7" height="7" rx="1"/>
+                  <svg
+                    width="15"
+                    height="15"
+                    viewBox="0 0 24 24"
+                    fill="none"
+                    stroke="currentColor"
+                    strokeWidth="2"
+                    strokeLinecap="round"
+                    strokeLinejoin="round"
+                  >
+                    <rect x="3" y="3" width="7" height="7" rx="1" />
+                    <rect x="14" y="3" width="7" height="7" rx="1" />
+                    <rect x="3" y="14" width="7" height="7" rx="1" />
+                    <rect x="14" y="14" width="7" height="7" rx="1" />
                   </svg>
                   Go to dashboard
                 </button>
 
                 <div className={styles.menuDivider} />
 
-                <button className={styles.projectMenuItem} onClick={() => { setProjectMenuOpen(false); navigateTo('settings') }}>
-                  <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
-                    <circle cx="12" cy="12" r="3"/>
-                    <path d="M19.4 15a1.65 1.65 0 0 0 .33 1.82l.06.06a2 2 0 1 1-2.83 2.83l-.06-.06a1.65 1.65 0 0 0-1.82-.33 1.65 1.65 0 0 0-1 1.51V21a2 2 0 1 1-4 0v-.09A1.65 1.65 0 0 0 9 19.4a1.65 1.65 0 0 0-1.82.33l-.06.06a2 2 0 1 1-2.83-2.83l.06-.06A1.65 1.65 0 0 0 4.68 15a1.65 1.65 0 0 0-1.51-1H3a2 2 0 1 1 0-4h.09A1.65 1.65 0 0 0 4.6 9a1.65 1.65 0 0 0-.33-1.82l-.06-.06a2 2 0 1 1 2.83-2.83l.06.06A1.65 1.65 0 0 0 9 4.68a1.65 1.65 0 0 0 1-1.51V3a2 2 0 1 1 4 0v.09a1.65 1.65 0 0 0 1 1.51 1.65 1.65 0 0 0 1.82-.33l.06-.06a2 2 0 1 1 2.83 2.83l-.06.06A1.65 1.65 0 0 0 19.4 9a1.65 1.65 0 0 0 1.51 1H21a2 2 0 1 1 0 4h-.09a1.65 1.65 0 0 0-1.51 1z"/>
+                <button
+                  className={styles.projectMenuItem}
+                  onClick={() => {
+                    setProjectMenuOpen(false)
+                    navigateTo('settings')
+                  }}
+                >
+                  <svg
+                    width="15"
+                    height="15"
+                    viewBox="0 0 24 24"
+                    fill="none"
+                    stroke="currentColor"
+                    strokeWidth="2"
+                    strokeLinecap="round"
+                    strokeLinejoin="round"
+                  >
+                    <circle cx="12" cy="12" r="3" />
+                    <path d="M19.4 15a1.65 1.65 0 0 0 .33 1.82l.06.06a2 2 0 1 1-2.83 2.83l-.06-.06a1.65 1.65 0 0 0-1.82-.33 1.65 1.65 0 0 0-1 1.51V21a2 2 0 1 1-4 0v-.09A1.65 1.65 0 0 0 9 19.4a1.65 1.65 0 0 0-1.82.33l-.06.06a2 2 0 1 1-2.83-2.83l.06-.06A1.65 1.65 0 0 0 4.68 15a1.65 1.65 0 0 0-1.51-1H3a2 2 0 1 1 0-4h.09A1.65 1.65 0 0 0 4.6 9a1.65 1.65 0 0 0-.33-1.82l-.06-.06a2 2 0 1 1 2.83-2.83l.06.06A1.65 1.65 0 0 0 9 4.68a1.65 1.65 0 0 0 1-1.51V3a2 2 0 1 1 4 0v.09a1.65 1.65 0 0 0 1 1.51 1.65 1.65 0 0 0 1.82-.33l.06-.06a2 2 0 1 1 2.83 2.83l-.06.06A1.65 1.65 0 0 0 19.4 9a1.65 1.65 0 0 0 1.51 1H21a2 2 0 1 1 0 4h-.09a1.65 1.65 0 0 0-1.51 1z" />
                   </svg>
                   Settings
                 </button>
 
                 <button className={styles.projectMenuItem}>
-                  <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
-                    <path d="M4 4h16 M4 12h16 M4 20h16 M8 4v16 M16 4v16"/>
+                  <svg
+                    width="15"
+                    height="15"
+                    viewBox="0 0 24 24"
+                    fill="none"
+                    stroke="currentColor"
+                    strokeWidth="2"
+                    strokeLinecap="round"
+                    strokeLinejoin="round"
+                  >
+                    <path d="M4 4h16 M4 12h16 M4 20h16 M8 4v16 M16 4v16" />
                   </svg>
                   Connectors
                 </button>
 
-                <button className={styles.projectMenuItem} onClick={() => { setProjectMenuOpen(false); navigateTo('settings') }}>
-                  <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
-                    <path d="M21 2l-2 2m-7.61 7.61a5.5 5.5 0 1 1-7.778 7.778 5.5 5.5 0 0 1 7.777-7.777zm0 0L15.5 7.5m0 0l3 3L22 7l-3-3m-3.5 3.5L19 4"/>
+                <button
+                  className={styles.projectMenuItem}
+                  onClick={() => {
+                    setProjectMenuOpen(false)
+                    navigateTo('settings')
+                  }}
+                >
+                  <svg
+                    width="15"
+                    height="15"
+                    viewBox="0 0 24 24"
+                    fill="none"
+                    stroke="currentColor"
+                    strokeWidth="2"
+                    strokeLinecap="round"
+                    strokeLinejoin="round"
+                  >
+                    <path d="M21 2l-2 2m-7.61 7.61a5.5 5.5 0 1 1-7.778 7.778 5.5 5.5 0 0 1 7.777-7.777zm0 0L15.5 7.5m0 0l3 3L22 7l-3-3m-3.5 3.5L19 4" />
                   </svg>
                   Configure Providers
                 </button>
@@ -359,12 +390,25 @@ export default function ChatPanel() {
                       className={`${styles.appearanceBtn} ${appearance === 'light' ? styles.appearanceActive : ''}`}
                       onClick={() => setAppearance('light')}
                     >
-                      <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
-                        <circle cx="12" cy="12" r="5"/>
-                        <line x1="12" y1="1" x2="12" y2="3"/><line x1="12" y1="21" x2="12" y2="23"/>
-                        <line x1="4.22" y1="4.22" x2="5.64" y2="5.64"/><line x1="18.36" y1="18.36" x2="19.78" y2="19.78"/>
-                        <line x1="1" y1="12" x2="3" y2="12"/><line x1="21" y1="12" x2="23" y2="12"/>
-                        <line x1="4.22" y1="19.78" x2="5.64" y2="18.36"/><line x1="18.36" y1="5.64" x2="19.78" y2="4.22"/>
+                      <svg
+                        width="14"
+                        height="14"
+                        viewBox="0 0 24 24"
+                        fill="none"
+                        stroke="currentColor"
+                        strokeWidth="2"
+                        strokeLinecap="round"
+                        strokeLinejoin="round"
+                      >
+                        <circle cx="12" cy="12" r="5" />
+                        <line x1="12" y1="1" x2="12" y2="3" />
+                        <line x1="12" y1="21" x2="12" y2="23" />
+                        <line x1="4.22" y1="4.22" x2="5.64" y2="5.64" />
+                        <line x1="18.36" y1="18.36" x2="19.78" y2="19.78" />
+                        <line x1="1" y1="12" x2="3" y2="12" />
+                        <line x1="21" y1="12" x2="23" y2="12" />
+                        <line x1="4.22" y1="19.78" x2="5.64" y2="18.36" />
+                        <line x1="18.36" y1="5.64" x2="19.78" y2="4.22" />
                       </svg>
                       Light
                     </button>
@@ -372,8 +416,17 @@ export default function ChatPanel() {
                       className={`${styles.appearanceBtn} ${appearance === 'dark' ? styles.appearanceActive : ''}`}
                       onClick={() => setAppearance('dark')}
                     >
-                      <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
-                        <path d="M21 12.79A9 9 0 1 1 11.21 3 7 7 0 0 0 21 12.79z"/>
+                      <svg
+                        width="14"
+                        height="14"
+                        viewBox="0 0 24 24"
+                        fill="none"
+                        stroke="currentColor"
+                        strokeWidth="2"
+                        strokeLinecap="round"
+                        strokeLinejoin="round"
+                      >
+                        <path d="M21 12.79A9 9 0 1 1 11.21 3 7 7 0 0 0 21 12.79z" />
                       </svg>
                       Dark
                     </button>
@@ -381,10 +434,26 @@ export default function ChatPanel() {
                       className={`${styles.appearanceBtn} ${appearance === 'system' ? styles.appearanceActive : ''}`}
                       onClick={() => setAppearance('system')}
                     >
-                      <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
-                        <rect x="2" y="3" width="20" height="14" rx="2" ry="2"/>
-                        <line x1="8" y1="21" x2="16" y2="21"/>
-                        <line x1="12" y1="17" x2="12" y2="21"/>
+                      <svg
+                        width="14"
+                        height="14"
+                        viewBox="0 0 24 24"
+                        fill="none"
+                        stroke="currentColor"
+                        strokeWidth="2"
+                        strokeLinecap="round"
+                        strokeLinejoin="round"
+                      >
+                        <rect
+                          x="2"
+                          y="3"
+                          width="20"
+                          height="14"
+                          rx="2"
+                          ry="2"
+                        />
+                        <line x1="8" y1="21" x2="16" y2="21" />
+                        <line x1="12" y1="17" x2="12" y2="21" />
                       </svg>
                       System
                     </button>
@@ -396,9 +465,18 @@ export default function ChatPanel() {
         </div>
         <div className={styles.headerActions}>
           <button className={styles.historyBtn} title="View History">
-            <svg width="17" height="17" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
-              <circle cx="12" cy="12" r="10"/>
-              <polyline points="12 6 12 12 16 14"/>
+            <svg
+              width="17"
+              height="17"
+              viewBox="0 0 24 24"
+              fill="none"
+              stroke="currentColor"
+              strokeWidth="2"
+              strokeLinecap="round"
+              strokeLinejoin="round"
+            >
+              <circle cx="12" cy="12" r="10" />
+              <polyline points="12 6 12 12 16 14" />
             </svg>
           </button>
         </div>
@@ -418,10 +496,58 @@ export default function ChatPanel() {
         onToggleMode={setMode}
         providerId={providerId}
         model={model}
-        onProviderSelect={(pid, m) => { setProviderId(pid); setModel(m) }}
+        onProviderSelect={(pid, m) => {
+          setProviderId(pid)
+          setModel(m)
+        }}
         onSend={handleSend}
         streaming={streaming}
       />
     </div>
   )
+}
+
+/* ── Helpers ──────────────────────────────────────── */
+
+/**
+ * Get a human-readable one-sentence status for a tool call.
+ */
+function getToolStatus(
+  name: string,
+  args: Record<string, string>
+): string | null {
+  switch (name) {
+    case 'list_files':
+      return 'Analyzing workspace...'
+    case 'read_file':
+      return `Reading ${shortPath(args.path)}...`
+    case 'write_file': {
+      const existed = true // we don't know yet, but this is the optimistic label
+      return existed
+        ? `Modifying ${shortPath(args.path)}...`
+        : `Creating ${shortPath(args.path)}...`
+    }
+    case 'edit_file':
+      return `Editing ${shortPath(args.path)}...`
+    case 'delete_file':
+      return `Removing ${shortPath(args.path)}...`
+    case 'execute_build':
+      return 'Verifying build...'
+    case 'get_errors':
+      return 'Checking build errors...'
+    default:
+      return null
+  }
+}
+
+function shortPath(path: string): string {
+  const parts = path.split('/')
+  return parts.length > 2 ? `…/${parts[parts.length - 2]}/${parts[parts.length - 1]}` : path
+}
+
+function findLastIndex<T>(arr: T[], pred: (item: T) => boolean): number {
+  for (let i = arr.length - 1; i >= 0; i--) {
+    if (pred(arr[i])) return i
+  }
+  return -1
 }

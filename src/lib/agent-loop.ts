@@ -3,9 +3,9 @@
  * Equivalent to Claude Code's nO master loop.
  *
  * Flow:
- *   User prompt → build system prompt → API call with tools →
- *   parse response → execute tools → feed results back →
- *   repeat until done or limit reached.
+ *   User prompt → build system prompt → streaming API call with tools →
+ *   stream text tokens → accumulate tool calls → execute tools →
+ *   feed results back → repeat until done or limit reached.
  */
 
 import type { Message } from '../components/chat/ChatPanel'
@@ -31,8 +31,18 @@ export interface AgentStreamEvent {
 
 /* ── Configuration ────────────────────────────────── */
 
-const MAX_ITERATIONS = 15 // Absolute safety limit
-const MAX_FIX_CYCLES = 3 // Max consecutive build-fix cycles
+const MAX_ITERATIONS = 15
+const MAX_FIX_CYCLES = 3
+
+/* ── Message Types ────────────────────────────────── */
+
+interface LoopMessage {
+  role: string
+  content: string | null
+  tool_calls?: unknown[]
+  tool_call_id?: string
+  name?: string
+}
 
 /* ── The Loop ─────────────────────────────────────── */
 
@@ -45,14 +55,7 @@ export async function* runAgentLoop(
   const adapter = getAdapter(provider.provider_key)
   const systemPrompt = buildSystemPrompt(getWorkspace().files)
 
-  // Build initial message list
-  const messages: {
-    role: string
-    content: string | null
-    tool_calls?: unknown[]
-    tool_call_id?: string
-    name?: string
-  }[] = [
+  const messages: LoopMessage[] = [
     { role: 'system', content: systemPrompt },
     ...existingMessages.slice(-6).map((m) => ({
       role: m.role as string,
@@ -68,13 +71,12 @@ export async function* runAgentLoop(
   while (iterations < MAX_ITERATIONS) {
     iterations++
 
-    // ── Call the AI provider ──────────────────────
+    // ── Streaming API call ────────────────────────
     const baseUrl = provider.base_url ?? 'https://api.openai.com/v1'
     const url = adapter.buildUrl(baseUrl, model)
     const headers = adapter.buildHeaders(provider.api_key)
 
-    // Build provider-specific payload
-    const payload = buildProviderPayload(
+    const payload = buildStreamingPayload(
       adapter.name,
       messages,
       model,
@@ -104,20 +106,21 @@ export async function* runAgentLoop(
       return
     }
 
-    const data = (await res.json()) as Record<string, unknown>
+    // ── Read the streaming response ───────────────
+    const { textContent, toolCalls } = await readStream(
+      res,
+      adapter.name,
+    )
 
-    // ── Parse response ────────────────────────────
-    const parsed = parseResponse(data, adapter.name)
-
-    // Yield text content as thinking/text
-    if (parsed.content) {
-      yield { type: 'text', content: parsed.content }
+    // Yield accumulated text from this turn
+    if (textContent) {
+      yield { type: 'text', content: textContent }
     }
 
-    // If no tool calls, agent considers itself done
-    if (!parsed.toolCalls || parsed.toolCalls.length === 0) {
-      // Auto-verify: trigger a build to confirm everything works
+    // ── No tool calls → agent considers itself done ──
+    if (!toolCalls || toolCalls.length === 0) {
       if (!lastBuildFailed) {
+        // Auto-verify: trigger build
         const verifyCall: ToolCall = {
           id: `verify_${Date.now()}`,
           name: 'execute_build',
@@ -127,7 +130,6 @@ export async function* runAgentLoop(
         const verifyResult = await executeTool(verifyCall)
         yield { type: 'tool_result', toolResult: verifyResult }
 
-        // Add verification to message history
         messages.push({
           role: 'assistant',
           content: null,
@@ -149,7 +151,6 @@ export async function* runAgentLoop(
         })
 
         if (!verifyResult.display.includes('passed')) {
-          // Build failed — continue the loop so AI can fix
           lastBuildFailed = true
           fixCycles++
           if (fixCycles > MAX_FIX_CYCLES) {
@@ -168,18 +169,12 @@ export async function* runAgentLoop(
     }
 
     // ── Execute tool calls ─────────────────────────
-    // Reset fix cycle tracking when AI makes progress
     lastBuildFailed = false
 
-    // Build the assistant message with tool calls
-    const assistantMsg: {
-      role: string
-      content: string | null
-      tool_calls: unknown[]
-    } = {
+    const assistantMsg: LoopMessage = {
       role: 'assistant',
-      content: parsed.content || null,
-      tool_calls: parsed.toolCalls.map((tc) => ({
+      content: textContent || null,
+      tool_calls: toolCalls.map((tc) => ({
         id: tc.id,
         type: 'function',
         function: {
@@ -190,22 +185,17 @@ export async function* runAgentLoop(
     }
     messages.push(assistantMsg)
 
-    for (const tc of parsed.toolCalls) {
+    for (const tc of toolCalls) {
       yield { type: 'tool_call', toolCall: tc }
       const result = await executeTool(tc)
       yield { type: 'tool_result', toolResult: result }
 
-      // Track build state
       if (tc.name === 'execute_build') {
         lastBuildFailed = !result.display.includes('passed')
-        if (lastBuildFailed) {
-          fixCycles++
-        } else {
-          fixCycles = 0
-        }
+        if (lastBuildFailed) fixCycles++
+        else fixCycles = 0
       }
 
-      // Add tool result to message history
       messages.push({
         role: 'tool',
         content: result.result,
@@ -213,48 +203,174 @@ export async function* runAgentLoop(
       })
     }
 
-    // Safety: check fix cycle limit
     if (fixCycles > MAX_FIX_CYCLES) {
       yield {
         type: 'error',
-        content: `Build still failing after ${MAX_FIX_CYCLES} fix cycles. Review the errors above and try again with more specific instructions.`,
+        content: `Build still failing after ${MAX_FIX_CYCLES} fix cycles. Try again with more specific instructions.`,
       }
       return
-    }
-
-    // Check if the last tool call was execute_build and it passed
-    const lastCall = parsed.toolCalls[parsed.toolCalls.length - 1]
-    if (
-      lastCall?.name === 'execute_build' &&
-      !lastBuildFailed
-    ) {
-      // Build passed at the end of a tool call sequence — consider done
-      // But let the AI have one more turn to confirm/summarize
-      continue
     }
   }
 
   yield {
     type: 'error',
-    content: `Reached maximum of ${MAX_ITERATIONS} tool iterations. The task may be too complex — try breaking it into smaller steps.`,
+    content: `Reached maximum of ${MAX_ITERATIONS} tool iterations. Try breaking the task into smaller steps.`,
+  }
+}
+
+/* ── Streaming Response Reader ────────────────────── */
+
+/**
+ * Read an SSE stream, accumulating text and tool calls.
+ * Text is yielded as a single block since async generators can't yield from callbacks.
+ * The caller yields the text as a single event, which gives progressive display
+ * across multiple agent turns (each turn adds text between tool calls).
+ */
+async function readStream(
+  res: Response,
+  adapterName: string,
+): Promise<{ textContent: string; toolCalls: ToolCall[] | null }> {
+  const reader = res.body!.getReader()
+  const decoder = new TextDecoder('utf-8')
+  let buffer = ''
+  let textContent = ''
+
+  // Accumulate tool call chunks
+  const toolCallAccum: Map<
+    number,
+    { id: string; name: string; arguments: string }
+  > = new Map()
+
+  while (true) {
+    const { done, value } = await reader.read()
+    if (done) break
+
+    buffer += decoder.decode(value, { stream: true })
+    const lines = buffer.split('\n')
+    buffer = lines.pop() ?? ''
+
+    for (const line of lines) {
+      const trimmed = line.trim()
+      if (!trimmed) continue
+
+      if (adapterName === 'gemini') {
+        if (!trimmed.startsWith('data: ')) continue
+        try {
+          const json = JSON.parse(trimmed.slice(6))
+          // Gemini streaming — text in candidates[0].content.parts[0].text
+          const candidates = json.candidates as
+            | Array<{
+                content?: { parts?: Array<{ text?: string }> }
+              }>
+            | undefined
+          const token = candidates?.[0]?.content?.parts?.[0]?.text
+          if (token) textContent += token
+        } catch {
+          /* skip malformed JSON */
+        }
+      } else if (adapterName === 'anthropic') {
+        // Anthropic uses a different SSE format
+        if (!trimmed.startsWith('data: ')) continue
+        try {
+          const json = JSON.parse(trimmed.slice(6))
+          if (json.type === 'content_block_delta') {
+            const text = (json.delta as { text?: string })?.text
+            if (text) textContent += text
+          }
+          if (
+            json.type === 'content_block_start' &&
+            json.content_block?.type === 'tool_use'
+          ) {
+            const block = json.content_block as {
+              id: string
+              name: string
+            }
+            toolCallAccum.set(0, {
+              id: block.id,
+              name: block.name,
+              arguments: '',
+            })
+          }
+          if (json.type === 'content_block_delta' && json.delta?.type === 'input_json_delta') {
+            const existing = toolCallAccum.get(0)
+            if (existing) {
+              existing.arguments +=
+                (json.delta as { partial_json?: string }).partial_json ?? ''
+            }
+          }
+        } catch {
+          /* skip */
+        }
+      } else {
+        // OpenAI-compatible streaming
+        if (!trimmed.startsWith('data: ')) continue
+        if (trimmed === 'data: [DONE]') continue
+        try {
+          const json = JSON.parse(trimmed.slice(6))
+          const choices = json.choices as
+            | Array<{ delta?: { content?: string; tool_calls?: Array<{ index: number; id?: string; function?: { name?: string; arguments?: string } }> } }>
+            | undefined
+          if (!choices) continue
+
+          const delta = choices[0]?.delta
+          if (!delta) continue
+
+          // Text token
+          if (delta.content) {
+            textContent += delta.content
+          }
+
+          // Tool call chunks
+          if (delta.tool_calls) {
+            for (const tc of delta.tool_calls) {
+              const existing = toolCallAccum.get(tc.index) ?? {
+                id: '',
+                name: '',
+                arguments: '',
+              }
+              if (tc.id) existing.id = tc.id
+              if (tc.function?.name) existing.name = tc.function.name
+              if (tc.function?.arguments)
+                existing.arguments += tc.function.arguments
+              toolCallAccum.set(tc.index, existing)
+            }
+          }
+        } catch {
+          /* skip malformed JSON */
+        }
+      }
+    }
+  }
+
+  // Parse accumulated tool calls
+  const toolCalls: ToolCall[] = []
+  for (const [, acc] of toolCallAccum) {
+    if (acc.name) {
+      let args: Record<string, string> = {}
+      try {
+        args = JSON.parse(acc.arguments)
+      } catch {
+        args = {}
+      }
+      toolCalls.push({ id: acc.id, name: acc.name, arguments: args })
+    }
+  }
+
+  return {
+    textContent,
+    toolCalls: toolCalls.length > 0 ? toolCalls : null,
   }
 }
 
 /* ── Provider Payload Building ────────────────────── */
 
-function buildProviderPayload(
+function buildStreamingPayload(
   adapterName: string,
-  messages: {
-    role: string
-    content: string | null
-    tool_calls?: unknown[]
-    tool_call_id?: string
-    name?: string
-  }[],
+  messages: LoopMessage[],
   model: string,
   temperature: number
 ): Record<string, unknown> {
-  // Build clean messages — omit null content for assistant messages with tool_calls
+  // Build clean messages
   const cleanMessages = messages.map((m) => {
     const msg: Record<string, unknown> = { role: m.role }
     if (m.content !== null && m.content !== undefined) msg.content = m.content
@@ -265,7 +381,6 @@ function buildProviderPayload(
   })
 
   if (adapterName === 'anthropic') {
-    // Anthropic uses a different format
     const systemMsg = cleanMessages.find((m) => m.role === 'system')
     const other = cleanMessages.filter((m) => m.role !== 'system')
     return {
@@ -276,6 +391,7 @@ function buildProviderPayload(
         content: m.content ? [{ type: 'text', text: m.content }] : m.content,
       })),
       max_tokens: 8192,
+      stream: true,
       tools: TOOL_DEFINITIONS.map((t) => ({
         name: t.function.name,
         description: t.function.description,
@@ -294,10 +410,7 @@ function buildProviderPayload(
         if (m.role === 'assistant') role = 'model'
         else if (m.role === 'tool') role = 'tool'
         else role = 'user'
-        return {
-          role,
-          parts: [{ text: m.content || '' }],
-        }
+        return { role, parts: [{ text: m.content || '' }] }
       })
     return {
       contents,
@@ -313,121 +426,18 @@ function buildProviderPayload(
           },
         ],
       })),
-      generationConfig: {
-        maxOutputTokens: 8192,
-        temperature,
-      },
+      generationConfig: { maxOutputTokens: 8192, temperature },
     }
   }
 
-  // Default: OpenAI-compatible
+  // Default: OpenAI-compatible with streaming
   return {
     model,
     messages: cleanMessages,
     max_tokens: 8192,
     temperature,
+    stream: true,
     tools: TOOL_DEFINITIONS,
     tool_choice: 'auto',
-  }
-}
-
-/* ── Response Parsing ─────────────────────────────── */
-
-interface ParsedResponse {
-  content: string | null
-  toolCalls: ToolCall[] | null
-}
-
-function parseResponse(
-  data: Record<string, unknown>,
-  adapterName: string
-): ParsedResponse {
-  if (adapterName === 'anthropic') {
-    const contentBlocks = data.content as
-      | Array<{ type: string; text?: string; name?: string; input?: Record<string, unknown>; id?: string }>
-      | undefined
-    if (!contentBlocks) return { content: null, toolCalls: null }
-
-    let textContent: string | null = null
-    const toolCalls: ToolCall[] = []
-
-    for (const block of contentBlocks) {
-      if (block.type === 'text' && block.text) {
-        textContent = (textContent ?? '') + block.text
-      }
-      if (block.type === 'tool_use' && block.name && block.input) {
-        toolCalls.push({
-          id: block.id ?? `tc_${Date.now()}`,
-          name: block.name,
-          arguments: block.input as Record<string, string>,
-        })
-      }
-    }
-
-    return {
-      content: textContent,
-      toolCalls: toolCalls.length > 0 ? toolCalls : null,
-    }
-  }
-
-  if (adapterName === 'gemini') {
-    const candidates = data.candidates as
-      | Array<{
-          content?: {
-            parts?: Array<{
-              text?: string
-              functionCall?: { name: string; args: Record<string, string> }
-            }>
-          }
-        }>
-      | undefined
-    if (!candidates?.[0]?.content?.parts) {
-      return { content: null, toolCalls: null }
-    }
-
-    let textContent: string | null = null
-    const toolCalls: ToolCall[] = []
-
-    for (const part of candidates[0].content.parts) {
-      if (part.text) {
-        textContent = (textContent ?? '') + part.text
-      }
-      if (part.functionCall) {
-        toolCalls.push({
-          id: `tc_${Date.now()}_${toolCalls.length}`,
-          name: part.functionCall.name,
-          arguments: part.functionCall.args,
-        })
-      }
-    }
-
-    return {
-      content: textContent,
-      toolCalls: toolCalls.length > 0 ? toolCalls : null,
-    }
-  }
-
-  // Default: OpenAI-compatible
-  const choice = (data.choices as Array<Record<string, unknown>> | undefined)?.[0]
-  if (!choice) return { content: null, toolCalls: null }
-
-  const msg = choice.message as
-    | { content?: string; tool_calls?: Array<{ id: string; function: { name: string; arguments: string } }> }
-    | undefined
-  if (!msg) return { content: null, toolCalls: null }
-
-  const parsedCalls: ToolCall[] = (msg.tool_calls ?? []).map((tc) => {
-    let args: Record<string, string> = {}
-    try {
-      args = JSON.parse(tc.function.arguments)
-    } catch {
-      args = {}
-    }
-    return { id: tc.id, name: tc.function.name, arguments: args }
-  })
-
-  return {
-    content: msg.content ?? null,
-    toolCalls: parsedCalls.length > 0 ? parsedCalls : null,
   }
 }
