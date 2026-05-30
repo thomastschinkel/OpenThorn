@@ -78,6 +78,7 @@ export async function* runAgentLoop(
   let iterations = 0
   let fixCycles = 0
   let lastBuildFailed = false
+  let filesChangedThisTurn = false
 
   while (iterations < MAX_ITERATIONS) {
     iterations++
@@ -144,8 +145,8 @@ export async function* runAgentLoop(
         yield { type: 'error', content: 'The AI returned an empty response. This may be a provider issue — try again or switch providers.' }
         return
       }
-      if (!lastBuildFailed) {
-        // Auto-verify: trigger build
+      if (!lastBuildFailed && filesChangedThisTurn) {
+        // Auto-verify: trigger build only if files were changed
         const verifyCall: ToolCall = {
           id: `verify_${Date.now()}`,
           name: 'execute_build',
@@ -195,6 +196,7 @@ export async function* runAgentLoop(
 
     // ── Execute tool calls ─────────────────────────
     lastBuildFailed = false
+    filesChangedThisTurn = false
 
     const assistantMsg: LoopMessage = {
       role: 'assistant',
@@ -214,6 +216,14 @@ export async function* runAgentLoop(
       yield { type: 'tool_call', toolCall: tc }
       const result = await executeTool(tc)
       yield { type: 'tool_result', toolResult: result }
+
+      if (
+        tc.name === 'write_file' ||
+        tc.name === 'edit_file' ||
+        tc.name === 'delete_file'
+      ) {
+        filesChangedThisTurn = true
+      }
 
       if (tc.name === 'execute_build') {
         lastBuildFailed = !result.display.includes('passed')
