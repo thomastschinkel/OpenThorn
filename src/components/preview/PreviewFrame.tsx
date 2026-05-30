@@ -183,13 +183,21 @@ function transformJSX(code: string, filename: string): string {
 
 function jsxPropsToObj(props: string): string {
   if (!props.trim()) return 'null'
-  // Split on spaces that precede attribute names
   const attrs: string[] = []
   const re = /([\w-]+)\s*=\s*(?:"([^"]*)"|'([^']*)'|\{([^}]*)\})/g
   let m
   while ((m = re.exec(props)) !== null) {
     const name = m[1] === 'class' ? 'className' : m[1] === 'for' ? 'htmlFor' : m[1]
-    const value = m[2] ?? m[3] ?? m[4] ?? 'true'
+    let value: string
+    if (m[2] !== undefined) {
+      value = JSON.stringify(m[2])
+    } else if (m[3] !== undefined) {
+      value = JSON.stringify(m[3])
+    } else if (m[4] !== undefined) {
+      value = m[4]
+    } else {
+      value = 'true'
+    }
     attrs.push(`${name}: ${value}`)
   }
   return attrs.length > 0 ? `{ ${attrs.join(', ')} }` : 'null'
@@ -259,7 +267,7 @@ export default function PreviewFrame({ device }: Props) {
             srcDoc={srcDoc}
             className={styles.iframe}
             title="Website preview"
-            sandbox="allow-scripts"
+            sandbox="allow-scripts allow-same-origin"
           />
         </div>
       </div>
