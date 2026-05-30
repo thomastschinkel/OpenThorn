@@ -1,12 +1,23 @@
 import ReactMarkdown from 'react-markdown'
 import remarkGfm from 'remark-gfm'
 import rehypeSanitize from 'rehype-sanitize'
-import type { Message } from '../chat/ChatPanel'
+import type { MessageSegment } from './ChatPanel'
+import FileChangeCard from './FileChangeCard'
+import AgentThinking from './AgentThinking'
 import styles from './ChatMessage.module.css'
+
+interface Message {
+  id: string
+  role: 'user' | 'assistant'
+  text: string
+  segments?: MessageSegment[]
+}
 
 interface Props {
   message: Message
 }
+
+export type { Message, MessageSegment }
 
 export default function ChatMessage({ message }: Props) {
   const isUser = message.role === 'user'
@@ -14,15 +25,42 @@ export default function ChatMessage({ message }: Props) {
   return (
     <div className={`${styles.row} ${isUser ? styles.user : styles.ai}`}>
       <div className={styles.bubble}>
-        <div className={`${styles.content} ${!isUser ? styles.markdown : ''}`}>
-          {isUser ? (
-            message.text
-          ) : (
-            <ReactMarkdown remarkPlugins={[remarkGfm]} rehypePlugins={[rehypeSanitize]}>
-              {message.text}
-            </ReactMarkdown>
-          )}
-        </div>
+        {/* Segments (file changes, thinking blocks) */}
+        {message.segments && message.segments.length > 0 && (
+          <div className={styles.segments}>
+            {message.segments.map((seg, i) => {
+              if (seg.type === 'file_change' && seg.action && seg.path) {
+                return (
+                  <FileChangeCard
+                    key={`${seg.path}-${i}`}
+                    icon={seg.icon ?? '📄'}
+                    action={seg.action}
+                    path={seg.path}
+                  />
+                )
+              }
+              if (seg.type === 'thinking' && seg.content) {
+                return <AgentThinking key={i} text={seg.content} />
+              }
+              return null
+            })}
+          </div>
+        )}
+
+        {/* Text content (markdown for AI, plain for user) */}
+        {message.text && (
+          <div className={`${styles.content} ${!isUser ? styles.markdown : ''}`}>
+            {isUser ? (
+              message.text
+            ) : (
+              <ReactMarkdown remarkPlugins={[remarkGfm]} rehypePlugins={[rehypeSanitize]}>
+                {message.text}
+              </ReactMarkdown>
+            )}
+          </div>
+        )}
+
+        {/* Action buttons (AI messages only) */}
         {!isUser && (
           <div className={styles.actions}>
             <button className={styles.actionBtn} title="Copy">

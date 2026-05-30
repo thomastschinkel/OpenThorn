@@ -179,6 +179,15 @@
   color: var(--text-primary);
 }
 
+/* ── Segments ──────────────────────────────────────── */
+
+.segments {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+  margin-bottom: 4px;
+}
+
 /* ── Actions ───────────────────────────────────────── */
 .actions {
   display: flex;

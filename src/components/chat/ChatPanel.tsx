@@ -1,23 +1,32 @@
 import { useState, useRef, useEffect, useCallback } from 'react'
 import { useApp } from '../../App'
-import { streamChat, detectMode } from '../../lib/chat'
-import { getProject } from '../../lib/project'
+import { runAgentLoop, type AgentStreamEvent } from '../../lib/agent-loop'
+import { getWorkspace, resetWorkspace } from '../../lib/workspace'
 import { supabase } from '../../lib/supabase'
 import type { ProviderConfig } from '../../lib/providers'
 import ChatMessage from './ChatMessage'
 import ChatInput from './ChatInput'
 import styles from './ChatPanel.module.css'
 
+export interface MessageSegment {
+  type: 'text' | 'file_change' | 'thinking'
+  content?: string
+  icon?: string
+  action?: string
+  path?: string
+}
+
 export interface Message {
   id: string
   role: 'user' | 'assistant'
   text: string
+  segments?: MessageSegment[]
 }
 
 const welcomeMessage: Message = {
   id: 'welcome',
   role: 'assistant',
-  text: "Hey! I'm Bloom, your AI coding companion. I help you build full-stack web applications — just describe what you want to create and I'll generate it for you.\n\n**Plan** mode lets us sketch the architecture first. **Build** mode generates working code directly.\n\nWhat do you want to build today?",
+  text: "Hey! I'm Bloom, your AI coding companion. I build full-stack web applications using TypeScript and React — just describe what you want to create and I'll handle the rest.\n\nI work in an autonomous loop: I analyze your workspace, plan the implementation, create files one by one, run the build, and fix any errors automatically.\n\nWhat should we build today?",
 }
 
 export default function ChatPanel() {
@@ -25,7 +34,7 @@ export default function ChatPanel() {
   const [mode, setMode] = useState<'plan' | 'build'>('build')
   const [providerId, setProviderId] = useState<string | null>(null)
   const [model, setModel] = useState<string | null>(null)
-  const [streaming, setStreaming] = useState<string | null>(null)
+  const [streaming, setStreaming] = useState(false)
   const abortRef = useRef<AbortController | null>(null)
   const [projectMenuOpen, setProjectMenuOpen] = useState(false)
   const [appearance, setAppearance] = useState<'light' | 'dark' | 'system'>('dark')
@@ -37,68 +46,225 @@ export default function ChatPanel() {
     bottomRef.current?.scrollIntoView({ behavior: 'smooth' })
   }, [messages, streaming])
 
-  const handleSend = useCallback(async (text: string) => {
-    const userMsg: Message = { id: Date.now().toString(), role: 'user', text }
-    setMessages((prev) => [...prev, userMsg])
-    if (!providerId || !model) return
+  const handleSend = useCallback(
+    async (text: string) => {
+      const userMsg: Message = { id: Date.now().toString(), role: 'user', text }
+      setMessages((prev) => [...prev, userMsg])
+      if (!providerId || !model) return
 
-    // Fetch provider config from Supabase
-    const { data: provider } = await supabase
-      .from('providers')
-      .select('*')
-      .eq('id', providerId)
-      .single()
+      // Fetch provider config from Supabase
+      const { data: provider } = await supabase
+        .from('providers')
+        .select('*')
+        .eq('id', providerId)
+        .single()
 
-    if (!provider) return
+      if (!provider) return
 
-    const activeMode = detectMode(text, getProject().files.length)
-    const assistantId = (Date.now() + 1).toString()
-    setStreaming('')
+      const assistantId = (Date.now() + 1).toString()
+      setStreaming(true)
 
-    try {
-      for await (const chunk of streamChat(
-        [...messages, userMsg],
-        provider as ProviderConfig,
-        model,
-        activeMode,
-        getProject().files
-      )) {
-        if (chunk.error) {
-          setMessages((prev) => [
+      // Accumulate agent events into a streaming message
+      const segments: MessageSegment[] = []
+      let fullText = ''
+
+      try {
+        for await (const event of runAgentLoop(
+          text,
+          provider as ProviderConfig,
+          model,
+          messages
+        )) {
+          switch (event.type) {
+            case 'text': {
+              fullText += event.content ?? ''
+              // Show this as the streaming message
+              setMessages((prev) => {
+                const existing = prev.find((m) => m.id === assistantId)
+                if (existing) {
+                  return prev.map((m) =>
+                    m.id === assistantId
+                      ? { ...m, text: fullText, segments: [...segments] }
+                      : m
+                  )
+                }
+                return [
+                  ...prev,
+                  {
+                    id: assistantId,
+                    role: 'assistant',
+                    text: fullText,
+                    segments: [...segments],
+                  },
+                ]
+              })
+              break
+            }
+
+            case 'tool_call': {
+              const tc = event.toolCall
+              if (!tc) break
+              // Add thinking segment for tool call
+              if (tc.name === 'list_files') {
+                segments.push({ type: 'thinking', content: 'Analyzing workspace...' })
+              } else if (tc.name === 'read_file') {
+                segments.push({ type: 'thinking', content: `Reading ${tc.arguments.path}...` })
+              } else if (tc.name === 'execute_build') {
+                segments.push({ type: 'thinking', content: 'Verifying build...' })
+              } else if (tc.name === 'get_errors') {
+                segments.push({ type: 'thinking', content: 'Checking errors...' })
+              }
+              // Update streaming message
+              setMessages((prev) => {
+                const existing = prev.find((m) => m.id === assistantId)
+                if (existing) {
+                  return prev.map((m) =>
+                    m.id === assistantId
+                      ? { ...m, text: fullText, segments: [...segments] }
+                      : m
+                  )
+                }
+                return [
+                  ...prev,
+                  {
+                    id: assistantId,
+                    role: 'assistant',
+                    text: fullText,
+                    segments: [...segments],
+                  },
+                ]
+              })
+              break
+            }
+
+            case 'tool_result': {
+              const tr = event.toolResult
+              if (!tr) break
+
+              // Remove any matching thinking segment
+              const thinkingIdx = segments.findLastIndex(
+                (s) => s.type === 'thinking'
+              )
+              if (thinkingIdx >= 0) {
+                segments.splice(thinkingIdx, 1)
+              }
+
+              // Parse the display string to determine file change type
+              const display = tr.display
+              const iconMatch = display.match(/^([\u{1F300}-\u{1F9FF}\u{2700}-\u{27BF}\u{2600}-\u{26FF}✅❌🔨🔍])/u)
+              const icon = iconMatch ? iconMatch[0] : '📄'
+
+              if (
+                tr.name === 'write_file' ||
+                tr.name === 'edit_file' ||
+                tr.name === 'delete_file'
+              ) {
+                const action =
+                  tr.name === 'write_file'
+                    ? display.includes('Created')
+                      ? 'Created'
+                      : 'Modified'
+                    : tr.name === 'edit_file'
+                      ? 'Edited'
+                      : 'Deleted'
+                segments.push({
+                  type: 'file_change',
+                  icon,
+                  action,
+                  path: tr.name === 'delete_file'
+                    ? tr.display.replace(/^.*Deleted\s+/, '').trim() || tr.display
+                    : tr.display.replace(/^[^ ]+\s+(Created|Modified|Edited)\s+/, '').trim(),
+                })
+              } else if (tr.name === 'execute_build' || tr.name === 'get_errors') {
+                // Show build status as a compact note
+                segments.push({
+                  type: 'thinking',
+                  content: display,
+                })
+              }
+
+              // Update streaming message
+              setMessages((prev) => {
+                const existing = prev.find((m) => m.id === assistantId)
+                if (existing) {
+                  return prev.map((m) =>
+                    m.id === assistantId
+                      ? { ...m, text: fullText, segments: [...segments] }
+                      : m
+                  )
+                }
+                return [
+                  ...prev,
+                  {
+                    id: assistantId,
+                    role: 'assistant',
+                    text: fullText,
+                    segments: [...segments],
+                  },
+                ]
+              })
+              break
+            }
+
+            case 'error': {
+              fullText += `\n\n❌ **Error:** ${event.content}`
+              setMessages((prev) => {
+                const existing = prev.find((m) => m.id === assistantId)
+                if (existing) {
+                  return prev.map((m) =>
+                    m.id === assistantId
+                      ? { ...m, text: fullText, segments: [...segments] }
+                      : m
+                  )
+                }
+                return [
+                  ...prev,
+                  {
+                    id: assistantId,
+                    role: 'assistant',
+                    text: fullText,
+                    segments: [...segments],
+                  },
+                ]
+              })
+              break
+            }
+
+            case 'done': {
+              // Agent finished successfully
+              break
+            }
+          }
+        }
+      } catch (e) {
+        setMessages((prev) => {
+          const existing = prev.find((m) => m.id === assistantId)
+          const errorText = fullText
+            ? `${fullText}\n\n❌ **Error:** ${(e as Error).message}`
+            : `❌ **Error:** ${(e as Error).message}`
+          if (existing) {
+            return prev.map((m) =>
+              m.id === assistantId
+                ? { ...m, text: errorText, segments: [...segments] }
+                : m
+            )
+          }
+          return [
             ...prev,
-            { id: assistantId, role: 'assistant', text: `Error: ${chunk.error}` },
-          ])
-          setStreaming(null)
-          return
-        }
-        if (chunk.token !== undefined) {
-          setStreaming((prev) => (prev ?? '') + chunk.token)
-        }
-        if (chunk.files) {
-          // Files were generated — show a brief summary
-          const fileList = Object.keys(chunk.files).join(', ')
-        }
+            {
+              id: assistantId,
+              role: 'assistant',
+              text: errorText,
+              segments: [...segments],
+            },
+          ]
+        })
+      } finally {
+        setStreaming(false)
       }
-    } catch (e) {
-      setMessages((prev) => [
-        ...prev,
-        { id: assistantId, role: 'assistant', text: `Error: ${(e as Error).message}` },
-      ])
-      setStreaming(null)
-      return
-    }
-
-    // Streaming complete — add the full message
-    setStreaming((current) => {
-      if (current) {
-        setMessages((prev) => [
-          ...prev,
-          { id: assistantId, role: 'assistant', text: current },
-        ])
-      }
-      return null
-    })
-  }, [messages, providerId, model])
+    },
+    [messages, providerId, model]
+  )
 
   useEffect(() => {
     if (!projectMenuOpen) return
@@ -107,7 +273,9 @@ export default function ChatPanel() {
         setProjectMenuOpen(false)
       }
     }
-    const onKey = (e: KeyboardEvent) => { if (e.key === 'Escape') setProjectMenuOpen(false) }
+    const onKey = (e: KeyboardEvent) => {
+      if (e.key === 'Escape') setProjectMenuOpen(false)
+    }
     window.addEventListener('click', onClick)
     window.addEventListener('keydown', onKey)
     return () => {
@@ -127,7 +295,7 @@ export default function ChatPanel() {
               className={`${styles.projectBtn} ${projectMenuOpen ? styles.projectBtnOpen : ''}`}
               onClick={() => setProjectMenuOpen(!projectMenuOpen)}
             >
-              <span className={styles.projectName}>Flowly</span>
+              <span className={styles.projectName}>Bloom Project</span>
               <svg className={styles.chevron} width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round">
                 <polyline points="6 9 12 15 18 9"/>
               </svg>
@@ -135,6 +303,20 @@ export default function ChatPanel() {
 
             {projectMenuOpen && (
               <div className={styles.projectMenu}>
+                <button
+                  className={styles.projectMenuItem}
+                  onClick={() => {
+                    resetWorkspace()
+                    setMessages([welcomeMessage])
+                    setProjectMenuOpen(false)
+                  }}
+                >
+                  <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+                    <path d="M21.5 2.5l-18 19M8.5 2.5l13 13M2.5 8.5l13 13"/>
+                  </svg>
+                  New Project
+                </button>
+
                 <button className={styles.projectMenuItem}>
                   <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
                     <rect x="3" y="3" width="7" height="7" rx="1"/>
@@ -167,31 +349,6 @@ export default function ChatPanel() {
                     <path d="M21 2l-2 2m-7.61 7.61a5.5 5.5 0 1 1-7.778 7.778 5.5 5.5 0 0 1 7.777-7.777zm0 0L15.5 7.5m0 0l3 3L22 7l-3-3m-3.5 3.5L19 4"/>
                   </svg>
                   Configure Providers
-                </button>
-
-                <div className={styles.menuDivider} />
-
-                <button className={styles.projectMenuItem}>
-                  <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
-                    <path d="M12 20h9 M16.5 3.5a2.121 2.121 0 0 1 3 3L7 19l-4 1 1-4L16.5 3.5z"/>
-                  </svg>
-                  Rename this project
-                </button>
-
-                <button className={styles.projectMenuItem}>
-                  <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
-                    <polygon points="12 2 15.09 8.26 22 9.27 17 14.14 18.18 21.02 12 17.77 5.82 21.02 7 14.14 2 9.27 8.91 8.26 12 2"/>
-                  </svg>
-                  Star Project
-                </button>
-
-                <button className={styles.projectMenuItem}>
-                  <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
-                    <circle cx="12" cy="12" r="10"/>
-                    <line x1="12" y1="16" x2="12" y2="12"/>
-                    <line x1="12" y1="8" x2="12.01" y2="8"/>
-                  </svg>
-                  Details
                 </button>
 
                 <div className={styles.menuDivider} />
@@ -264,19 +421,8 @@ export default function ChatPanel() {
         model={model}
         onProviderSelect={(pid, m) => { setProviderId(pid); setModel(m) }}
         onSend={handleSend}
-        streaming={streaming !== null}
+        streaming={streaming}
       />
-
-      {/* Streaming message */}
-      {streaming !== null && (
-        <ChatMessage
-          message={{
-            id: 'streaming',
-            role: 'assistant',
-            text: streaming || '...',
-          }}
-        />
-      )}
     </div>
   )
 }
