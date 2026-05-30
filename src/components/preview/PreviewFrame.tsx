@@ -48,52 +48,15 @@ function buildPreviewSrcDoc(): string {
     return blankDoc()
   }
 
+  // Render index.html as-is. The AI is instructed to put everything
+  // (CDN scripts, Babel-transpiled JSX) in a single self-contained file.
+  // Inject any CSS files not already referenced in the HTML.
   let doc = indexHtml.content
-
-  // Inject Babel standalone for JSX transpilation
-  if (!doc.includes('babel-standalone')) {
-    doc = doc.replace(
-      '</head>',
-      '<script src="https://unpkg.com/@babel/standalone/babel.min.js"></script>\n</head>'
-    )
-  }
-
-  // Inject React if not already loaded
-  if (!doc.includes('esm.sh/react') && !doc.includes('unpkg.com/react')) {
-    doc = doc.replace(
-      '</head>',
-      '<script type="importmap">{"imports":{"react":"https://esm.sh/react@19","react-dom/":"https://esm.sh/react-dom@19/"}}</script>\n</head>'
-    )
-  }
-
-  // Inject CSS files into <head>
   for (const f of files) {
     if (f.path.endsWith('.css') && !doc.includes(f.path)) {
       doc = doc.replace('</head>', `  <style>/* ${f.path} */\n${f.content}\n</style>\n</head>`)
     }
-    // Replace .jsx/.tsx/.ts script references with inline Babel-transpiled code
-    if ((f.path.endsWith('.jsx') || f.path.endsWith('.tsx') || f.path.endsWith('.ts')) && doc.includes(f.path)) {
-      const js = f.path.endsWith('.jsx') ? f.content : stripTypes(f.content)
-      const escapedPath = f.path.replace(/\./g, '\\.')
-      doc = doc.replace(
-        new RegExp(`<script[^>]*src=["']/${escapedPath}["'][^>]*></script>`, 'g'),
-        `<script type="text/babel" data-type="module">\n${js}\n</script>`
-      )
-      doc = doc.replace(
-        new RegExp(`<script[^>]*src=["']\\./${escapedPath}["'][^>]*></script>`, 'g'),
-        `<script type="text/babel" data-type="module">\n${js}\n</script>`
-      )
-    }
   }
-
-  // Convert type="module" scripts to text/babel for JSX transpilation
-  if (files.some((f) => f.path.endsWith('.jsx') || f.path.endsWith('.tsx'))) {
-    doc = doc.replace(
-      /<script type="module"/g,
-      '<script type="text/babel" data-type="module"'
-    )
-  }
-
   return doc
 }
 
@@ -189,7 +152,7 @@ export default function PreviewFrame({ device }: Props) {
             src={blobUrl || 'about:blank'}
             className={styles.iframe}
             title="Website preview"
-            sandbox="allow-scripts allow-same-origin"
+            sandbox="allow-scripts"
           />
         </div>
       </div>

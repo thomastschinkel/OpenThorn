@@ -34,6 +34,8 @@ const welcomeMessage: Message = {
 }
 
 export default function ChatPanel() {
+  // Reset workspace to clean scaffold on mount
+  useEffect(() => { resetWorkspace() }, [])
   const [messages, setMessages] = useState<Message[]>([welcomeMessage])
   const [mode, setMode] = useState<'plan' | 'build'>('build')
   const [providerId, setProviderId] = useState<string | null>(null)
