@@ -123,7 +123,7 @@ export default function PreviewFrame({ device }: Props) {
             srcDoc={srcDoc}
             className={styles.iframe}
             title="Website preview"
-            sandbox="allow-scripts"
+            sandbox="allow-scripts allow-same-origin"
           />
         </div>
       </div>
