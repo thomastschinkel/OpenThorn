@@ -55,21 +55,22 @@ function buildBundledPreview(
   // Combine all CSS
   const allCss = cssFiles.map(f => `/* ${f.path} */\n${f.content}`).join('\n\n')
 
-  // Transform JSX to plain JS
+  // Bundle JSX files — strip imports (React/ReactDOM loaded via CDN)
+  // Babel standalone in the iframe handles JSX transpilation
   const allJs = jsxFiles
-    .map(f => transformJSX(f.content, f.path))
+    .map(f => {
+      let code = f.content
+      // Strip CSS imports (already injected)
+      code = code.replace(/^import\s+['"][^'"]+\.css['"]\s*;?\s*$/gm, '')
+      return `// ${f.path}\n${code}`
+    })
     .join('\n\n')
 
-  // Find the entry point (main.jsx or App.jsx)
+  // Entry: main.jsx → render App, or just render App.jsx directly
   const hasMain = jsxFiles.some(f => f.path === 'src/main.jsx')
-  const appFile = jsxFiles.find(f => f.path.endsWith('App.jsx'))
-
-  // Generate the init code
   const initCode = hasMain
-    ? `\n// Init\nconst root = ReactDOM.createRoot(document.getElementById('root'));\nroot.render(React.createElement(React.StrictMode, null, React.createElement(App)));`
-    : appFile
-      ? `\n// Init\nconst root = ReactDOM.createRoot(document.getElementById('root'));\nroot.render(React.createElement(App));`
-      : ''
+    ? `\nconst root = ReactDOM.createRoot(document.getElementById('root'));\nroot.render(<App />);`
+    : `\nconst root = ReactDOM.createRoot(document.getElementById('root'));\nroot.render(<App />);`
 
   return `<!DOCTYPE html>
 <html lang="en">
@@ -77,14 +78,14 @@ function buildBundledPreview(
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
 <title>${indexHtml ? extractTitle(indexHtml.content) : 'Bloom Project'}</title>
-<script crossorigin src="https://unpkg.com/react@19/umd/react.development.js"></script>
-<script crossorigin src="https://unpkg.com/react-dom@19/umd/react-dom.development.js"></script>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/react/18.3.1/umd/react.production.min.js"></script>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/react-dom/18.3.1/umd/react-dom.production.min.js"></script>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/babel-standalone/7.24.0/babel.min.js"></script>
 <style>${allCss}</style>
 </head>
 <body>
 <div id="root"></div>
-<script>
-// React components from project files
+<script type="text/babel">
 ${allJs}
 ${initCode}
 </script>
@@ -95,142 +96,6 @@ ${initCode}
 function extractTitle(html: string): string {
   const m = html.match(/<title>([^<]+)<\/title>/)
   return m ? m[1] : 'Bloom Project'
-}
-
-/* ── JSX to JS Transform ─────────────────────────── */
-
-function transformJSX(code: string, filename: string): string {
-  let out = code
-
-  // Strip import statements (React is loaded from CDN)
-  out = out.replace(/^import\s+.*?from\s+['"][^'"]+['"]\s*;?\s*$/gm, '')
-  // Strip export statements
-  out = out.replace(/^export\s+(default\s+)?/gm, '')
-
-  // Convert JSX to React.createElement calls
-  // This is a basic but functional transform for common patterns
-
-  // Handle JSX elements: <Component attr="val">children</Component>
-  // We process from innermost to outermost by matching tags without children tags
-  let changed = true
-  let iterations = 0
-  while (changed && iterations < 50) {
-    changed = false
-    iterations++
-
-    // Match self-closing tags: <Component prop="val" />
-    out = out.replace(
-      /<([A-Z][A-Za-z0-9_]*)\s+([^>]*?)\s*\/>/g,
-      (_, tag, props) => `React.createElement(${tag}${props ? ', ' + jsxPropsToObj(props) : ', null'})`
-    )
-
-    // Match HTML self-closing: <div prop="val" />
-    out = out.replace(
-      /<([a-z][a-z0-9-]*)\s+([^>]*?)\s*\/>/g,
-      (_, tag, props) => `React.createElement('${tag}'${props ? ', ' + jsxPropsToObj(props) : ', null'})`
-    )
-
-    // Match component with children: <Component prop="val">children</Component>
-    out = out.replace(
-      /<([A-Z][A-Za-z0-9_]*)\s+([^>]*)>([\s\S]*?)<\/\1>/g,
-      (_, tag, props, children) => {
-        changed = true
-        const c = children.trim()
-        const args = [tag, props ? jsxPropsToObj(props) : 'null']
-        if (c) args.push(jsxChildren(c))
-        return `React.createElement(${args.join(', ')})`
-      }
-    )
-
-    // Match HTML element with children: <div prop="val">children</div>
-    out = out.replace(
-      /<([a-z][a-z0-9-]*)\s+([^>]*)>([\s\S]*?)<\/\1>/g,
-      (_, tag, props, children) => {
-        changed = true
-        const c = children.trim()
-        const args = [`'${tag}'`, props ? jsxPropsToObj(props) : 'null']
-        if (c) args.push(jsxChildren(c))
-        return `React.createElement(${args.join(', ')})`
-      }
-    )
-
-    // Match component without props with children: <Component>children</Component>
-    out = out.replace(
-      /<([A-Z][A-Za-z0-9_]*)>([\s\S]*?)<\/\1>/g,
-      (_, tag, children) => {
-        changed = true
-        return `React.createElement(${tag}, null, ${jsxChildren(children.trim())})`
-      }
-    )
-
-    // Match HTML without props with children: <tag>children</tag>
-    out = out.replace(
-      /<([a-z][a-z0-9-]*)>([\s\S]*?)<\/\1>/g,
-      (_, tag, children) => {
-        changed = true
-        return `React.createElement('${tag}', null, ${jsxChildren(children.trim())})`
-      }
-    )
-  }
-
-  // Clean up double commas and spaces
-  out = out.replace(/, ,/g, ', ')
-  out = out.replace(/,\s*,/g, ', ')
-  out = out.replace(/;\s*;/g, ';')
-
-  return `// --- ${filename} ---\n${out}`
-}
-
-function jsxPropsToObj(props: string): string {
-  if (!props.trim()) return 'null'
-  const attrs: string[] = []
-  const re = /([\w-]+)\s*=\s*(?:"([^"]*)"|'([^']*)'|\{([^}]*)\})/g
-  let m
-  while ((m = re.exec(props)) !== null) {
-    const name = m[1] === 'class' ? 'className' : m[1] === 'for' ? 'htmlFor' : m[1]
-    let value: string
-    if (m[2] !== undefined) {
-      value = JSON.stringify(m[2])
-    } else if (m[3] !== undefined) {
-      value = JSON.stringify(m[3])
-    } else if (m[4] !== undefined) {
-      value = m[4]
-    } else {
-      value = 'true'
-    }
-    attrs.push(`${name}: ${value}`)
-  }
-  return attrs.length > 0 ? `{ ${attrs.join(', ')} }` : 'null'
-}
-
-function jsxChildren(text: string): string {
-  if (!text) return 'null'
-  // If it contains expression braces, keep as-is
-  if (text.includes('{') && text.includes('}')) {
-    // Split into text and expressions
-    const parts: string[] = []
-    let remaining = text
-    while (remaining.length > 0) {
-      const exprStart = remaining.indexOf('{')
-      if (exprStart === -1) {
-        const trimmed = remaining.trim()
-        if (trimmed) parts.push(`"${trimmed.replace(/"/g, '\\"').replace(/\n/g, '\\n')}"`)
-        break
-      }
-      if (exprStart > 0) {
-        const textPart = remaining.slice(0, exprStart).trim()
-        if (textPart) parts.push(`"${textPart.replace(/"/g, '\\"').replace(/\n/g, '\\n')}"`)
-      }
-      remaining = remaining.slice(exprStart + 1)
-      const exprEnd = remaining.indexOf('}')
-      if (exprEnd === -1) break
-      const expr = remaining.slice(0, exprEnd).trim()
-      if (expr) parts.push(expr)
-      remaining = remaining.slice(exprEnd + 1)
-    }
-    return parts.length > 0 ? parts.join(', ') : 'null'
-  }
-  return `"${text.replace(/"/g, '\\"').replace(/\n/g, '\\n')}"`
 }
 
 /* ── Component ───────────────────────────────────── */
