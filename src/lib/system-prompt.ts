@@ -27,7 +27,7 @@ React and ReactDOM are loaded from CDN — you just write components.
 - JavaScript with JSX (.jsx files). No TypeScript.
 - React components with hooks (useState, useEffect, useRef, useCallback).
 - Tailwind CSS classes or regular CSS in .module.css files.
-- For Canvas games: useRef for the canvas element, useEffect for the game loop.
+- For Canvas games: full-screen canvas, centered content. No text outside the game area.
 - Complete implementations. No stubs, no placeholders, no TODOs.
 
 ## TOOLS

@@ -83,7 +83,13 @@ function buildBundledPreview(
 <script src="https://cdnjs.cloudflare.com/ajax/libs/react/18.3.1/umd/react.production.min.js"></script>
 <script src="https://cdnjs.cloudflare.com/ajax/libs/react-dom/18.3.1/umd/react-dom.production.min.js"></script>
 <script src="https://cdnjs.cloudflare.com/ajax/libs/babel-standalone/7.24.0/babel.min.js"></script>
-<style>${allCss}</style>
+<style>
+/* Default preview styles */
+* { box-sizing: border-box; margin: 0; padding: 0; }
+html, body { width: 100%; height: 100%; overflow: hidden; background: #000; font-family: system-ui, sans-serif; }
+#root { width: 100%; height: 100%; }
+${allCss}
+</style>
 </head>
 <body>
 <div id="root"></div>
