@@ -15,191 +15,97 @@ interface Props {
 
 /**
  * Build a preview HTML page from workspace files.
- * For React/TSX projects (no webcontainer yet), shows a file listing.
- * For HTML projects, renders the HTML directly.
+ * Renders index.html directly — the AI is instructed to create a working,
+ * self-contained HTML file with CDN imports for dependencies.
  */
 function buildPreviewSrcDoc(): string {
   const { files } = getWorkspace()
 
-  // Blank screen before the agent has done anything — only scaffold files exist
-  const userFiles = files.filter(
-    (f) =>
-      ![
-        'index.html',
-        'package.json',
-        'tsconfig.json',
-        'vite.config.ts',
-        'src/main.tsx',
-        'src/App.tsx',
-        'src/App.module.css',
-        'src/styles/globals.css',
-      ].includes(f.path)
-  )
-  if (userFiles.length === 0) {
+  // Check if index.html has been modified from the scaffold
+  const scaffoldHtml = `<!DOCTYPE html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>Bloom Project</title>
+  </head>
+  <body>
+    <div id="root"></div>
+    <script type="module" src="/src/main.tsx"></script>
+  </body>
+</html>`
+
+  const indexHtml = files.find((f) => f.path === 'index.html')
+  const hasUserFiles =
+    files.filter(
+      (f) =>
+        ![
+          'index.html',
+          'package.json',
+          'tsconfig.json',
+          'vite.config.ts',
+          'src/main.tsx',
+          'src/App.tsx',
+          'src/App.module.css',
+          'src/styles/globals.css',
+        ].includes(f.path)
+    ).length > 0
+
+  // Before any user work — blank screen
+  if (!hasUserFiles && indexHtml && indexHtml.content === scaffoldHtml) {
     return `<!DOCTYPE html><html lang="en"><head><meta charset="UTF-8"><meta name="viewport" content="width=device-width,initial-scale=1"><style>body{background:#0b0b0f;margin:0}</style></head><body></body></html>`
   }
 
-  const { files: _files } = getWorkspace()
-
-  // If there's an index.html, render it directly (classic website mode)
-  const indexHtml = files.find((f) => f.path === 'index.html')
+  // User has built something — render index.html
   if (indexHtml) {
-    // Check if this is a Vite/React project (has src/main.tsx)
-    const hasMainTsx = files.some((f) => f.path === 'src/main.tsx')
-    if (!hasMainTsx) {
-      // Plain HTML project — render directly
-      let doc = indexHtml.content
-      // Inject CSS files
-      for (const f of files) {
-        if (f.path.endsWith('.css') && !doc.includes(f.path)) {
-          doc = doc.replace('</head>', `<style>/* ${f.path} */\n${f.content}</style>\n</head>`)
+    let doc = indexHtml.content
+
+    // Inject CSS files into <head> if not already linked
+    for (const f of files) {
+      if (f.path.endsWith('.css')) {
+        if (!doc.includes(f.path)) {
+          doc = doc.replace('</head>', `  <style>/* ${f.path} */\n${f.content}\n</style>\n</head>`)
         }
       }
-      return doc
-    }
-  }
-
-  // React/TypeScript project — show the file overview in a nice preview
-  const configPaths = new Set([
-    'package.json',
-    'tsconfig.json',
-    'vite.config.ts',
-    'index.html',
-  ])
-  const configFiles = files.filter((f) => configPaths.has(f.path))
-  const componentFiles = files.filter(
-    (f) =>
-      (f.path.endsWith('.tsx') || f.path.endsWith('.ts')) &&
-      !configPaths.has(f.path)
-  )
-  const styleFiles = files.filter((f) => f.path.endsWith('.css'))
-  const otherFiles = files.filter(
-    (f) =>
-      !componentFiles.includes(f) &&
-      !styleFiles.includes(f) &&
-      !configFiles.includes(f)
-  )
-
-  const fileList = (list: typeof files, label: string) =>
-    list.length > 0
-      ? `<div class="section"><h3>${label}</h3>${list
-          .map(
-            (f) =>
-              `<div class="file"><span class="dot"></span>${f.path} <span class="size">${(f.content.length / 1024).toFixed(1)} KB</span></div>`
+      // Replace TS module scripts with inline JS (strip types)
+      if (f.path.endsWith('.ts') || f.path.endsWith('.tsx')) {
+        const srcAttr = `src="/${f.path}"`
+        if (doc.includes(srcAttr)) {
+          const js = stripTypes(f.content)
+          doc = doc.replace(
+            new RegExp(`<script[^>]*src="/${f.path.replace(/\./g, '\\.')}"[^>]*></script>`, 'g'),
+            `<script type="module">\n${js}\n</script>`
           )
-          .join('')}</div>`
-      : ''
+        }
+      }
+    }
 
-  const componentCount = componentFiles.length + otherFiles.filter(f => f.path.endsWith('.tsx') || f.path.endsWith('.ts')).length
+    return doc
+  }
 
-  return `<!DOCTYPE html>
-<html lang="en">
-<head>
-<meta charset="UTF-8">
-<meta name="viewport" content="width=device-width,initial-scale=1">
-<style>
-  * { box-sizing: border-box; margin: 0; padding: 0; }
-  body {
-    background: #0b0b0f;
-    color: #d4d4d8;
-    font-family: system-ui, -apple-system, sans-serif;
-    padding: 32px;
-    min-height: 100vh;
-  }
-  .header {
-    margin-bottom: 28px;
-    padding-bottom: 20px;
-    border-bottom: 1px solid rgba(255,255,255,0.06);
-  }
-  h1 {
-    font-size: 18px;
-    font-weight: 600;
-    color: #e8e8ed;
-    margin-bottom: 4px;
-  }
-  .subtitle {
-    font-size: 13px;
-    color: #888;
-  }
-  .stats {
-    display: flex;
-    gap: 20px;
-    margin-top: 12px;
-  }
-  .stat {
-    font-size: 12px;
-    color: #888;
-  }
-  .stat strong {
-    color: #4f8fff;
-    font-weight: 600;
-  }
-  .section {
-    margin-bottom: 20px;
-  }
-  h3 {
-    font-size: 11px;
-    font-weight: 600;
-    color: #666;
-    text-transform: uppercase;
-    letter-spacing: 0.06em;
-    margin-bottom: 8px;
-  }
-  .file {
-    font-family: 'Fira Code', 'Cascadia Code', monospace;
-    font-size: 12px;
-    padding: 4px 0;
-    color: #b0b0b8;
-    display: flex;
-    align-items: center;
-    gap: 8px;
-  }
-  .dot {
-    width: 6px;
-    height: 6px;
-    border-radius: 50%;
-    background: #4f8fff;
-    flex-shrink: 0;
-  }
-  .css .dot { background: #f59e0b; }
-  .config .dot { background: #6b7280; }
-  .size {
-    font-size: 10px;
-    color: #555;
-    margin-left: auto;
-  }
-  .empty {
-    font-size: 12px;
-    color: #555;
-    font-style: italic;
-    padding: 8px 0;
-  }
-  .footer {
-    margin-top: 32px;
-    padding-top: 16px;
-    border-top: 1px solid rgba(255,255,255,0.04);
-    font-size: 11px;
-    color: #444;
-  }
-</style>
-</head>
-<body>
-<div class="header">
-  <h1>${indexHtml ? 'React + TypeScript Project' : 'Empty Project'}</h1>
-  <p class="subtitle">${files.length} files — preview not available for React projects yet. Click <strong>Code</strong> to view source.</p>
-  <div class="stats">
-    <div class="stat"><strong>${files.length}</strong> files</div>
-    <div class="stat"><strong>${componentCount}</strong> components</div>
-    <div class="stat"><strong>${styleFiles.length}</strong> stylesheets</div>
-  </div>
-</div>
-${fileList(configFiles, 'Config')}
-${fileList(componentFiles, 'Components')}
-${fileList(styleFiles, 'Styles')}
-${fileList(otherFiles.filter(f => !configFiles.includes(f)), 'Other')}
-<div class="footer">Preview powered by Bloom — WebContainer support coming soon</div>
-</body>
-</html>`
+  // Fallback
+  return `<!DOCTYPE html><html lang="en"><head><meta charset="UTF-8"><meta name="viewport" content="width=device-width,initial-scale=1"><style>body{background:#0b0b0f;display:flex;align-items:center;justify-content:center;height:100vh;color:#888;font-family:system-ui,sans-serif;margin:0}</style></head><body><div style="text-align:center"><p style="font-size:18px;color:#ccc;margin-bottom:8px">Preview loading...</p><p style="font-size:13px">Click <strong>Code</strong> to view source files</p></div></body></html>`
+}
+
+/** Strip TypeScript type annotations for browser execution */
+function stripTypes(code: string): string {
+  let out = code
+  // Remove type annotations after variable declarations
+  out = out.replace(/:\s*[\w<>[\],\s|&{}]+(\s*=\s*)/g, '$1')
+  // Remove interface/type declarations
+  out = out.replace(/^(export\s+)?(interface|type)\s+\w+[\s\S]*?\{[\s\S]*?\}/gm, '')
+  out = out.replace(/^(export\s+)?(interface|type)\s+\w+[\s\S]*?=\s*[\w|&'"[\]]+;/gm, '')
+  // Remove return type annotations on functions
+  out = out.replace(/(\))\s*:\s*[\w<>[\],\s|&{}]+(\s*\{)/g, '$1$2')
+  // Remove generic type parameters
+  out = out.replace(/<[\w\s,]+>(?=\s*\()/g, '')
+  // Remove import type
+  out = out.replace(/import\s+type\s+.*?from\s+['"][^'"]+['"]\s*;?/g, '')
+  // Remove satisfies operator
+  out = out.replace(/\s+satisfies\s+[\w<>[\],\s|&{}]+/g, '')
+  // Remove as const
+  out = out.replace(/\s+as\s+const/g, '')
+  return out
 }
 
 export default function PreviewFrame({ device }: Props) {
