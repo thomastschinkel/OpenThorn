@@ -13,18 +13,15 @@ interface Props {
   device: Device
 }
 
+/* ── Preview Builder ─────────────────────────────── */
+
 function buildPreviewSrcDoc(): string {
   const { files } = getWorkspace()
 
   const scaffoldPaths = [
-    'index.html',
-    'package.json',
-    'vite.config.js',
-    'tailwind.config.js',
-    'postcss.config.js',
-    'src/index.css',
-    'src/main.jsx',
-    'src/App.jsx',
+    'index.html', 'package.json', 'vite.config.js',
+    'tailwind.config.js', 'postcss.config.js', 'src/index.css',
+    'src/main.jsx', 'src/App.jsx',
   ]
 
   const hasChanges =
@@ -32,17 +29,209 @@ function buildPreviewSrcDoc(): string {
     files.some((f) => !scaffoldPaths.includes(f.path))
 
   if (!hasChanges) {
-    return '<!DOCTYPE html><html><head><meta charset="UTF-8"><meta name="viewport" content="width=device-width,initial-scale=1"><style>body{background:#0b0b0f;margin:0}</style></head><body></body></html>'
+    return blankPage()
   }
 
-  const indexHtml = files.find((f) => f.path === 'index.html')
-  if (!indexHtml) {
-    return '<!DOCTYPE html><html><head><meta charset="UTF-8"><meta name="viewport" content="width=device-width,initial-scale=1"><style>body{background:#0b0b0f;display:flex;align-items:center;justify-content:center;height:100vh;color:#888;font-family:system-ui,sans-serif;margin:0}</style></head><body><p>No index.html found</p></body></html>'
+  // Collect all source files
+  const jsxFiles = files.filter(f => f.path.endsWith('.jsx') || f.path.endsWith('.tsx'))
+  const cssFiles = files.filter(f => f.path.endsWith('.css'))
+  const htmlFiles = files.filter(f => f.path.endsWith('.html'))
+
+  // If AI wrote a self-contained index.html, use it directly
+  const indexHtml = htmlFiles.find(f => f.path === 'index.html')
+  if (indexHtml && indexHtml.content.includes('<script') && indexHtml.content.includes('</script>')) {
+    return indexHtml.content
   }
 
-  // Render index.html directly — AI is instructed to make it self-contained
-  return indexHtml.content
+  // Build a bundled preview from all source files
+  return buildBundledPreview(jsxFiles, cssFiles, indexHtml)
 }
+
+function blankPage(): string {
+  return '<!DOCTYPE html><html><head><meta charset="UTF-8"><meta name="viewport" content="width=device-width,initial-scale=1"><style>body{background:#0b0b0f;margin:0}</style></head><body></body></html>'
+}
+
+/* ── Bundle builder ──────────────────────────────── */
+
+function buildBundledPreview(
+  jsxFiles: { path: string; content: string }[],
+  cssFiles: { path: string; content: string }[],
+  indexHtml: { path: string; content: string } | undefined,
+): string {
+  // Combine all CSS
+  const allCss = cssFiles.map(f => `/* ${f.path} */\n${f.content}`).join('\n\n')
+
+  // Transform JSX to plain JS
+  const allJs = jsxFiles
+    .map(f => transformJSX(f.content, f.path))
+    .join('\n\n')
+
+  // Find the entry point (main.jsx or App.jsx)
+  const hasMain = jsxFiles.some(f => f.path === 'src/main.jsx')
+  const appFile = jsxFiles.find(f => f.path.endsWith('App.jsx'))
+
+  // Generate the init code
+  const initCode = hasMain
+    ? `\n// Init\nconst root = ReactDOM.createRoot(document.getElementById('root'));\nroot.render(React.createElement(React.StrictMode, null, React.createElement(App)));`
+    : appFile
+      ? `\n// Init\nconst root = ReactDOM.createRoot(document.getElementById('root'));\nroot.render(React.createElement(App));`
+      : ''
+
+  return `<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>${indexHtml ? extractTitle(indexHtml.content) : 'Bloom Project'}</title>
+<script crossorigin src="https://unpkg.com/react@19/umd/react.development.js"></script>
+<script crossorigin src="https://unpkg.com/react-dom@19/umd/react-dom.development.js"></script>
+<style>${allCss}</style>
+</head>
+<body>
+<div id="root"></div>
+<script>
+// React components from project files
+${allJs}
+${initCode}
+</script>
+</body>
+</html>`
+}
+
+function extractTitle(html: string): string {
+  const m = html.match(/<title>([^<]+)<\/title>/)
+  return m ? m[1] : 'Bloom Project'
+}
+
+/* ── JSX to JS Transform ─────────────────────────── */
+
+function transformJSX(code: string, filename: string): string {
+  let out = code
+
+  // Strip import statements (React is loaded from CDN)
+  out = out.replace(/^import\s+.*?from\s+['"][^'"]+['"]\s*;?\s*$/gm, '')
+  // Strip export statements
+  out = out.replace(/^export\s+(default\s+)?/gm, '')
+
+  // Convert JSX to React.createElement calls
+  // This is a basic but functional transform for common patterns
+
+  // Handle JSX elements: <Component attr="val">children</Component>
+  // We process from innermost to outermost by matching tags without children tags
+  let changed = true
+  let iterations = 0
+  while (changed && iterations < 50) {
+    changed = false
+    iterations++
+
+    // Match self-closing tags: <Component prop="val" />
+    out = out.replace(
+      /<([A-Z][A-Za-z0-9_]*)\s+([^>]*?)\s*\/>/g,
+      (_, tag, props) => `React.createElement(${tag}${props ? ', ' + jsxPropsToObj(props) : ', null'})`
+    )
+
+    // Match HTML self-closing: <div prop="val" />
+    out = out.replace(
+      /<([a-z][a-z0-9-]*)\s+([^>]*?)\s*\/>/g,
+      (_, tag, props) => `React.createElement('${tag}'${props ? ', ' + jsxPropsToObj(props) : ', null'})`
+    )
+
+    // Match component with children: <Component prop="val">children</Component>
+    out = out.replace(
+      /<([A-Z][A-Za-z0-9_]*)\s+([^>]*)>([\s\S]*?)<\/\1>/g,
+      (_, tag, props, children) => {
+        changed = true
+        const c = children.trim()
+        const args = [tag, props ? jsxPropsToObj(props) : 'null']
+        if (c) args.push(jsxChildren(c))
+        return `React.createElement(${args.join(', ')})`
+      }
+    )
+
+    // Match HTML element with children: <div prop="val">children</div>
+    out = out.replace(
+      /<([a-z][a-z0-9-]*)\s+([^>]*)>([\s\S]*?)<\/\1>/g,
+      (_, tag, props, children) => {
+        changed = true
+        const c = children.trim()
+        const args = [`'${tag}'`, props ? jsxPropsToObj(props) : 'null']
+        if (c) args.push(jsxChildren(c))
+        return `React.createElement(${args.join(', ')})`
+      }
+    )
+
+    // Match component without props with children: <Component>children</Component>
+    out = out.replace(
+      /<([A-Z][A-Za-z0-9_]*)>([\s\S]*?)<\/\1>/g,
+      (_, tag, children) => {
+        changed = true
+        return `React.createElement(${tag}, null, ${jsxChildren(children.trim())})`
+      }
+    )
+
+    // Match HTML without props with children: <tag>children</tag>
+    out = out.replace(
+      /<([a-z][a-z0-9-]*)>([\s\S]*?)<\/\1>/g,
+      (_, tag, children) => {
+        changed = true
+        return `React.createElement('${tag}', null, ${jsxChildren(children.trim())})`
+      }
+    )
+  }
+
+  // Clean up double commas and spaces
+  out = out.replace(/, ,/g, ', ')
+  out = out.replace(/,\s*,/g, ', ')
+  out = out.replace(/;\s*;/g, ';')
+
+  return `// --- ${filename} ---\n${out}`
+}
+
+function jsxPropsToObj(props: string): string {
+  if (!props.trim()) return 'null'
+  // Split on spaces that precede attribute names
+  const attrs: string[] = []
+  const re = /([\w-]+)\s*=\s*(?:"([^"]*)"|'([^']*)'|\{([^}]*)\})/g
+  let m
+  while ((m = re.exec(props)) !== null) {
+    const name = m[1] === 'class' ? 'className' : m[1] === 'for' ? 'htmlFor' : m[1]
+    const value = m[2] ?? m[3] ?? m[4] ?? 'true'
+    attrs.push(`${name}: ${value}`)
+  }
+  return attrs.length > 0 ? `{ ${attrs.join(', ')} }` : 'null'
+}
+
+function jsxChildren(text: string): string {
+  if (!text) return 'null'
+  // If it contains expression braces, keep as-is
+  if (text.includes('{') && text.includes('}')) {
+    // Split into text and expressions
+    const parts: string[] = []
+    let remaining = text
+    while (remaining.length > 0) {
+      const exprStart = remaining.indexOf('{')
+      if (exprStart === -1) {
+        const trimmed = remaining.trim()
+        if (trimmed) parts.push(`"${trimmed.replace(/"/g, '\\"').replace(/\n/g, '\\n')}"`)
+        break
+      }
+      if (exprStart > 0) {
+        const textPart = remaining.slice(0, exprStart).trim()
+        if (textPart) parts.push(`"${textPart.replace(/"/g, '\\"').replace(/\n/g, '\\n')}"`)
+      }
+      remaining = remaining.slice(exprStart + 1)
+      const exprEnd = remaining.indexOf('}')
+      if (exprEnd === -1) break
+      const expr = remaining.slice(0, exprEnd).trim()
+      if (expr) parts.push(expr)
+      remaining = remaining.slice(exprEnd + 1)
+    }
+    return parts.length > 0 ? parts.join(', ') : 'null'
+  }
+  return `"${text.replace(/"/g, '\\"').replace(/\n/g, '\\n')}"`
+}
+
+/* ── Component ───────────────────────────────────── */
 
 export default function PreviewFrame({ device }: Props) {
   const [srcDoc, setSrcDoc] = useState(buildPreviewSrcDoc)
