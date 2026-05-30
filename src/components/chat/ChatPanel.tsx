@@ -485,7 +485,11 @@ export default function ChatPanel() {
       {/* Messages */}
       <div className={styles.messages}>
         {messages.map((msg) => (
-          <ChatMessage key={msg.id} message={msg} />
+          <ChatMessage
+            key={msg.id}
+            message={msg}
+            streaming={streaming && msg.id === messages[messages.length - 1]?.id}
+          />
         ))}
         <div ref={bottomRef} />
       </div>

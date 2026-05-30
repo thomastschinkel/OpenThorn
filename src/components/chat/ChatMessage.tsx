@@ -14,12 +14,14 @@ interface Message {
 
 interface Props {
   message: Message
+  streaming?: boolean
 }
 
 export type { Message, ContentBlock }
 
-export default function ChatMessage({ message }: Props) {
+export default function ChatMessage({ message, streaming }: Props) {
   const isUser = message.role === 'user'
+  const isGenerating = streaming && !isUser
 
   return (
     <div className={`${styles.row} ${isUser ? styles.user : styles.ai}`}>
@@ -83,10 +85,14 @@ export default function ChatMessage({ message }: Props) {
           )
         )}
 
-        {/* Action buttons (AI messages only) */}
-        {!isUser && (
+        {/* Copy button — only on AI messages that finished generating */}
+        {!isUser && !isGenerating && message.text && (
           <div className={styles.actions}>
-            <button className={styles.actionBtn} title="Copy">
+            <button
+              className={styles.actionBtn}
+              title="Copy"
+              onClick={() => navigator.clipboard.writeText(message.text)}
+            >
               <svg
                 width="14"
                 height="14"
@@ -99,34 +105,6 @@ export default function ChatMessage({ message }: Props) {
               >
                 <rect x="9" y="9" width="13" height="13" rx="2" ry="2" />
                 <path d="M5 15H4a2 2 0 0 1-2-2V4a2 2 0 0 1 2-2h9a2 2 0 0 1 2 2v1" />
-              </svg>
-            </button>
-            <button className={styles.actionBtn} title="Like">
-              <svg
-                width="14"
-                height="14"
-                viewBox="0 0 24 24"
-                fill="none"
-                stroke="currentColor"
-                strokeWidth="2"
-                strokeLinecap="round"
-                strokeLinejoin="round"
-              >
-                <path d="M14 9V5a3 3 0 0 0-3-3l-4 9v11h11.28a2 2 0 0 0 2-1.7l1.38-9a2 2 0 0 0-2-2.3H14z" />
-              </svg>
-            </button>
-            <button className={styles.actionBtn} title="Dislike">
-              <svg
-                width="14"
-                height="14"
-                viewBox="0 0 24 24"
-                fill="none"
-                stroke="currentColor"
-                strokeWidth="2"
-                strokeLinecap="round"
-                strokeLinejoin="round"
-              >
-                <path d="M10 15v4a3 3 0 0 0 3 3l4-9V2H5.72a2 2 0 0 0-2 1.7l-1.38 9a2 2 0 0 0 2 2.3H10z" />
               </svg>
             </button>
           </div>

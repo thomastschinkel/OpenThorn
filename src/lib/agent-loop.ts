@@ -89,7 +89,7 @@ export async function* runAgentLoop(
         method: 'POST',
         headers,
         body: JSON.stringify(payload),
-        signal: AbortSignal.timeout(120000),
+        signal: AbortSignal.timeout(300000),
         redirect: 'manual',
       })
     } catch (e) {
@@ -107,10 +107,21 @@ export async function* runAgentLoop(
     }
 
     // ── Read the streaming response ───────────────
-    const { textContent, toolCalls } = await readStream(
-      res,
-      adapter.name,
-    )
+    let textContent: string
+    let toolCalls: ToolCall[] | null
+    try {
+      const result = await readStream(res, adapter.name)
+      textContent = result.textContent
+      toolCalls = result.toolCalls
+    } catch (e) {
+      const msg = (e as Error).message
+      if (msg.includes('aborted') || msg.includes('AbortError')) {
+        yield { type: 'error', content: 'The request timed out. Try breaking your task into smaller steps or check your provider connection.' }
+      } else {
+        yield { type: 'error', content: `Stream error: ${msg}` }
+      }
+      return
+    }
 
     // Yield accumulated text from this turn
     if (textContent) {
