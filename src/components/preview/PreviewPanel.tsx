@@ -17,6 +17,7 @@ export default function PreviewPanel() {
         device={device}
         onDeviceChange={setDevice}
         onOpenCode={setCodeView}
+        onCloseCode={() => setCodeView(null)}
         codeOpen={codeView !== null}
       />
       {codeView ? (

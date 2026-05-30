@@ -8,10 +8,11 @@ interface Props {
   device: Device
   onDeviceChange: (d: Device) => void
   onOpenCode: (view: CodeView) => void
+  onCloseCode: () => void
   codeOpen: boolean
 }
 
-export default function PreviewToolbar({ device, onDeviceChange, onOpenCode, codeOpen: _codeOpen }: Props) {
+export default function PreviewToolbar({ device, onDeviceChange, onOpenCode, onCloseCode, codeOpen }: Props) {
   const [menuOpen, setMenuOpen] = useState(false)
   const [moreOpen, setMoreOpen] = useState(false)
   const menuRef = useRef<HTMLDivElement>(null)
@@ -110,13 +111,24 @@ export default function PreviewToolbar({ device, onDeviceChange, onOpenCode, cod
 
           {menuOpen && (
             <div className={styles.dropdown}>
-              <button className={styles.dropItem} onClick={() => { onOpenCode('code'); setMenuOpen(false) }}>
-                <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
-                  <polyline points="16 18 22 12 16 6"/>
-                  <polyline points="8 6 2 12 8 18"/>
-                </svg>
-                Code
-              </button>
+              {codeOpen && (
+                <button className={styles.dropItem} onClick={() => { onCloseCode(); setMenuOpen(false) }}>
+                  <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+                    <rect x="2" y="2" width="20" height="20" rx="2.18" ry="2.18"/>
+                    <polyline points="9 22 9 12 15 12 15 22"/>
+                  </svg>
+                  Preview
+                </button>
+              )}
+              {!codeOpen && (
+                <button className={styles.dropItem} onClick={() => { onOpenCode('code'); setMenuOpen(false) }}>
+                  <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+                    <polyline points="16 18 22 12 16 6"/>
+                    <polyline points="8 6 2 12 8 18"/>
+                  </svg>
+                  Code
+                </button>
+              )}
 
               <div className={styles.dropDivider} />
 

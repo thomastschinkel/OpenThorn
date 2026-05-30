@@ -223,20 +223,7 @@ export default function CodePanel({ initialView = 'code', onClose }: Props) {
       {/* Header */}
       <div className={styles.header}>
         <div className={styles.tabs}>
-          <button
-            className={`${styles.tab} ${view === 'files' ? styles.tabActive : ''}`}
-            onClick={() => setView('files')}
-          >
-            <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
-              <path d="M13 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V9z" />
-              <polyline points="13 2 13 9 20 9" />
-            </svg>
-            Files
-          </button>
-          <button
-            className={`${styles.tab} ${view === 'code' ? styles.tabActive : ''}`}
-            onClick={() => setView('code')}
-          >
+          <button className={`${styles.tab} ${styles.tabActive}`}>
             <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
               <polyline points="16 18 22 12 16 6" />
               <polyline points="8 6 2 12 8 18" />
