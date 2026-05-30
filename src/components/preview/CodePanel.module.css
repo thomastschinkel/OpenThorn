@@ -86,6 +86,38 @@
   text-transform: uppercase;
   letter-spacing: 0.06em;
   padding: 6px 6px 8px;
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+}
+
+.fileCount {
+  font-size: 10px;
+  color: var(--text-disabled);
+  background: var(--bg-hover);
+  padding: 1px 6px;
+  border-radius: var(--radius-xs);
+}
+
+.folder {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  padding: 4px 6px;
+  font-size: 11px;
+  font-weight: 600;
+  color: var(--text-secondary);
+  text-transform: uppercase;
+  letter-spacing: 0.04em;
+  margin-top: 4px;
+}
+
+.folderIcon {
+  font-size: 12px;
+}
+
+.folderName {
+  color: var(--text-tertiary);
 }
 
 .fileItem {
