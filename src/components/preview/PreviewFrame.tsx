@@ -35,10 +35,9 @@ function buildPreviewSrcDoc(): string {
   // Collect all source files
   const jsxFiles = files.filter(f => f.path.endsWith('.jsx') || f.path.endsWith('.tsx'))
   const cssFiles = files.filter(f => f.path.endsWith('.css'))
-  const htmlFiles = files.filter(f => f.path.endsWith('.html'))
+  const indexHtml = files.find(f => f.path === 'index.html')
 
   // Always build a bundled preview from source files
-  // (index.html is just a module entry point — not standalone)
   return buildBundledPreview(jsxFiles, cssFiles, indexHtml)
 }
 
