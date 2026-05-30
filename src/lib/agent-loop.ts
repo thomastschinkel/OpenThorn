@@ -11,7 +11,7 @@
 import type { Message } from '../components/chat/ChatPanel'
 import type { ProviderConfig } from './providers'
 import { getAdapter } from './adapters'
-import { buildSystemPrompt } from './system-prompt'
+import { buildSystemPrompt, type AgentMode } from './system-prompt'
 import {
   TOOL_DEFINITIONS,
   executeTool,
@@ -50,10 +50,21 @@ export async function* runAgentLoop(
   userMessage: string,
   provider: ProviderConfig,
   model: string,
+  mode: AgentMode = 'build',
   existingMessages: Message[] = []
 ): AsyncGenerator<AgentStreamEvent> {
   const adapter = getAdapter(provider.provider_key)
-  const systemPrompt = buildSystemPrompt(getWorkspace().files)
+  const systemPrompt = buildSystemPrompt(getWorkspace().files, mode)
+
+  // Filter tools based on mode — plan mode gets read-only tools
+  const availableTools =
+    mode === 'plan'
+      ? TOOL_DEFINITIONS.filter((t) =>
+          ['list_files', 'read_file', 'get_errors'].includes(
+            t.function.name
+          )
+        )
+      : TOOL_DEFINITIONS
 
   const messages: LoopMessage[] = [
     { role: 'system', content: systemPrompt },
@@ -80,7 +91,8 @@ export async function* runAgentLoop(
       adapter.name,
       messages,
       model,
-      lastBuildFailed ? 0.1 : 0.7
+      lastBuildFailed ? 0.1 : 0.7,
+      availableTools
     )
 
     let res: Response
@@ -379,7 +391,8 @@ function buildStreamingPayload(
   adapterName: string,
   messages: LoopMessage[],
   model: string,
-  temperature: number
+  temperature: number,
+  availableTools: typeof TOOL_DEFINITIONS
 ): Record<string, unknown> {
   // Build clean messages
   const cleanMessages = messages.map((m) => {
@@ -403,7 +416,7 @@ function buildStreamingPayload(
       })),
       max_tokens: 8192,
       stream: true,
-      tools: TOOL_DEFINITIONS.map((t) => ({
+      tools: availableTools.map((t) => ({
         name: t.function.name,
         description: t.function.description,
         input_schema: t.function.parameters,
@@ -428,7 +441,7 @@ function buildStreamingPayload(
       systemInstruction: systemMsg
         ? { parts: [{ text: systemMsg.content }] }
         : undefined,
-      tools: TOOL_DEFINITIONS.map((t) => ({
+      tools: availableTools.map((t) => ({
         functionDeclarations: [
           {
             name: t.function.name,

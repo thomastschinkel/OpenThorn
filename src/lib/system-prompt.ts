@@ -73,7 +73,43 @@ You operate in a Plan → Act → Reflect loop:
 6. Do NOT create files the project already has (package.json, tsconfig.json, vite.config.ts, index.html, main.tsx) unless you need to modify their content.
 7. Keep the project structure clean — don't create unnecessary folders or files.`
 
-export function buildSystemPrompt(files: WorkspaceFile[]): string {
+export type AgentMode = 'plan' | 'build'
+
+const MODE_INSTRUCTIONS: Record<AgentMode, string> = {
+  plan: `## MODE: PLAN
+You are in PLAN mode. You can ONLY read and analyze — you CANNOT create, modify, or delete files.
+
+Available tools in plan mode: list_files, read_file, get_errors.
+
+Your job:
+1. Analyze the workspace thoroughly
+2. Research and design the solution architecture
+3. Present a detailed implementation plan covering:
+   - What features will be built
+   - Component tree and data flow
+   - File structure (what goes where)
+   - Key design decisions and trade-offs
+4. Ask clarifying questions if requirements are ambiguous
+5. End your plan with: "Ready to build. Switch to Build mode and I'll implement this."
+
+Do NOT use write_file, edit_file, or delete_file in plan mode.
+Do NOT output any code — only prose and architecture discussion.`,
+
+  build: `## MODE: BUILD
+You are in BUILD mode. You have access to ALL tools and should build the implementation immediately.
+
+1. Analyze the workspace to understand the current state
+2. Plan briefly in your thinking (one or two sentences)
+3. Build the implementation — create and modify files using your tools
+4. Run the build to verify your work compiles
+5. Fix any errors automatically (up to 3 cycles)
+6. Summarize what you built
+
+Do NOT ask for confirmation — just build. Make reasonable assumptions and state them briefly.
+If the user's request is ambiguous, make your best guess and note it.`,
+}
+
+export function buildSystemPrompt(files: WorkspaceFile[], mode: AgentMode = 'build'): string {
   const fileTree = files
     .sort((a, b) => a.path.localeCompare(b.path))
     .map((f) => `  ${f.path} (${(f.content.length / 1024).toFixed(1)}KB)`)
@@ -92,5 +128,7 @@ export function buildSystemPrompt(files: WorkspaceFile[]): string {
     'Focus on adding new components, features, and styles — don\'t recreate existing infrastructure.',
   ].join('\n')
 
-  return BASE_PROMPT + context
+  const modeInstruction = MODE_INSTRUCTIONS[mode] ?? MODE_INSTRUCTIONS.build
+
+  return BASE_PROMPT + '\n\n' + modeInstruction + '\n\n' + context
 }

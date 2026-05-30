@@ -26,7 +26,7 @@ export interface Message {
 const welcomeMessage: Message = {
   id: 'welcome',
   role: 'assistant',
-  text: "Hey! I'm Bloom, your AI coding companion. I build full-stack web applications using TypeScript and React — just describe what you want to create and I'll handle the rest.\n\nI work in an autonomous loop: I analyze your workspace, plan the implementation, create files one by one, run the build, and fix any errors automatically.\n\nWhat should we build today?",
+  text: "Hey! I'm Bloom, your AI coding companion. I build full-stack web applications using TypeScript and React — just describe what you want to create and I'll handle the rest.\n\n**Build mode**: I analyze, plan, build, and verify — all in one go, fixing errors automatically.\n**Plan mode**: I research and design the architecture first, then you approve before I write any code.\n\nWhat should we build today?",
 }
 
 export default function ChatPanel() {
@@ -111,6 +111,7 @@ export default function ChatPanel() {
           text,
           provider as ProviderConfig,
           model,
+          mode,
           messages
         )) {
           switch (event.type) {
@@ -224,7 +225,7 @@ export default function ChatPanel() {
         setStreaming(false)
       }
     },
-    [messages, providerId, model]
+    [messages, providerId, model, mode]
   )
 
   useEffect(() => {
