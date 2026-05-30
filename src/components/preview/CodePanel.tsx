@@ -1,4 +1,4 @@
-import { useState, useEffect } from 'react'
+import { useState, useEffect, useCallback } from 'react'
 import { Light as SyntaxHighlighter } from 'react-syntax-highlighter'
 import html from 'react-syntax-highlighter/dist/esm/languages/hljs/htmlbars'
 import css from 'react-syntax-highlighter/dist/esm/languages/hljs/css'
@@ -20,54 +20,174 @@ export type CodeView = 'files' | 'code'
 function guessLanguage(name: string): string {
   const ext = name.split('.').pop()?.toLowerCase()
   switch (ext) {
-    case 'html':
-    case 'htm':
-      return 'html'
-    case 'css':
-      return 'css'
-    case 'js':
-    case 'mjs':
-    case 'cjs':
-      return 'javascript'
-    case 'ts':
-      return 'typescript'
-    case 'tsx':
-      return 'typescript'
-    case 'json':
-      return 'json'
-    case 'py':
-      return 'python'
-    default:
-      return 'text'
+    case 'html': case 'htm': return 'html'
+    case 'css': return 'css'
+    case 'js': case 'mjs': case 'cjs': return 'javascript'
+    case 'ts': case 'tsx': return 'typescript'
+    case 'json': return 'json'
+    default: return 'text'
   }
 }
 
-function fileTypeClass(name: string): string {
-  const ext = name.split('.').pop()?.toLowerCase()
-  switch (ext) {
-    case 'html':
-    case 'htm':
-      return styles.typeHtml
-    case 'css':
-      return styles.typeCss
-    case 'js':
-    case 'mjs':
-      return styles.typeJs
-    case 'ts':
-      return styles.typeTs
-    case 'tsx':
-      return styles.typeTsx
-    case 'json':
-      return styles.typeJson
-    default:
-      return styles.typeOther
-  }
+function fileExt(name: string): string {
+  return name.split('.').pop()?.toLowerCase() ?? ''
 }
 
 interface Props {
   initialView?: CodeView
   onClose: () => void
 }
+
+// ── Tree node types ──────────────────────────────
+
+interface TreeNode {
+  name: string
+  path: string
+  type: 'folder' | 'file'
+  children: TreeNode[]
+  file?: WorkspaceFile
+}
+
+function buildTree(files: WorkspaceFile[]): TreeNode[] {
+  const root: TreeNode[] = []
+  for (const f of files) {
+    const parts = f.path.split('/')
+    let current = root
+    for (let i = 0; i < parts.length; i++) {
+      const isFile = i === parts.length - 1
+      const segPath = parts.slice(0, i + 1).join('/')
+      let node = current.find((n) => n.name === parts[i])
+      if (!node) {
+        node = {
+          name: parts[i],
+          path: segPath,
+          type: isFile ? 'file' : 'folder',
+          children: [],
+          file: isFile ? f : undefined,
+        }
+        current.push(node)
+      }
+      if (isFile) {
+        node.file = f
+        node.type = 'file'
+      }
+      current = node.children
+    }
+  }
+  return sortTree(root)
+}
+
+function sortTree(nodes: TreeNode[]): TreeNode[] {
+  return nodes.sort((a, b) => {
+    if (a.type !== b.type) return a.type === 'folder' ? -1 : 1
+    return a.name.localeCompare(b.name)
+  }).map(n => ({ ...n, children: sortTree(n.children) }))
+}
+
+// ── File icon SVG ────────────────────────────────
+
+function FileIcon({ ext }: { ext: string }) {
+  const color = getExtColor(ext)
+  return (
+    <svg width="14" height="14" viewBox="0 0 14 14" fill="none">
+      <path d="M3 1h5l4 4v7a1 1 0 0 1-1 1H3a1 1 0 0 1-1-1V2a1 1 0 0 1 1-1z" fill={color} opacity="0.15" />
+      <path d="M8 1l4 4H8V1z" fill={color} opacity="0.3" />
+      <path d="M3 1h5l4 4v7a1 1 0 0 1-1 1H3a1 1 0 0 1-1-1V2a1 1 0 0 1 1-1z" stroke={color} strokeOpacity="0.5" strokeWidth="0.8" />
+      <text x="7" y="11" textAnchor="middle" fontSize="5.5" fontWeight="600" fill={color} fontFamily="system-ui">{ext.toUpperCase().slice(0, 3)}</text>
+    </svg>
+  )
+}
+
+function FolderIcon({ open }: { open: boolean }) {
+  return (
+    <svg width="14" height="14" viewBox="0 0 14 14" fill="none">
+      {open ? (
+        <path d="M1 2h4l2 1.5H13v8a1 1 0 0 1-1 1H2a1 1 0 0 1-1-1V2z" fill="#dcb65b" opacity="0.6" />
+      ) : (
+        <path d="M1 2h4l2 1.5H13v8a1 1 0 0 1-1 1H2a1 1 0 0 1-1-1V2z" fill="#dcb65b" opacity="0.3" stroke="#dcb65b" strokeOpacity="0.5" strokeWidth="0.6" />
+      )}
+    </svg>
+  )
+}
+
+function getExtColor(ext: string): string {
+  switch (ext) {
+    case 'tsx': return '#5fc9f8'
+    case 'ts': return '#3178c6'
+    case 'js': case 'jsx': return '#f7df1e'
+    case 'css': return '#42a5f5'
+    case 'html': return '#e44d26'
+    case 'json': return '#f5a623'
+    case 'md': return '#8b8b8b'
+    default: return '#8b8b8b'
+  }
+}
+
+// ── Recursive tree row ───────────────────────────
+
+function TreeRow({
+  node,
+  depth,
+  activePath,
+  onSelect,
+  defaultExpanded,
+}: {
+  node: TreeNode
+  depth: number
+  activePath: string | null
+  onSelect: (file: WorkspaceFile) => void
+  defaultExpanded: boolean
+}) {
+  const [expanded, setExpanded] = useState(defaultExpanded)
+
+  if (node.type === 'folder') {
+    return (
+      <>
+        <button
+          className={styles.treeRow}
+          style={{ paddingLeft: `${12 + depth * 14}px` }}
+          onClick={() => setExpanded(!expanded)}
+        >
+          <svg
+            className={`${styles.chevron} ${expanded ? styles.chevronOpen : ''}`}
+            width="10" height="10" viewBox="0 0 24 24" fill="none"
+            stroke="currentColor" strokeWidth="2.5" strokeLinecap="round"
+          >
+            <polyline points="8 4 16 12 8 20" />
+          </svg>
+          <FolderIcon open={expanded} />
+          <span className={styles.treeName}>{node.name}</span>
+        </button>
+        {expanded &&
+          node.children.map((child) => (
+            <TreeRow
+              key={child.path}
+              node={child}
+              depth={depth + 1}
+              activePath={activePath}
+              onSelect={onSelect}
+              defaultExpanded={depth < 1}
+            />
+          ))}
+      </>
+    )
+  }
+
+  const ext = fileExt(node.name)
+  return (
+    <button
+      className={`${styles.treeRow} ${activePath === node.path ? styles.treeRowActive : ''}`}
+      style={{ paddingLeft: `${12 + depth * 14}px` }}
+      onClick={() => node.file && onSelect(node.file)}
+    >
+      <span className={styles.chevronSpacer} />
+      <FileIcon ext={ext} />
+      <span className={styles.treeName}>{node.name}</span>
+    </button>
+  )
+}
+
+// ── Main component ───────────────────────────────
 
 export default function CodePanel({ initialView = 'code', onClose }: Props) {
   const [files, setFiles] = useState<WorkspaceFile[]>(getWorkspace().files)
@@ -76,12 +196,10 @@ export default function CodePanel({ initialView = 'code', onClose }: Props) {
   )
   const [view, setView] = useState<CodeView>(initialView)
 
-  // Subscribe to workspace changes
   useEffect(() => {
     return subscribeToWorkspace(() => {
       const updated = getWorkspace().files
       setFiles(updated)
-      // Keep active file selection if it still exists
       setActiveFile((prev) => {
         if (!prev) return updated[0] ?? null
         const stillExists = updated.find((f) => f.path === prev.path)
@@ -90,8 +208,15 @@ export default function CodePanel({ initialView = 'code', onClose }: Props) {
     })
   }, [])
 
-  // Build file tree with folder grouping
-  const fileTree = buildFileTree(files)
+  const handleSelect = useCallback(
+    (file: WorkspaceFile) => {
+      setActiveFile(file)
+      setView('code')
+    },
+    []
+  )
+
+  const tree = buildTree(files)
 
   return (
     <div className={styles.panel}>
@@ -102,16 +227,7 @@ export default function CodePanel({ initialView = 'code', onClose }: Props) {
             className={`${styles.tab} ${view === 'files' ? styles.tabActive : ''}`}
             onClick={() => setView('files')}
           >
-            <svg
-              width="14"
-              height="14"
-              viewBox="0 0 24 24"
-              fill="none"
-              stroke="currentColor"
-              strokeWidth="2"
-              strokeLinecap="round"
-              strokeLinejoin="round"
-            >
+            <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
               <path d="M13 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V9z" />
               <polyline points="13 2 13 9 20 9" />
             </svg>
@@ -121,16 +237,7 @@ export default function CodePanel({ initialView = 'code', onClose }: Props) {
             className={`${styles.tab} ${view === 'code' ? styles.tabActive : ''}`}
             onClick={() => setView('code')}
           >
-            <svg
-              width="14"
-              height="14"
-              viewBox="0 0 24 24"
-              fill="none"
-              stroke="currentColor"
-              strokeWidth="2"
-              strokeLinecap="round"
-              strokeLinejoin="round"
-            >
+            <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
               <polyline points="16 18 22 12 16 6" />
               <polyline points="8 6 2 12 8 18" />
             </svg>
@@ -138,15 +245,7 @@ export default function CodePanel({ initialView = 'code', onClose }: Props) {
           </button>
         </div>
         <button className={styles.closeBtn} onClick={onClose} title="Close">
-          <svg
-            width="16"
-            height="16"
-            viewBox="0 0 24 24"
-            fill="none"
-            stroke="currentColor"
-            strokeWidth="2"
-            strokeLinecap="round"
-          >
+          <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round">
             <line x1="18" y1="6" x2="6" y2="18" />
             <line x1="6" y1="6" x2="18" y2="18" />
           </svg>
@@ -158,35 +257,21 @@ export default function CodePanel({ initialView = 'code', onClose }: Props) {
         {/* File Tree */}
         <div className={styles.fileTree}>
           <div className={styles.fileTreeHeader}>
-            Project Files
+            PROJECT
             <span className={styles.fileCount}>{files.length}</span>
           </div>
-          {fileTree.map((entry) => {
-            if ('folder' in entry) {
-              return (
-                <div key={entry.folder} className={styles.folder}>
-                  <span className={styles.folderName}>{entry.folder}/</span>
-                </div>
-              )
-            }
-            const file = entry as WorkspaceFile
-            return (
-              <button
-                key={file.path}
-                className={`${styles.fileItem} ${activeFile?.path === file.path ? styles.fileActive : ''}`}
-                onClick={() => {
-                  setActiveFile(file)
-                  setView('code')
-                }}
-              >
-                <span className={`${styles.fileDot} ${fileTypeClass(file.path)}`} />
-                <span className={styles.fileName}>
-                  {file.path.split('/').pop()}
-                </span>
-                <span className={styles.filePath}>{file.path}</span>
-              </button>
-            )
-          })}
+          <div className={styles.treeList}>
+            {tree.map((node) => (
+              <TreeRow
+                key={node.path}
+                node={node}
+                depth={0}
+                activePath={activeFile?.path ?? null}
+                onSelect={handleSelect}
+                defaultExpanded={true}
+              />
+            ))}
+          </div>
         </div>
 
         {/* Code Viewer */}
@@ -200,9 +285,7 @@ export default function CodePanel({ initialView = 'code', onClose }: Props) {
             </div>
             <div className={styles.codeContent}>
               <SyntaxHighlighter
-                language={
-                  activeFile ? guessLanguage(activeFile.path) : 'text'
-                }
+                language={activeFile ? guessLanguage(activeFile.path) : 'text'}
                 style={atomOneDark}
                 showLineNumbers
                 wrapLines
@@ -230,42 +313,4 @@ export default function CodePanel({ initialView = 'code', onClose }: Props) {
       </div>
     </div>
   )
-}
-
-/* ── File Tree Builder ────────────────────────────── */
-
-interface FolderEntry {
-  folder: string
-}
-
-function buildFileTree(
-  files: WorkspaceFile[]
-): (WorkspaceFile | FolderEntry)[] {
-  const folders = new Map<string, WorkspaceFile[]>()
-  const root: WorkspaceFile[] = []
-
-  for (const f of files) {
-    const parts = f.path.split('/')
-    if (parts.length === 1) {
-      root.push(f)
-    } else {
-      const folder = parts.slice(0, -1).join('/')
-      if (!folders.has(folder)) folders.set(folder, [])
-      folders.get(folder)!.push(f)
-    }
-  }
-
-  const result: (WorkspaceFile | FolderEntry)[] = []
-
-  // Root files first
-  for (const f of root) result.push(f)
-
-  // Then folders with their files
-  for (const [folder, folderFiles] of folders) {
-    result.push({ folder })
-    for (const f of folderFiles.sort((a, b) => a.path.localeCompare(b.path)))
-      result.push(f)
-  }
-
-  return result
 }

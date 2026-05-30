@@ -21,6 +21,26 @@ interface Props {
 function buildPreviewSrcDoc(): string {
   const { files } = getWorkspace()
 
+  // Blank screen before the agent has done anything — only scaffold files exist
+  const userFiles = files.filter(
+    (f) =>
+      ![
+        'index.html',
+        'package.json',
+        'tsconfig.json',
+        'vite.config.ts',
+        'src/main.tsx',
+        'src/App.tsx',
+        'src/App.module.css',
+        'src/styles/globals.css',
+      ].includes(f.path)
+  )
+  if (userFiles.length === 0) {
+    return `<!DOCTYPE html><html lang="en"><head><meta charset="UTF-8"><meta name="viewport" content="width=device-width,initial-scale=1"><style>body{background:#0b0b0f;margin:0}</style></head><body></body></html>`
+  }
+
+  const { files: _files } = getWorkspace()
+
   // If there's an index.html, render it directly (classic website mode)
   const indexHtml = files.find((f) => f.path === 'index.html')
   if (indexHtml) {

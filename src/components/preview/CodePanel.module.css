@@ -129,50 +129,69 @@
   text-align: left;
 }
 
-.fileItem:hover {
-  background: var(--bg-hover);
+/* ── Tree rows ───────────────────────────────────── */
+
+.treeList {
+  display: flex;
+  flex-direction: column;
+}
+
+.treeRow {
+  display: flex;
+  align-items: center;
+  gap: 5px;
+  padding: 3px 8px;
+  font-size: 13px;
+  color: var(--text-secondary);
+  width: 100%;
+  text-align: left;
+  background: none;
+  border: none;
+  cursor: pointer;
+  font-family: var(--font-body);
+  border-radius: 0;
+  transition: background 0.08s ease;
+  min-height: 24px;
+}
+
+.treeRow:hover {
+  background: rgba(255, 255, 255, 0.04);
   color: var(--text-primary);
 }
 
-.fileActive {
-  background: rgba(79, 143, 255, 0.08);
-  color: var(--text-primary);
-}
-
-.fileActive:hover {
+.treeRowActive {
   background: rgba(79, 143, 255, 0.12);
+  color: var(--text-primary);
 }
 
-.fileDot {
-  width: 8px;
-  height: 8px;
-  border-radius: 50%;
-  flex-shrink: 0;
-  background: var(--text-disabled);
+.treeRowActive:hover {
+  background: rgba(79, 143, 255, 0.16);
 }
 
-.typeHtml { background: #e44d26; }
-.typeCss { background: #42a5f5; }
-.typeJs { background: #f7df1e; }
-.typeTs { background: #3178c6; }
-.typeTsx { background: #5fc9f8; }
-.typeJson { background: #f5a623; }
-.typeOther { background: var(--text-disabled); }
-
-.fileName {
-  font-weight: 500;
-}
-
-.filePath {
-  font-family: var(--font-mono);
-  font-size: 10px;
-  color: var(--text-tertiary);
-  margin-left: auto;
-  max-width: 80px;
+.treeName {
+  font-size: 13px;
   overflow: hidden;
   text-overflow: ellipsis;
   white-space: nowrap;
 }
+
+.chevron {
+  flex-shrink: 0;
+  color: var(--text-tertiary);
+  transition: transform 0.12s ease;
+}
+
+.chevronOpen {
+  transform: rotate(90deg);
+}
+
+.chevronSpacer {
+  width: 10px;
+  flex-shrink: 0;
+}
+
+/* Remove old file icon/dot styles */
+.fileItem { display: none; }
 
 /* ── Code Viewer ──────────────────────────────────── */
 .codeViewer {
