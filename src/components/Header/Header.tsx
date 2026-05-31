@@ -16,6 +16,14 @@ const solutionsItems: DropdownItem[] = [
   { label: 'For Agencies', description: 'Deliver client projects at speed', href: '#' },
 ]
 
+const useCasesItems: DropdownItem[] = [
+  { label: 'Landing Pages', description: 'High-converting marketing sites', href: '#' },
+  { label: 'SaaS Products', description: 'Full web apps with auth and dashboards', href: '#' },
+  { label: 'Portfolios', description: 'Showcase your work beautifully', href: '#' },
+  { label: 'E-Commerce', description: 'Online stores with payment integration', href: '#' },
+  { label: 'Blogs & Content', description: 'Content-rich sites with CMS', href: '#' },
+]
+
 const resourcesItems: DropdownItem[] = [
   { label: 'Documentation', description: 'Learn how to use Bloom', href: '#' },
   { label: 'API Reference', description: 'Integrate with our API', href: '#' },
@@ -25,8 +33,9 @@ const resourcesItems: DropdownItem[] = [
 
 export default function Header() {
   const [scrolled, setScrolled] = useState(false)
-  const [openDropdown, setOpenDropdown] = useState<'solutions' | 'resources' | null>(null)
+  const [openDropdown, setOpenDropdown] = useState<'solutions' | 'useCases' | 'resources' | null>(null)
   const solutionsRef = useRef<HTMLDivElement>(null)
+  const useCasesRef = useRef<HTMLDivElement>(null)
   const resourcesRef = useRef<HTMLDivElement>(null)
 
   useEffect(() => {
@@ -39,6 +48,7 @@ export default function Header() {
     const handleClickOutside = (e: MouseEvent) => {
       if (
         solutionsRef.current && !solutionsRef.current.contains(e.target as Node) &&
+        useCasesRef.current && !useCasesRef.current.contains(e.target as Node) &&
         resourcesRef.current && !resourcesRef.current.contains(e.target as Node)
       ) {
         setOpenDropdown(null)
@@ -74,6 +84,33 @@ export default function Header() {
             <div className={`${styles.dropdown} ${openDropdown === 'solutions' ? styles.dropdownOpen : ''}`}>
               <div className={styles.dropdownInner}>
                 {solutionsItems.map((item) => (
+                  <a key={item.label} href={item.href} className={styles.dropdownItem}>
+                    <div className={styles.dropdownItemTitle}>{item.label}</div>
+                    <div className={styles.dropdownItemDesc}>{item.description}</div>
+                  </a>
+                ))}
+              </div>
+            </div>
+          </div>
+
+          {/* Use Cases */}
+          <div
+            ref={useCasesRef}
+            className={styles.navItem}
+            onMouseEnter={() => setOpenDropdown('useCases')}
+            onMouseLeave={() => setOpenDropdown(null)}
+            role="button"
+            tabIndex={0}
+            aria-expanded={openDropdown === 'useCases'}
+            onKeyDown={(e) => { if (e.key === 'Enter' || e.key === ' ') setOpenDropdown(openDropdown === 'useCases' ? null : 'useCases') }}
+          >
+            Use Cases
+            <svg className={`${styles.chevron} ${openDropdown === 'useCases' ? styles.chevronOpen : ''}`} viewBox="0 0 14 14" fill="none" stroke="currentColor" strokeWidth="2">
+              <path d="M3 5l4 4 4-4" />
+            </svg>
+            <div className={`${styles.dropdown} ${openDropdown === 'useCases' ? styles.dropdownOpen : ''}`}>
+              <div className={styles.dropdownInner}>
+                {useCasesItems.map((item) => (
                   <a key={item.label} href={item.href} className={styles.dropdownItem}>
                     <div className={styles.dropdownItemTitle}>{item.label}</div>
                     <div className={styles.dropdownItemDesc}>{item.description}</div>
