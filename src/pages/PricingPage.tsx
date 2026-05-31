@@ -4,49 +4,6 @@ import { fetchPricing, getProviderLabel, getTopModels, type PricingTable } from 
 import { fetchBenchmarks, type BenchmarkEntry } from '../lib/benchmarks'
 import styles from './PricingPage.module.css'
 
-// Merge pricing + benchmark data for the scatter chart
-function mergeData(
-  pricing: PricingTable | null,
-  benchmarks: BenchmarkEntry[],
-): { model: string; provider: string; outputCost: number; sweScore: number }[] {
-  if (!pricing) return []
-
-  const costMap: Record<string, { output: number; provider: string }> = {}
-  for (const [providerKey, models] of Object.entries(pricing)) {
-    if (providerKey === '$schema' || providerKey === 'versionedAt') continue
-    for (const [id, m] of Object.entries(models as Record<string, { outputPer1M: number }>)) {
-      costMap[id] = { output: m.outputPer1M, provider: providerKey }
-    }
-  }
-
-  return benchmarks
-    .filter((b) => b.score > 0)
-    .map((b) => {
-      // Try to match benchmark model to pricing entry
-      const slug = b.model.toLowerCase().replace(/\s+/g, '-')
-      let outputCost = costMap[slug]?.output ?? 0
-
-      if (!outputCost) {
-        for (const [id, info] of Object.entries(costMap)) {
-          if (id.includes(slug.split('-').slice(0, 2).join('-'))) {
-            outputCost = info.output
-            break
-          }
-        }
-      }
-
-      return {
-        model: b.model,
-        provider: b.provider,
-        outputCost,
-        sweScore: b.score,
-      }
-    })
-    .filter((d) => d.outputCost > 0 && d.sweScore > 0)
-    .slice(0, 10)
-    .filter((d) => d.outputCost < 200) // remove outliers
-}
-
 export default function PricingPage() {
   const [data, setData] = useState<PricingTable | null>(null)
   const [benchmarks, setBenchmarks] = useState<BenchmarkEntry[]>([])
@@ -61,10 +18,8 @@ export default function PricingPage() {
       .catch(() => {})
   }, [])
 
-  const scatterData = mergeData(data, benchmarks)
-  const maxCost = Math.max(...scatterData.map((d) => d.outputCost), 1)
-  const minSwe = Math.min(...scatterData.map((d) => d.sweScore), 50)
-  const maxSwe = Math.max(...scatterData.map((d) => d.sweScore), 90)
+  const scatterData = benchmarks.filter((b) => b.outputCost > 0)
+  const maxCost = Math.max(...scatterData.map((d) => d.outputCost), 5)
 
   return (
     <div className={styles.page}>
@@ -77,14 +32,14 @@ export default function PricingPage() {
         <h1 className={styles.title}>AI model pricing</h1>
         <p className={styles.subtitle}>
           Bloom is BYOK — bring your own keys, pay providers directly. No markup.
-          Data fetched live, always up to date.
+          Data curated from official sources, always up to date.
         </p>
       </motion.div>
 
-      {!data && !error && <div className={styles.loading}>Loading latest data from the web...</div>}
-      {error && <div className={styles.error}>Couldn't load pricing data. Try again shortly.</div>}
+      {!data && !error && <div className={styles.loading}>Loading latest data...</div>}
+      {error && <div className={styles.error}>Couldn't load pricing. Try again shortly.</div>}
 
-      {/* Coding quality vs cost — live scatter chart */}
+      {/* Coding quality vs cost scatter chart */}
       {scatterData.length > 0 && (
         <motion.div
           className={styles.chartSection}
@@ -94,19 +49,18 @@ export default function PricingPage() {
         >
           <h2 className={styles.sectionTitle}>Coding quality vs API cost</h2>
           <p className={styles.chartSubtitle}>
-            Higher = better at coding (SWE-Bench). Further right = more expensive.
-            Data from HuggingFace + GitHub, updated live.
+            Higher = better at coding (SWE-Bench). Further right = more expensive per token.
           </p>
           <div className={styles.chartContainer}>
             <div className={styles.scatterChart}>
-              <span className={styles.yAxisLabel}>SWE-Bench score →</span>
-              <span className={`${styles.scatterAxis} ${styles.xAxis}`}>Output cost per 1M tokens ($) →</span>
+              <span className={styles.yAxisLabel}>SWE-Bench (%) →</span>
+              <span className={`${styles.scatterAxis} ${styles.xAxis}`}>Output $ per 1M tokens →</span>
 
               <svg className={styles.scatterSvg} viewBox="0 0 800 370" preserveAspectRatio="none">
                 {[60, 70, 80, 90].map((v) => (
-                  <line key={`h${v}`} x1="80" y1={340 - ((v - minSwe + 10) / (maxSwe - minSwe + 20)) * 300} x2="780" y2={340 - ((v - minSwe + 10) / (maxSwe - minSwe + 20)) * 300} stroke="rgba(255,255,255,0.04)" strokeWidth="1" />
+                  <line key={`h${v}`} x1="80" y1={340 - ((v - 55) / 40) * 300} x2="780" y2={340 - ((v - 55) / 40) * 300} stroke="rgba(255,255,255,0.04)" strokeWidth="1" />
                 ))}
-                {Array.from({ length: 6 }, (_, i) => (maxCost / 6) * (i + 1)).map((v) => (
+                {[0, 5, 10, 15, 20, 25, 30].map((v) => (
                   <line key={`v${v}`} x1={80 + (v / maxCost) * 680} y1="20" x2={80 + (v / maxCost) * 680} y2="340" stroke="rgba(255,255,255,0.04)" strokeWidth="1" />
                 ))}
               </svg>
@@ -117,9 +71,9 @@ export default function PricingPage() {
                   className={styles.scatterDot}
                   style={{
                     left: `${(d.outputCost / maxCost) * 85 + 10}%`,
-                    top: `${100 - ((d.sweScore - minSwe + 10) / (maxSwe - minSwe + 20)) * 85 - 8}%`,
+                    top: `${100 - ((d.sweScore - 55) / 40) * 85 - 8}%`,
                   }}
-                  title={`${d.model}: $${d.outputCost.toFixed(2)}/MTok output, SWE-Bench ${d.sweScore}%`}
+                  title={`${d.model} (${d.provider}): $${d.outputCost}/MTok, SWE-Bench ${d.sweScore}%`}
                 >
                   <div className={styles.dotCircle} />
                   <span className={styles.dotLabel}>{d.model}</span>
@@ -130,7 +84,7 @@ export default function PricingPage() {
         </motion.div>
       )}
 
-      {/* Live pricing table — flagship models only */}
+      {/* Flagship pricing table */}
       {data && (
         <motion.div
           className={styles.chartSection}
@@ -138,9 +92,9 @@ export default function PricingPage() {
           animate={{ opacity: 1, y: 0 }}
           transition={{ duration: 0.5, delay: 0.2 }}
         >
-          <h2 className={styles.sectionTitle}>Flagship models</h2>
+          <h2 className={styles.sectionTitle}>Flagship model pricing</h2>
           <p className={styles.chartSubtitle}>
-            The models that matter. Updated {data.versionedAt}.
+            The models you actually want. Fetched live · Updated {data.versionedAt}.
           </p>
           <div className={styles.chartContainer}>
             <table className={styles.table}>
