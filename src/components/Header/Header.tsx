@@ -10,10 +10,13 @@ interface DropdownItem {
 }
 
 const solutionsItems: DropdownItem[] = [
-  { label: 'For Designers', description: 'Turn Figma ideas into code', href: '#' },
-  { label: 'For Developers', description: 'Prototype faster with AI', href: '#' },
-  { label: 'For Startups', description: 'Launch MVPs in hours', href: '#' },
-  { label: 'For Agencies', description: 'Deliver client projects at speed', href: '#' },
+  { label: 'Founders', description: 'Ship before you pitch', href: '#' },
+  { label: 'Sales', description: 'Build the demo live', href: '#' },
+  { label: 'Product managers', description: 'Prototype, don\'t spec', href: '#' },
+  { label: 'Designers', description: 'Your designs, built', href: '#' },
+  { label: 'Marketers', description: 'Launch pages in minutes', href: '#' },
+  { label: 'Ops', description: 'Tools that fit your flow', href: '#' },
+  { label: 'People', description: 'HR tools your team loves', href: '#' },
 ]
 
 const useCasesItems: DropdownItem[] = [
