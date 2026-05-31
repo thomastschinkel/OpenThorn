@@ -70,15 +70,6 @@ export default function BYOKSection() {
         />
       </motion.div>
 
-      <motion.p
-        className={styles.footnote}
-        initial={{ opacity: 0 }}
-        whileInView={{ opacity: 1 }}
-        viewport={{ once: true }}
-        transition={{ duration: 0.4, delay: 0.4 }}
-      >
-        Bloom is the only AI website builder that puts you in control of your stack.
-      </motion.p>
     </section>
   )
 }
