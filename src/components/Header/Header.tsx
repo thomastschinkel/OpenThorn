@@ -1,6 +1,8 @@
 import { useState, useEffect, useRef } from 'react'
+import { Link } from 'react-router-dom'
 import SlideInButton from '../SlideInButton/SlideInButton'
 import NeumorphButton from '../NeumorphButton/NeumorphButton'
+import MobileMenu from '../MobileMenu/MobileMenu'
 import styles from './Header.module.css'
 
 interface DropdownItem {
@@ -68,6 +70,7 @@ function DropdownMenu({ items, isOpen, cols = 2 }: { items: DropdownItem[]; isOp
 export default function Header() {
   const [scrolled, setScrolled] = useState(false)
   const [openDropdown, setOpenDropdown] = useState<DropdownKey | null>(null)
+  const [mobileOpen, setMobileOpen] = useState(false)
   const solutionsRef = useRef<HTMLDivElement>(null)
   const useCasesRef = useRef<HTMLDivElement>(null)
   const resourcesRef = useRef<HTMLDivElement>(null)
@@ -101,7 +104,8 @@ export default function Header() {
   }
 
   return (
-    <header className={`${styles.header} ${scrolled ? styles.headerScrolled : ''}`}>
+    <>
+      <header className={`${styles.header} ${scrolled ? styles.headerScrolled : ''}`}>
       <div className={styles.inner}>
         <a href="/" className={styles.logo}>
           <img src="/assets/logo.png" alt="" className={styles.logoImg} />
@@ -147,6 +151,13 @@ export default function Header() {
 
           <span className={styles.divider} />
 
+          {/* Pricing */}
+          <Link to="/pricing" className={styles.navItem}>
+            Pricing
+          </Link>
+
+          <span className={styles.divider} />
+
           {/* GitHub */}
           <a href="https://github.com" className={styles.navItem} target="_blank" rel="noopener noreferrer">
             GitHub
@@ -175,7 +186,7 @@ export default function Header() {
         <div className={styles.actions}>
           <NeumorphButton>Login</NeumorphButton>
           <SlideInButton>Get Started</SlideInButton>
-          <button className={styles.mobileMenuBtn} aria-label="Menu">
+          <button className={styles.mobileMenuBtn} aria-label="Menu" onClick={() => setMobileOpen(true)}>
             <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
               <path d="M3 12h18M3 6h18M3 18h18" />
             </svg>
@@ -183,5 +194,7 @@ export default function Header() {
         </div>
       </div>
     </header>
+      <MobileMenu isOpen={mobileOpen} onClose={() => setMobileOpen(false)} />
+    </>
   )
 }

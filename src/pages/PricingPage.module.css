@@ -1,0 +1,277 @@
+.page {
+  min-height: 100vh;
+  padding: calc(var(--header-height) + var(--space-4xl)) var(--space-lg) var(--space-4xl);
+  max-width: var(--max-width);
+  margin: 0 auto;
+}
+
+.header {
+  text-align: center;
+  margin-bottom: var(--space-4xl);
+}
+
+.title {
+  font-family: var(--font-display);
+  font-size: clamp(36px, 5vw, 52px);
+  font-weight: 700;
+  color: var(--color-text);
+  margin-bottom: var(--space-md);
+}
+
+.subtitle {
+  font-size: 17px;
+  color: var(--color-text-secondary);
+  max-width: 500px;
+  margin: 0 auto;
+}
+
+/* Section */
+.sectionTitle {
+  font-family: var(--font-display);
+  font-size: 24px;
+  font-weight: 600;
+  color: var(--color-text);
+  margin-bottom: var(--space-xl);
+}
+
+/* Provider cards */
+.providerGrid {
+  display: grid;
+  grid-template-columns: repeat(4, 1fr);
+  gap: var(--space-lg);
+  margin-bottom: var(--space-4xl);
+}
+
+.providerCard {
+  background: var(--color-surface);
+  border: 1px solid var(--color-border-visible);
+  border-radius: var(--radius-lg);
+  padding: var(--space-xl);
+  text-align: center;
+}
+
+.providerName {
+  font-family: var(--font-display);
+  font-size: 18px;
+  font-weight: 600;
+  color: var(--color-text);
+  margin-bottom: var(--space-xs);
+}
+
+.providerModels {
+  font-size: 13px;
+  color: var(--color-text-muted);
+  margin-bottom: var(--space-md);
+}
+
+.providerPrice {
+  font-size: 14px;
+  color: var(--color-text-secondary);
+  margin-bottom: var(--space-sm);
+}
+
+.priceHighlight {
+  color: var(--color-accent);
+  font-weight: 600;
+}
+
+/* Chart area */
+.chartSection {
+  margin-bottom: var(--space-4xl);
+}
+
+.chartContainer {
+  background: var(--color-surface);
+  border: 1px solid var(--color-border-visible);
+  border-radius: var(--radius-lg);
+  padding: var(--space-2xl);
+  overflow-x: auto;
+}
+
+/* Bar chart */
+.barChart {
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+}
+
+.barRow {
+  display: flex;
+  align-items: center;
+  gap: var(--space-md);
+}
+
+.barLabel {
+  width: 180px;
+  text-align: right;
+  font-size: 13px;
+  font-weight: 500;
+  color: var(--color-text-secondary);
+  flex-shrink: 0;
+}
+
+.barTrack {
+  flex: 1;
+  height: 28px;
+  background: var(--color-bg);
+  border-radius: var(--radius-sm);
+  overflow: hidden;
+  position: relative;
+}
+
+.barFill {
+  height: 100%;
+  border-radius: var(--radius-sm);
+  background: linear-gradient(90deg, var(--color-accent), #6366F1);
+  display: flex;
+  align-items: center;
+  justify-content: flex-end;
+  padding-right: 10px;
+  font-size: 12px;
+  font-weight: 600;
+  color: #fff;
+  transition: width 1s var(--ease-out-expo);
+}
+
+/* Scatter / comparison chart */
+.scatterChart {
+  position: relative;
+  height: 400px;
+  margin: var(--space-xl) 0;
+}
+
+.scatterDot {
+  position: absolute;
+  transform: translate(-50%, -50%);
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  cursor: default;
+}
+
+.dotCircle {
+  width: 14px;
+  height: 14px;
+  border-radius: 50%;
+  border: 2px solid var(--color-accent);
+  background: rgba(139, 92, 246, 0.2);
+  transition: transform 0.2s, box-shadow 0.2s;
+}
+
+.scatterDot:hover .dotCircle {
+  transform: scale(1.5);
+  box-shadow: 0 0 16px rgba(139, 92, 246, 0.4);
+}
+
+.dotLabel {
+  font-size: 11px;
+  color: var(--color-text-secondary);
+  margin-top: 6px;
+  white-space: nowrap;
+  text-align: center;
+}
+
+.scatterAxis {
+  position: absolute;
+  font-size: 11px;
+  color: var(--color-text-muted);
+}
+
+.xAxis { bottom: -20px; left: 50%; transform: translateX(-50%); }
+.yAxisLabel {
+  position: absolute;
+  left: -50px;
+  top: 50%;
+  transform: rotate(-90deg) translateX(-50%);
+  font-size: 11px;
+  color: var(--color-text-muted);
+  white-space: nowrap;
+}
+
+/* Grid lines */
+.scatterSvg {
+  position: absolute;
+  inset: 0;
+  pointer-events: none;
+}
+
+/* Table */
+.table {
+  width: 100%;
+  border-collapse: collapse;
+}
+
+.table th {
+  text-align: left;
+  padding: 12px 16px;
+  font-size: 11px;
+  font-weight: 600;
+  text-transform: uppercase;
+  letter-spacing: 0.06em;
+  color: var(--color-text-muted);
+  border-bottom: 1px solid var(--color-border-visible);
+}
+
+.table td {
+  padding: 14px 16px;
+  font-size: 14px;
+  color: var(--color-text-secondary);
+  border-bottom: 1px solid var(--color-border);
+}
+
+.table tr:hover td {
+  background: rgba(255, 255, 255, 0.02);
+}
+
+.modelName {
+  color: var(--color-text);
+  font-weight: 600;
+}
+
+.providerTag {
+  display: inline-block;
+  padding: 2px 8px;
+  border-radius: var(--radius-full);
+  font-size: 11px;
+  font-weight: 500;
+  background: var(--color-accent-wash);
+  color: var(--color-accent);
+}
+
+/* Key insight box */
+.insight {
+  background: var(--color-surface-raised);
+  border: 1px solid var(--color-border-glow);
+  border-radius: var(--radius-lg);
+  padding: var(--space-xl);
+  margin-top: var(--space-2xl);
+  text-align: center;
+}
+
+.insightTitle {
+  font-family: var(--font-display);
+  font-size: 18px;
+  font-weight: 600;
+  color: var(--color-text);
+  margin-bottom: var(--space-sm);
+}
+
+.insightText {
+  font-size: 15px;
+  color: var(--color-text-secondary);
+  line-height: 1.7;
+}
+
+.insightHighlight {
+  color: var(--color-accent);
+  font-weight: 600;
+}
+
+@media (max-width: 1024px) {
+  .providerGrid { grid-template-columns: repeat(2, 1fr); }
+}
+@media (max-width: 640px) {
+  .providerGrid { grid-template-columns: 1fr; }
+  .barLabel { width: 120px; font-size: 12px; }
+  .scatterChart { height: 300px; }
+}
