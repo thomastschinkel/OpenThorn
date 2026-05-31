@@ -1,103 +1,132 @@
 import { motion } from 'framer-motion'
+import Carousel3D from '../Carousel3D/Carousel3D'
+import type { Carousel3DCard } from '../Carousel3D/Carousel3D'
 import styles from './BYOKSection.module.css'
 
-const features = [
+const featureCards: Carousel3DCard[] = [
   {
+    icon: <KeyIcon />,
     title: 'Bring your own keys',
-    description:
-      'Connect OpenAI, Anthropic, Google, or any provider. Use the models you already pay for.',
-    icon: KeyCardIcon,
+    description: 'Connect OpenAI, Anthropic, Google — any provider. Use the models you already pay for.',
   },
   {
+    icon: <DollarIcon />,
     title: 'Zero platform markup',
-    description:
-      'Unlike Lovable or Base44, Bloom charges no subscription or hidden fees. Pay only what the provider charges.',
-    icon: ZeroIcon,
+    description: 'Unlike Lovable or Base44, Bloom charges no subscription and no hidden fees. Pay only API costs.',
   },
   {
-    title: 'Full data privacy',
-    description:
-      'Everything runs in your browser. Your keys, your data, your code — full sovereignty.',
-    icon: PrivacyIcon,
+    icon: <DbIcon />,
+    title: 'Powered by Supabase',
+    description: 'Your projects, settings, and data are stored securely in your own Supabase instance.',
+  },
+  {
+    icon: <CodeIcon />,
+    title: 'Full stack control',
+    description: 'Deploy anywhere. Export your code. No vendor lock-in — your project, your rules.',
+  },
+  {
+    icon: <SparkIcon />,
+    title: 'AI that builds, not chats',
+    description: 'Bloom writes real code in real time. See every file, every component, every change.',
+  },
+  {
+    icon: <GlobeIcon />,
+    title: 'One-click deploy',
+    description: 'Push to Vercel, Netlify, or your own server. Go from idea to live in minutes.',
   },
 ]
 
 export default function BYOKSection() {
   return (
     <section className={styles.section}>
-      <div className={styles.inner}>
-        <motion.div
-          initial={{ opacity: 0, y: 16 }}
-          whileInView={{ opacity: 1, y: 0 }}
-          viewport={{ once: true, margin: '-60px' }}
-          transition={{ duration: 0.5, ease: [0.19, 1, 0.22, 1] }}
-        >
-          <div className={styles.kicker}>Why Bloom</div>
-          <h2 className={styles.title}>
-            Your keys,{' '}
-            <span className={styles.titleItalic}>your control</span>
-          </h2>
-          <p className={styles.bodyText}>
-            Most AI website builders lock you into expensive subscriptions.
-            <span className={styles.bodyHighlight}> Bloom is different.</span> It's BYOK —
-            bring your own keys, pay only for what you use, and keep full ownership of your stack.
-          </p>
-        </motion.div>
+      <motion.div
+        initial={{ opacity: 0, y: 16 }}
+        whileInView={{ opacity: 1, y: 0 }}
+        viewport={{ once: true, margin: '-60px' }}
+        transition={{ duration: 0.5, ease: [0.19, 1, 0.22, 1] }}
+      >
+        <div className={styles.kicker}>Why Bloom</div>
+        <h2 className={styles.title}>
+          Your keys,{' '}
+          <span className={styles.titleItalic}>your control</span>
+        </h2>
+        <p className={styles.bodyText}>
+          Most AI website builders lock you into expensive subscriptions.
+          <span className={styles.bodyHighlight}> Bloom is different.</span> BYOK —
+          bring your own keys, store data in your own Supabase, deploy anywhere.
+          No markup, no lock-in.
+        </p>
+      </motion.div>
 
-        <motion.div
-          className={styles.grid}
-          initial={{ opacity: 0, y: 20 }}
-          whileInView={{ opacity: 1, y: 0 }}
-          viewport={{ once: true, margin: '-60px' }}
-          transition={{ duration: 0.5, ease: [0.19, 1, 0.22, 1], delay: 0.1 }}
-        >
-          {features.map((feature) => (
-            <div key={feature.title} className={styles.card}>
-              <div className={styles.cardIcon}>
-                <feature.icon />
-              </div>
-              <h3 className={styles.cardTitle}>{feature.title}</h3>
-              <p className={styles.cardDesc}>{feature.description}</p>
-            </div>
-          ))}
-        </motion.div>
+      <motion.div
+        className={styles.carouselArea}
+        initial={{ opacity: 0 }}
+        whileInView={{ opacity: 1 }}
+        viewport={{ once: true, margin: '-60px' }}
+        transition={{ duration: 0.8, delay: 0.2 }}
+      >
+        <Carousel3D
+          cards={featureCards}
+          rotateSpeed={30}
+          translateZ={340}
+          cardWidth={210}
+          cardHeight={160}
+          borderRadius={16}
+        />
+      </motion.div>
 
-        <motion.p
-          className={styles.footnote}
-          initial={{ opacity: 0 }}
-          whileInView={{ opacity: 1 }}
-          viewport={{ once: true }}
-          transition={{ duration: 0.4, delay: 0.3 }}
-        >
-          The only AI website builder that puts you in control of your stack.
-        </motion.p>
-      </div>
+      <motion.p
+        className={styles.footnote}
+        initial={{ opacity: 0 }}
+        whileInView={{ opacity: 1 }}
+        viewport={{ once: true }}
+        transition={{ duration: 0.4, delay: 0.4 }}
+      >
+        Bloom is the only AI website builder that puts you in control of your stack.
+      </motion.p>
     </section>
   )
 }
 
-function KeyCardIcon() {
+function KeyIcon() {
   return (
-    <svg width="21" height="21" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.6" strokeLinecap="round" strokeLinejoin="round">
+    <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.6" strokeLinecap="round" strokeLinejoin="round">
       <path d="M21 2l-2 2m-7.61 7.61a5.5 5.5 0 11-7.778 7.778 5.5 5.5 0 017.777-7.777zm0 0L15.5 7.5m0 0l3 3L22 7l-3-3m-3.5 3.5L19 4" />
     </svg>
   )
 }
-
-function ZeroIcon() {
+function DollarIcon() {
   return (
-    <svg width="21" height="21" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.6" strokeLinecap="round" strokeLinejoin="round">
-      <circle cx="12" cy="12" r="10" />
-      <path d="M8 14s1.5 2 4 2 4-2 4-2" />
-      <path d="M9 9h.01M15 9h.01" />
+    <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.6" strokeLinecap="round" strokeLinejoin="round">
+      <line x1="12" y1="1" x2="12" y2="23" /><path d="M17 5H9.5a3.5 3.5 0 000 7h5a3.5 3.5 0 010 7H6" />
     </svg>
   )
 }
-
-function PrivacyIcon() {
+function DbIcon() {
   return (
-    <svg width="21" height="21" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.6" strokeLinecap="round" strokeLinejoin="round">
-      <path d="M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10z" />
+    <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.6" strokeLinecap="round" strokeLinejoin="round">
+      <ellipse cx="12" cy="5" rx="9" ry="3" /><path d="M21 12c0 1.66-4 3-9 3s-9-1.34-9-3" /><path d="M3 5v14c0 1.66 4 3 9 3s9-1.34 9-3V5" />
+    </svg>
+  )
+}
+function CodeIcon() {
+  return (
+    <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.6" strokeLinecap="round" strokeLinejoin="round">
+      <polyline points="16 18 22 12 16 6" /><polyline points="8 6 2 12 8 18" />
+    </svg>
+  )
+}
+function SparkIcon() {
+  return (
+    <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.6" strokeLinecap="round" strokeLinejoin="round">
+      <path d="M12 2l2.4 7.2h7.6l-6 4.8 2.4 7.2-6.4-4.8-6.4 4.8 2.4-7.2-6-4.8h7.6z" />
+    </svg>
+  )
+}
+function GlobeIcon() {
+  return (
+    <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.6" strokeLinecap="round" strokeLinejoin="round">
+      <circle cx="12" cy="12" r="10" /><line x1="2" y1="12" x2="22" y2="12" /><path d="M12 2a15.3 15.3 0 014 10 15.3 15.3 0 01-4 10 15.3 15.3 0 01-4-10 15.3 15.3 0 014-10z" />
     </svg>
   )
 }
