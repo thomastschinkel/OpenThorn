@@ -80,27 +80,47 @@ export default function PricingPage() {
               <div className={`${styles.axisLine} ${styles.axisX}`} />
               <div className={`${styles.axisLine} ${styles.axisY}`} />
 
-              {/* Data dots */}
+              {/* Data dots with permanent labels, anti-overlap */}
               <div className={styles.scatterInner}>
-                {scatterData.map((d) => (
-                  <div
-                    key={d.model}
-                    className={styles.dot}
-                    style={{
-                      left: `${xPos(d.outputCost)}%`,
-                      top: `${yPos(d.sweScore)}%`,
-                    }}
-                  >
-                    <div className={styles.dotCircle} />
-                    <span className={styles.dotLabel}>
-                      {d.model}
-                      <br />
-                      <span className={styles.dotPrice}>
-                        ${d.outputCost}/MTok · {d.sweScore}%
+                {(() => {
+                  // Sort by x then y to compute offsets
+                  const sorted = [...scatterData].sort((a, b) => {
+                    if (Math.abs(a.outputCost - b.outputCost) < 3) {
+                      return b.sweScore - a.sweScore
+                    }
+                    return a.outputCost - b.outputCost
+                  })
+
+                  // Simple offset: alternate label position for close dots
+                  const positions = sorted.map((d, i, arr) => {
+                    let offset = 0
+                    for (let j = 0; j < i; j++) {
+                      const dx = Math.abs(xPos(d.outputCost) - xPos(arr[j].outputCost))
+                      const dy = Math.abs(yPos(d.sweScore) - yPos(arr[j].sweScore))
+                      if (dx < 12 && dy < 12) {
+                        offset = offset === 0 ? -16 : offset > 0 ? 16 : 0
+                        break
+                      }
+                    }
+                    return { d, offset }
+                  })
+
+                  return positions.map(({ d, offset }) => (
+                    <div
+                      key={d.model}
+                      className={styles.dot}
+                      style={{
+                        left: `${xPos(d.outputCost)}%`,
+                        top: `${yPos(d.sweScore)}%`,
+                      }}
+                    >
+                      <div className={styles.dotCircle} />
+                      <span className={styles.dotName} style={offset ? { marginTop: `${8 + Math.abs(offset)}px` } : undefined}>
+                        {d.model}
                       </span>
-                    </span>
-                  </div>
-                ))}
+                    </div>
+                  ))
+                })()}
               </div>
             </div>
 
