@@ -1,11 +1,20 @@
 import { useState, type FormEvent } from 'react'
 import styles from './Footer.module.css'
 
-const productLinks = [
-  { label: 'Solutions', href: '#' },
-  { label: 'Use Cases', href: '#' },
-  { label: 'Pricing', href: '#' },
-  { label: 'Changelog', href: '#' },
+const solutionsLinks = [
+  { label: 'Founders', href: '#' },
+  { label: 'Sales', href: '#' },
+  { label: 'Product Managers', href: '#' },
+  { label: 'Designers', href: '#' },
+  { label: 'Marketers', href: '#' },
+]
+
+const useCasesLinks = [
+  { label: 'Productivity', href: '#' },
+  { label: 'E-Commerce', href: '#' },
+  { label: 'Marketing & Sales', href: '#' },
+  { label: 'Finance', href: '#' },
+  { label: 'Education', href: '#' },
 ]
 
 const resourcesLinks = [
@@ -59,11 +68,21 @@ export default function Footer() {
             </form>
           </div>
 
-          {/* Product */}
+          {/* Solutions */}
           <div>
-            <div className={styles.colTitle}>Product</div>
+            <div className={styles.colTitle}>Solutions</div>
             <div className={styles.colLinks}>
-              {productLinks.map((l) => (
+              {solutionsLinks.map((l) => (
+                <a key={l.label} href={l.href}>{l.label}</a>
+              ))}
+            </div>
+          </div>
+
+          {/* Use Cases */}
+          <div>
+            <div className={styles.colTitle}>Use Cases</div>
+            <div className={styles.colLinks}>
+              {useCasesLinks.map((l) => (
                 <a key={l.label} href={l.href}>{l.label}</a>
               ))}
             </div>
