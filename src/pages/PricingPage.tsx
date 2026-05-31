@@ -1,36 +1,70 @@
 import { useEffect, useState } from 'react'
 import { motion } from 'framer-motion'
-import {
-  fetchPricing,
-  getProviderLabel,
-  pickBestValueModel,
-  getTopModels,
-  type PricingTable,
-} from '../lib/pricing'
+import { fetchPricing, getProviderLabel, getTopModels, type PricingTable } from '../lib/pricing'
+import { fetchBenchmarks, type BenchmarkEntry } from '../lib/benchmarks'
 import styles from './PricingPage.module.css'
 
-const benchData = [
-  { model: 'Claude Opus 4.7', provider: 'Anthropic', swe: 87.6, humaneval: 91, outputCost: 25 },
-  { model: 'GPT-5.5', provider: 'OpenAI', swe: 88.7, humaneval: 95.2, outputCost: 30 },
-  { model: 'Claude Sonnet 4.6', provider: 'Anthropic', swe: 82, humaneval: 93, outputCost: 15 },
-  { model: 'GPT-4.1', provider: 'OpenAI', swe: 76, humaneval: 90.2, outputCost: 8 },
-  { model: 'Gemini 2.5 Pro', provider: 'Google', swe: 75, humaneval: 84, outputCost: 10 },
-  { model: 'Gemini 2.5 Flash', provider: 'Google', swe: 68, humaneval: 80, outputCost: 2.5 },
-  { model: 'DeepSeek V4 Pro', provider: 'DeepSeek', swe: 76, humaneval: 85.3, outputCost: 0.87 },
-  { model: 'DeepSeek V4 Flash', provider: 'DeepSeek', swe: 65, humaneval: 78, outputCost: 0.28 },
-]
+// Merge pricing + benchmark data for the scatter chart
+function mergeData(
+  pricing: PricingTable | null,
+  benchmarks: BenchmarkEntry[],
+): { model: string; provider: string; outputCost: number; sweScore: number }[] {
+  if (!pricing) return []
 
-const maxCost = 32
+  const costMap: Record<string, { output: number; provider: string }> = {}
+  for (const [providerKey, models] of Object.entries(pricing)) {
+    if (providerKey === '$schema' || providerKey === 'versionedAt') continue
+    for (const [id, m] of Object.entries(models as Record<string, { outputPer1M: number }>)) {
+      costMap[id] = { output: m.outputPer1M, provider: providerKey }
+    }
+  }
+
+  return benchmarks
+    .filter((b) => b.score > 0)
+    .map((b) => {
+      // Try to match benchmark model to pricing entry
+      const slug = b.model.toLowerCase().replace(/\s+/g, '-')
+      let outputCost = costMap[slug]?.output ?? 0
+
+      if (!outputCost) {
+        for (const [id, info] of Object.entries(costMap)) {
+          if (id.includes(slug.split('-').slice(0, 2).join('-'))) {
+            outputCost = info.output
+            break
+          }
+        }
+      }
+
+      return {
+        model: b.model,
+        provider: b.provider,
+        outputCost,
+        sweScore: b.score,
+      }
+    })
+    .filter((d) => d.outputCost > 0 && d.sweScore > 0)
+    .slice(0, 10)
+    .filter((d) => d.outputCost < 200) // remove outliers
+}
 
 export default function PricingPage() {
   const [data, setData] = useState<PricingTable | null>(null)
+  const [benchmarks, setBenchmarks] = useState<BenchmarkEntry[]>([])
   const [error, setError] = useState<string | null>(null)
 
   useEffect(() => {
     fetchPricing()
       .then(setData)
       .catch((e) => setError(e.message))
+    fetchBenchmarks()
+      .then(setBenchmarks)
+      .catch(() => {})
   }, [])
+
+  const scatterData = mergeData(data, benchmarks)
+  const maxCost = Math.max(...scatterData.map((d) => d.outputCost), 1)
+  const minSwe = Math.min(...scatterData.map((d) => d.sweScore), 50)
+  const maxSwe = Math.max(...scatterData.map((d) => d.sweScore), 90)
 
   return (
     <div className={styles.page}>
@@ -43,95 +77,70 @@ export default function PricingPage() {
         <h1 className={styles.title}>AI model pricing</h1>
         <p className={styles.subtitle}>
           Bloom is BYOK — bring your own keys, pay providers directly. No markup.
-          Data fetched live from the web, always up to date.
+          Data fetched live, always up to date.
         </p>
       </motion.div>
 
-      {/* Provider summary cards */}
-      {data && (
+      {!data && !error && <div className={styles.loading}>Loading latest data from the web...</div>}
+      {error && <div className={styles.error}>Couldn't load pricing data. Try again shortly.</div>}
+
+      {/* Coding quality vs cost — live scatter chart */}
+      {scatterData.length > 0 && (
         <motion.div
-          className={styles.providerGrid}
+          className={styles.chartSection}
           initial={{ opacity: 0, y: 20 }}
           animate={{ opacity: 1, y: 0 }}
           transition={{ duration: 0.5, delay: 0.1 }}
         >
-          {pickBestValueModel(data).map((p) => (
-            <div key={p.provider} className={styles.providerCard}>
-              <div className={styles.providerName}>{getProviderLabel(p.provider)}</div>
-              <div className={styles.providerModels}>{p.name} (best value)</div>
-              <div className={styles.providerPrice}>
-                Input <span className={styles.priceHighlight}>${p.input.toFixed(2)}</span> · Output{' '}
-                <span className={styles.priceHighlight}>${p.output.toFixed(2)}</span>
-              </div>
-              <div className={styles.priceSub}>per 1M tokens</div>
+          <h2 className={styles.sectionTitle}>Coding quality vs API cost</h2>
+          <p className={styles.chartSubtitle}>
+            Higher = better at coding (SWE-Bench). Further right = more expensive.
+            Data from HuggingFace + GitHub, updated live.
+          </p>
+          <div className={styles.chartContainer}>
+            <div className={styles.scatterChart}>
+              <span className={styles.yAxisLabel}>SWE-Bench score →</span>
+              <span className={`${styles.scatterAxis} ${styles.xAxis}`}>Output cost per 1M tokens ($) →</span>
+
+              <svg className={styles.scatterSvg} viewBox="0 0 800 370" preserveAspectRatio="none">
+                {[60, 70, 80, 90].map((v) => (
+                  <line key={`h${v}`} x1="80" y1={340 - ((v - minSwe + 10) / (maxSwe - minSwe + 20)) * 300} x2="780" y2={340 - ((v - minSwe + 10) / (maxSwe - minSwe + 20)) * 300} stroke="rgba(255,255,255,0.04)" strokeWidth="1" />
+                ))}
+                {Array.from({ length: 6 }, (_, i) => (maxCost / 6) * (i + 1)).map((v) => (
+                  <line key={`v${v}`} x1={80 + (v / maxCost) * 680} y1="20" x2={80 + (v / maxCost) * 680} y2="340" stroke="rgba(255,255,255,0.04)" strokeWidth="1" />
+                ))}
+              </svg>
+
+              {scatterData.map((d) => (
+                <div
+                  key={d.model}
+                  className={styles.scatterDot}
+                  style={{
+                    left: `${(d.outputCost / maxCost) * 85 + 10}%`,
+                    top: `${100 - ((d.sweScore - minSwe + 10) / (maxSwe - minSwe + 20)) * 85 - 8}%`,
+                  }}
+                  title={`${d.model}: $${d.outputCost.toFixed(2)}/MTok output, SWE-Bench ${d.sweScore}%`}
+                >
+                  <div className={styles.dotCircle} />
+                  <span className={styles.dotLabel}>{d.model}</span>
+                </div>
+              ))}
             </div>
-          ))}
+          </div>
         </motion.div>
       )}
 
-      {/* Loading / error */}
-      {!data && !error && (
-        <div className={styles.loading}>Loading latest pricing data...</div>
-      )}
-      {error && (
-        <div className={styles.error}>Couldn't load pricing: {error}. Showing cached data.</div>
-      )}
-
-      {/* Cost vs Performance scatter */}
-      <motion.div
-        className={styles.chartSection}
-        initial={{ opacity: 0, y: 20 }}
-        animate={{ opacity: 1, y: 0 }}
-        transition={{ duration: 0.5, delay: 0.2 }}
-      >
-        <h2 className={styles.sectionTitle}>Coding quality vs API cost</h2>
-        <p className={styles.chartSubtitle}>Higher = better at coding. Further right = more expensive.</p>
-        <div className={styles.chartContainer}>
-          <div className={styles.scatterChart}>
-            <span className={styles.yAxisLabel}>SWE-Bench score →</span>
-            <span className={`${styles.scatterAxis} ${styles.xAxis}`}>Output cost per 1M tokens ($) →</span>
-
-            <svg className={styles.scatterSvg} viewBox="0 0 800 370" preserveAspectRatio="none">
-              {[60, 70, 80, 90].map((v) => (
-                <line key={`h${v}`} x1="80" y1={340 - ((v - 55) / 45) * 320} x2="780" y2={340 - ((v - 55) / 45) * 320} stroke="rgba(255,255,255,0.04)" strokeWidth="1" />
-              ))}
-              {[0, 5, 10, 15, 20, 25, 30].map((v) => (
-                <line key={`v${v}`} x1={80 + (v / maxCost) * 680} y1="20" x2={80 + (v / maxCost) * 680} y2="340" stroke="rgba(255,255,255,0.04)" strokeWidth="1" />
-              ))}
-              {/* Pareto frontier line */}
-              <line x1="80" y1="340" x2="780" y2="60" stroke="rgba(139,92,246,0.12)" strokeWidth="1" strokeDasharray="6,4" />
-            </svg>
-
-            {benchData.map((d) => (
-              <div
-                key={d.model}
-                className={styles.scatterDot}
-                style={{
-                  left: `${(d.outputCost / maxCost) * 85 + 10}%`,
-                  top: `${100 - ((d.swe - 55) / 45) * 85 - 8}%`,
-                }}
-                title={`${d.model}: $${d.outputCost}/MTok output, SWE-Bench ${d.swe}%`}
-              >
-                <div className={styles.dotCircle} />
-                <span className={styles.dotLabel}>{d.model}</span>
-              </div>
-            ))}
-          </div>
-          <p className={styles.chartNote}>Dashed line = Pareto frontier. Models closest to top-left are best value.</p>
-        </div>
-      </motion.div>
-
-      {/* Full live pricing table */}
+      {/* Live pricing table — flagship models only */}
       {data && (
         <motion.div
           className={styles.chartSection}
           initial={{ opacity: 0, y: 20 }}
           animate={{ opacity: 1, y: 0 }}
-          transition={{ duration: 0.5, delay: 0.3 }}
+          transition={{ duration: 0.5, delay: 0.2 }}
         >
-          <h2 className={styles.sectionTitle}>Live pricing — all models</h2>
+          <h2 className={styles.sectionTitle}>Flagship models</h2>
           <p className={styles.chartSubtitle}>
-            Fetched from GitHub · Updated {data.versionedAt}
+            The models that matter. Updated {data.versionedAt}.
           </p>
           <div className={styles.chartContainer}>
             <table className={styles.table}>
@@ -158,19 +167,17 @@ export default function PricingPage() {
         </motion.div>
       )}
 
-      {/* Insight */}
       <motion.div
         className={styles.insight}
         initial={{ opacity: 0, y: 16 }}
         animate={{ opacity: 1, y: 0 }}
-        transition={{ duration: 0.5, delay: 0.4 }}
+        transition={{ duration: 0.5, delay: 0.3 }}
       >
         <div className={styles.insightTitle}>What this means for you</div>
         <p className={styles.insightText}>
-          With Bloom's BYOK model, you can use{' '}
-          <span className={styles.insightHighlight}>DeepSeek V4 Flash at ~$0.28/MTok</span> for routine tasks and
-          switch to <span className={styles.insightHighlight}>Claude Opus 4.7</span> for complex work —
-          paying providers directly, with no markup. This data is fetched live so it stays current as new models launch.
+          Use <span className={styles.insightHighlight}>Claude Opus 4.7 or GPT-5.5</span> for complex work,
+          switch to <span className={styles.insightHighlight}>Gemini 2.5 Flash or DeepSeek V4</span> for routine tasks.
+          With Bloom, you bring your own keys — paying providers directly, zero markup.
         </p>
       </motion.div>
     </div>

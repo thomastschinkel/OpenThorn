@@ -106,19 +106,30 @@ export function getTopModels(data: PricingTable): {
   input: number
   output: number
 }[] {
-  const all: { id: string; provider: string; input: number; output: number }[] = []
+  // Pick flagship models — the best coding models people actually want to use
+  const flagships: string[] = [
+    'claude-opus-4-7', 'claude-sonnet-4-6', 'claude-haiku-4-5',
+    'gpt-5.5', 'gpt-4.1', 'gpt-5.4',
+    'gemini-3.1-pro', 'gemini-2.5-pro', 'gemini-2.5-flash',
+    'deepseek-v4-pro', 'deepseek-v4-flash',
+  ]
+
+  const results: { id: string; provider: string; name: string; input: number; output: number }[] = []
 
   for (const [providerKey, models] of Object.entries(data)) {
     if (providerKey === '$schema' || providerKey === 'versionedAt') continue
     for (const [id, m] of Object.entries(models as ProviderData)) {
-      if (id.includes('deprecated')) continue
-      all.push({ id, provider: providerKey, input: m.inputPer1M, output: m.outputPer1M })
+      if (flagships.includes(id)) {
+        results.push({
+          id,
+          provider: providerKey,
+          name: getModelDisplayName(id),
+          input: m.inputPer1M,
+          output: m.outputPer1M,
+        })
+      }
     }
   }
 
-  // Sort by output cost, return top 12
-  return all
-    .sort((a, b) => a.output - b.output)
-    .slice(0, 12)
-    .map((m) => ({ ...m, name: getModelDisplayName(m.id) }))
+  return results.sort((a, b) => b.output - a.output)
 }
