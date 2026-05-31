@@ -1,4 +1,4 @@
-import { type FormEvent, useState, useEffect, useRef, useCallback } from 'react'
+import { type FormEvent, useState, useEffect, useRef } from 'react'
 import { motion, AnimatePresence } from 'framer-motion'
 import styles from './PromptInput.module.css'
 
@@ -8,66 +8,81 @@ interface PromptInputProps {
 }
 
 const prompts = [
-  'Ask Bloom to build a landing page for my SaaS...',
   'Create a modern portfolio with a dark theme...',
   'Build an e-commerce store for my brand...',
   'Make a blog with a clean, minimal design...',
   'Design a dashboard with charts and analytics...',
   'Create a waitlist page for my startup...',
+  'Build a recipe app with beautiful photos...',
 ]
 
-function useTypingAnimation(isFocused: boolean) {
+function useTypingAnimation(paused: boolean) {
   const [displayText, setDisplayText] = useState('')
-  const [promptIndex, setPromptIndex] = useState(0)
-  const [isDeleting, setIsDeleting] = useState(false)
-  const timeoutRef = useRef<ReturnType<typeof setTimeout> | null>(null)
+  const stateRef = useRef({
+    promptIndex: 0,
+    charIndex: 0,
+    isDeleting: false,
+    paused: false,
+  })
 
-  const tick = useCallback(() => {
-    const currentPrompt = prompts[promptIndex]
-
-    if (!isDeleting) {
-      // Typing forward
-      if (displayText.length < currentPrompt.length) {
-        const speed = 40 + Math.random() * 30 // 40-70ms per char, feels natural
-        timeoutRef.current = setTimeout(() => {
-          setDisplayText(currentPrompt.slice(0, displayText.length + 1))
-        }, speed)
-      } else {
-        // Pause at end, then start deleting
-        timeoutRef.current = setTimeout(() => {
-          setIsDeleting(true)
-        }, 2000)
-      }
-    } else {
-      // Deleting
-      if (displayText.length > 0) {
-        const speed = 20 + Math.random() * 15 // faster delete, 20-35ms
-        timeoutRef.current = setTimeout(() => {
-          setDisplayText(displayText.slice(0, -1))
-        }, speed)
-      } else {
-        // Move to next prompt
-        setIsDeleting(false)
-        setPromptIndex((prev) => (prev + 1) % prompts.length)
-      }
-    }
-  }, [displayText, isDeleting, promptIndex])
+  // Keep paused in sync
+  stateRef.current.paused = paused
 
   useEffect(() => {
-    if (isFocused) return // pause when user is typing
-    timeoutRef.current = setTimeout(tick, isDeleting ? 200 : 400)
-    return () => {
-      if (timeoutRef.current) clearTimeout(timeoutRef.current)
-    }
-  }, [tick, isFocused, isDeleting])
-
-  // Reset when focus changes
-  useEffect(() => {
-    if (isFocused) {
+    if (paused) {
       setDisplayText('')
-      setIsDeleting(false)
+      return
     }
-  }, [isFocused])
+
+    // Start from current state
+    setDisplayText(
+      stateRef.current.isDeleting
+        ? prompts[stateRef.current.promptIndex].slice(0, stateRef.current.charIndex)
+        : prompts[stateRef.current.promptIndex].slice(0, stateRef.current.charIndex)
+    )
+
+    let timeout: ReturnType<typeof setTimeout>
+
+    const tick = () => {
+      if (stateRef.current.paused) return
+
+      const s = stateRef.current
+      const currentPrompt = prompts[s.promptIndex]
+
+      if (!s.isDeleting) {
+        // Typing forward
+        if (s.charIndex < currentPrompt.length) {
+          s.charIndex++
+          setDisplayText(currentPrompt.slice(0, s.charIndex))
+          timeout = setTimeout(tick, 40 + Math.random() * 30)
+        } else {
+          // Done typing — pause then delete
+          timeout = setTimeout(() => {
+            if (stateRef.current.paused) return
+            stateRef.current.isDeleting = true
+            tick()
+          }, 2200)
+        }
+      } else {
+        // Deleting
+        if (s.charIndex > 0) {
+          s.charIndex--
+          setDisplayText(currentPrompt.slice(0, s.charIndex))
+          timeout = setTimeout(tick, 20 + Math.random() * 15)
+        } else {
+          // Done deleting — switch prompt
+          stateRef.current.isDeleting = false
+          stateRef.current.promptIndex = (s.promptIndex + 1) % prompts.length
+          stateRef.current.charIndex = 0
+          timeout = setTimeout(tick, 300)
+        }
+      }
+    }
+
+    timeout = setTimeout(tick, 300)
+
+    return () => clearTimeout(timeout)
+  }, [paused])
 
   return displayText
 }
