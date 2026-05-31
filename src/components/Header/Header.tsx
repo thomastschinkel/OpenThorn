@@ -38,31 +38,27 @@ const resourcesItems: DropdownItem[] = [
 
 type DropdownKey = 'solutions' | 'useCases' | 'resources'
 
-function DropdownMenu({ items, isOpen }: { items: DropdownItem[]; isOpen: boolean }) {
-  const half = Math.ceil(items.length / 2)
-  const left = items.slice(0, half)
-  const right = items.slice(half)
+function DropdownMenu({ items, isOpen, cols = 2 }: { items: DropdownItem[]; isOpen: boolean; cols?: number }) {
+  const perCol = Math.ceil(items.length / cols)
+  const columns: DropdownItem[][] = []
+  for (let i = 0; i < items.length; i += perCol) {
+    columns.push(items.slice(i, i + perCol))
+  }
 
   return (
     <div className={`${styles.dropdown} ${isOpen ? styles.dropdownOpen : ''}`}>
       <div className={styles.dropdownInner}>
-        <div className={styles.dropdownInnerCols}>
-          <div>
-            {left.map((item) => (
-              <a key={item.label} href={item.href} className={styles.dropdownItem}>
-                <div className={styles.dropdownItemTitle}>{item.label}</div>
-                <div className={styles.dropdownItemDesc}>{item.description}</div>
-              </a>
-            ))}
-          </div>
-          <div>
-            {right.map((item) => (
-              <a key={item.label} href={item.href} className={styles.dropdownItem}>
-                <div className={styles.dropdownItemTitle}>{item.label}</div>
-                <div className={styles.dropdownItemDesc}>{item.description}</div>
-              </a>
-            ))}
-          </div>
+        <div className={styles.dropdownInnerCols} style={{ gridTemplateColumns: `repeat(${columns.length}, auto)` }}>
+          {columns.map((col, ci) => (
+            <div key={ci}>
+              {col.map((item) => (
+                <a key={item.label} href={item.href} className={styles.dropdownItem}>
+                  <span className={styles.dropdownItemTitle}>{item.label}</span>
+                  <span className={styles.dropdownItemDesc}>{item.description}</span>
+                </a>
+              ))}
+            </div>
+          ))}
         </div>
       </div>
     </div>
