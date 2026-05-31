@@ -76,12 +76,10 @@ export default function HeroSection() {
           animate={{ opacity: 1 }}
           transition={{ duration: 0.5, delay: 0.85 }}
         >
-          {trustItems.map((item) => (
-            <span key={item} className={styles.trustItem}>
-              <span className={styles.trustDot} />
-              {item}
-            </span>
-          ))}
+          {trustItems.map((item, i) => [
+            <span key={item} className={styles.trustItem}>{item}</span>,
+            i < trustItems.length - 1 && <span key={`sep-${i}`} className={styles.trustSep} />,
+          ])}
         </motion.div>
       </div>
 

@@ -15,7 +15,7 @@
 }
 
 .card:focus-within {
-  border-color: rgba(139, 92, 246, 0.2);
+  border-color: rgba(255, 255, 255, 0.12);
 }
 
 /* + icon */
