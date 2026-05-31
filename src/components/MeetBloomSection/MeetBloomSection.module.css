@@ -1,0 +1,132 @@
+.section {
+  padding: var(--space-4xl) var(--space-lg);
+  position: relative;
+}
+
+.sectionLabel {
+  text-align: center;
+  font-size: 14px;
+  font-weight: 600;
+  color: var(--color-primary);
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+  margin-bottom: var(--space-sm);
+}
+
+.sectionTitle {
+  text-align: center;
+  font-family: var(--font-display);
+  font-size: clamp(32px, 4.5vw, 40px);
+  font-weight: 700;
+  color: var(--color-primary-deep);
+  margin-bottom: var(--space-3xl);
+  line-height: 1.15;
+}
+
+.steps {
+  display: flex;
+  gap: var(--space-2xl);
+  max-width: var(--max-width);
+  margin: 0 auto;
+  padding: 0 var(--space-lg);
+  align-items: flex-start;
+}
+
+.stepCard {
+  flex: 1;
+  text-align: center;
+  background: var(--color-surface-card);
+  border: 1px solid var(--color-border-subtle);
+  border-radius: var(--radius-xl);
+  padding: var(--space-2xl) var(--space-lg);
+  box-shadow: var(--shadow-card);
+  transition: transform 0.3s var(--ease-spring), box-shadow 0.3s var(--ease-out);
+  position: relative;
+}
+
+.stepCard:hover {
+  transform: translateY(-6px);
+  box-shadow: var(--shadow-card-hover);
+}
+
+.iconWrapper {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 64px;
+  height: 64px;
+  border-radius: var(--radius-lg);
+  background: rgba(124, 58, 237, 0.08);
+  margin-bottom: var(--space-lg);
+  position: relative;
+}
+
+.iconGlow {
+  position: absolute;
+  inset: -4px;
+  border-radius: inherit;
+  background: transparent;
+  transition: background 0.3s var(--ease-out);
+}
+
+.stepCard:hover .iconGlow {
+  background: var(--color-glow);
+}
+
+.icon {
+  color: var(--color-primary);
+  position: relative;
+  z-index: 1;
+  transition: transform 0.3s var(--ease-spring);
+}
+
+.stepCard:hover .icon {
+  transform: scale(1.15);
+}
+
+.stepNumber {
+  display: inline-block;
+  font-size: 12px;
+  font-weight: 700;
+  color: var(--color-primary);
+  text-transform: uppercase;
+  letter-spacing: 0.06em;
+  margin-bottom: var(--space-sm);
+}
+
+.stepTitle {
+  font-family: var(--font-display);
+  font-size: 20px;
+  font-weight: 700;
+  color: var(--color-ink);
+  margin-bottom: var(--space-sm);
+}
+
+.stepDesc {
+  font-size: 15px;
+  color: var(--color-ink-soft);
+  line-height: 1.6;
+}
+
+.connectors {
+  display: none;
+}
+
+@media (min-width: 768px) {
+  .connectors {
+    display: block;
+    position: absolute;
+    top: 50%;
+    left: 0;
+    right: 0;
+    height: 0;
+    pointer-events: none;
+  }
+}
+
+@media (max-width: 767px) {
+  .steps {
+    flex-direction: column;
+    gap: var(--space-lg);
+  }
+}
