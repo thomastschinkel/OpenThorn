@@ -39,15 +39,31 @@ const resourcesItems: DropdownItem[] = [
 type DropdownKey = 'solutions' | 'useCases' | 'resources'
 
 function DropdownMenu({ items, isOpen }: { items: DropdownItem[]; isOpen: boolean }) {
+  const half = Math.ceil(items.length / 2)
+  const left = items.slice(0, half)
+  const right = items.slice(half)
+
   return (
     <div className={`${styles.dropdown} ${isOpen ? styles.dropdownOpen : ''}`}>
       <div className={styles.dropdownInner}>
-        {items.map((item) => (
-          <a key={item.label} href={item.href} className={styles.dropdownItem}>
-            <div className={styles.dropdownItemTitle}>{item.label}</div>
-            <div className={styles.dropdownItemDesc}>{item.description}</div>
-          </a>
-        ))}
+        <div className={styles.dropdownInnerCols}>
+          <div>
+            {left.map((item) => (
+              <a key={item.label} href={item.href} className={styles.dropdownItem}>
+                <div className={styles.dropdownItemTitle}>{item.label}</div>
+                <div className={styles.dropdownItemDesc}>{item.description}</div>
+              </a>
+            ))}
+          </div>
+          <div>
+            {right.map((item) => (
+              <a key={item.label} href={item.href} className={styles.dropdownItem}>
+                <div className={styles.dropdownItemTitle}>{item.label}</div>
+                <div className={styles.dropdownItemDesc}>{item.description}</div>
+              </a>
+            ))}
+          </div>
+        </div>
       </div>
     </div>
   )

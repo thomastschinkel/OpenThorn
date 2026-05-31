@@ -117,8 +117,13 @@
   border: 1px solid var(--color-border-visible);
   border-radius: var(--radius-lg);
   padding: 8px;
-  min-width: 250px;
+  min-width: 340px;
   box-shadow: 0 20px 60px rgba(0, 0, 0, 0.55), 0 0 0 1px rgba(139, 92, 246, 0.03);
+}
+
+.dropdownInnerCols {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
 }
 
 .dropdownItem {
