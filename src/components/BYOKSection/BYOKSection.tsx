@@ -43,7 +43,7 @@ export default function BYOKSection() {
         <div className={styles.kicker}>Why Bloom</div>
         <h2 className={styles.title}>
           Your keys,{' '}
-          <span className={styles.titleItalic}>your control</span>
+          your control
         </h2>
         <p className={styles.bodyText}>
           Most AI website builders lock you into expensive subscriptions.
