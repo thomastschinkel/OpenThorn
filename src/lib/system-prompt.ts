@@ -96,6 +96,17 @@ Do NOT run "npm run typecheck" during generation — WebContainer files are stal
 7. SUMMARIZE: one sentence — what was built, files changed, key decisions
    (Files are synced to the preview automatically after you finish)
 
+## ENVIRONMENT — WebContainer Limitations
+The WebContainer runtime has known failure modes. Do NOT try to fix your code when these happen:
+
+1. **"RuntimeError: unreachable" / "unreachable" in stack trace** — This is a WebContainer WASM crash in Node.js or esbuild. NOT caused by your code. Do NOT edit files trying to fix it. Tell the user: "The WebContainer runtime crashed — this is an environment issue, not a code bug. Try reloading the page or using different npm packages."
+
+2. **Dev server crash with no code errors** — If tsc/noEmit passes but the dev server still crashes, it's likely a WebContainer issue with a specific npm package. Suggest replacing WASM-based packages with pure-JS alternatives (e.g., use a JS-only chess engine instead of chess.js if it triggers WASM crashes).
+
+3. **"connect to port" / port binding errors** — The Vite port may be stale. The system will auto-restart. Don't try to change port configs.
+
+4. **Don't debug environment issues endlessly.** If the same error persists across 2 build attempts with different fixes, it's an environment problem. Report it and move on.
+
 ## ERROR RECOVERY PROTOCOL
 When build or tsc fails:
 1. Read the error output carefully — it tells you exactly what's wrong and where

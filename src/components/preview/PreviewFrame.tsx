@@ -1,6 +1,6 @@
 import { useState, useEffect, useCallback, useRef } from 'react'
 import type { Device } from './PreviewPanel'
-import { getWorkspace, subscribeToWorkspace } from '../../lib/workspace'
+import { getWorkspace } from '../../lib/workspace'
 import { detectCapability } from '../../lib/capabilities'
 import { buildTranspiledPreview } from '../../lib/transpiler'
 import {
@@ -147,27 +147,10 @@ export default function PreviewFrame({ device }: Props) {
     return ''
   })
 
-  const debounceRef = useRef<ReturnType<typeof setTimeout> | null>(null)
-
   // Subscribe to WebContainer state
   useEffect(() => {
     return subscribeWcState(setWcState)
   }, [])
-
-  // Subscribe to workspace changes for transpiler live updates.
-  // Debounced: rapid file writes (e.g. agent creating 5+ files) batch
-  // into a single rebuild so the iframe doesn't remount N times.
-  useEffect(() => {
-    if (capability !== 'transpiler') return
-    return subscribeToWorkspace(() => {
-      if (debounceRef.current) clearTimeout(debounceRef.current)
-      debounceRef.current = setTimeout(() => {
-        debounceRef.current = null
-        const newSrcdoc = buildTranspiledPreview(getWorkspace().files)
-        setSrcdoc(newSrcdoc)
-      }, 250)
-    })
-  }, [capability])
 
   // Push srcdoc to the already-mounted iframe without remounting.
   // The stable key keeps the iframe alive; this effect writes content.
@@ -198,23 +181,12 @@ export default function PreviewFrame({ device }: Props) {
     }
   }, [capability])
 
-  // Clean up debounce timer on unmount
-  useEffect(() => {
-    return () => {
-      if (debounceRef.current) clearTimeout(debounceRef.current)
-    }
-  }, [])
-
-  // Register flush callback for ChatPanel (fires immediately, no debounce)
+  // Register flush callback for ChatPanel.
+  // Preview only updates when the agent finishes — never mid-generation.
   useEffect(() => {
     _flushPreview = () => {
       if (capability === 'transpiler') {
-        if (debounceRef.current) {
-          clearTimeout(debounceRef.current)
-          debounceRef.current = null
-        }
-        const newSrcdoc = buildTranspiledPreview(getWorkspace().files)
-        setSrcdoc(newSrcdoc)
+        setSrcdoc(buildTranspiledPreview(getWorkspace().files))
       } else {
         syncWorkspace()
       }
