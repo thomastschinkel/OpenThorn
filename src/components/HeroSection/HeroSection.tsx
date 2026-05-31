@@ -1,6 +1,6 @@
 import { motion } from 'framer-motion'
 import PromptInput from '../PromptInput/PromptInput'
-import InteractiveGradient from '../InteractiveGradient/InteractiveGradient'
+import FloatingParticles from '../FloatingParticles/FloatingParticles'
 import styles from './HeroSection.module.css'
 
 const trustItems = [
@@ -12,14 +12,17 @@ const trustItems = [
 export default function HeroSection() {
   return (
     <section className={styles.section}>
-      <InteractiveGradient
-        color1="#A78BFA"
-        color2="#7B61FF"
-        color3="#6366F1"
-        blur={80}
-        brightness={0.8}
-        orbitRadius={24}
-        followStrength={0.3}
+      <FloatingParticles
+        particleCount={70}
+        particleSize={3}
+        particleOpacity={0.5}
+        particleColor="#A78BFA"
+        glowIntensity={15}
+        movementSpeed={0.4}
+        mouseInfluence={140}
+        mouseGravity="attract"
+        gravityStrength={35}
+        glowAnimation="ease"
       />
 
       <div className={styles.content}>
