@@ -16,61 +16,49 @@ const prompts = [
   'Build a recipe app with beautiful photos...',
 ]
 
-function useTypingAnimation(paused: boolean) {
+function useTypingAnimation(active: boolean) {
   const [displayText, setDisplayText] = useState('')
   const stateRef = useRef({
     promptIndex: 0,
     charIndex: 0,
     isDeleting: false,
-    paused: false,
+    active: false,
   })
 
-  // Keep paused in sync
-  stateRef.current.paused = paused
+  stateRef.current.active = active
 
   useEffect(() => {
-    if (paused) {
+    if (!active) {
       setDisplayText('')
       return
     }
 
-    // Start from current state
-    setDisplayText(
-      stateRef.current.isDeleting
-        ? prompts[stateRef.current.promptIndex].slice(0, stateRef.current.charIndex)
-        : prompts[stateRef.current.promptIndex].slice(0, stateRef.current.charIndex)
-    )
-
     let timeout: ReturnType<typeof setTimeout>
 
     const tick = () => {
-      if (stateRef.current.paused) return
+      if (!stateRef.current.active) return
 
       const s = stateRef.current
       const currentPrompt = prompts[s.promptIndex]
 
       if (!s.isDeleting) {
-        // Typing forward
         if (s.charIndex < currentPrompt.length) {
           s.charIndex++
           setDisplayText(currentPrompt.slice(0, s.charIndex))
           timeout = setTimeout(tick, 40 + Math.random() * 30)
         } else {
-          // Done typing — pause then delete
           timeout = setTimeout(() => {
-            if (stateRef.current.paused) return
+            if (!stateRef.current.active) return
             stateRef.current.isDeleting = true
             tick()
           }, 2200)
         }
       } else {
-        // Deleting
         if (s.charIndex > 0) {
           s.charIndex--
           setDisplayText(currentPrompt.slice(0, s.charIndex))
           timeout = setTimeout(tick, 20 + Math.random() * 15)
         } else {
-          // Done deleting — switch prompt
           stateRef.current.isDeleting = false
           stateRef.current.promptIndex = (s.promptIndex + 1) % prompts.length
           stateRef.current.charIndex = 0
@@ -80,9 +68,8 @@ function useTypingAnimation(paused: boolean) {
     }
 
     timeout = setTimeout(tick, 300)
-
     return () => clearTimeout(timeout)
-  }, [paused])
+  }, [active])
 
   return displayText
 }
