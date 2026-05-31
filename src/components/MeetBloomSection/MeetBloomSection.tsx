@@ -1,5 +1,5 @@
 import { useRef } from 'react'
-import { motion, useScroll, useTransform } from 'framer-motion'
+import { motion } from 'framer-motion'
 import styles from './MeetBloomSection.module.css'
 
 const steps = [
@@ -28,12 +28,6 @@ const steps = [
 
 export default function MeetBloomSection() {
   const sectionRef = useRef<HTMLElement>(null)
-  const { scrollYProgress } = useScroll({
-    target: sectionRef,
-    offset: ['start 60%', 'end 40%'],
-  })
-
-  const lineProgress = useTransform(scrollYProgress, [0, 1], [0, 1])
 
   return (
     <section className={styles.section} ref={sectionRef}>
