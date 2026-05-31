@@ -19,21 +19,21 @@ interface ReelCarouselProps {
 
 const bloomSlides: CarouselSlide[] = [
   {
-    image: 'https://images.unsplash.com/photo-1618005182384-a83a8bd57fbe?w=1200&h=675&fit=crop',
+    image: 'https://images.unsplash.com/photo-1620641788421-7a1c342ea42e?w=1200&h=675&fit=crop&q=80',
     tag: 'Step 01',
     title: 'Start with an idea',
     description:
       'Describe the app or website you want to create, or drop in screenshots and docs. Bloom understands your vision instantly.',
   },
   {
-    image: 'https://images.unsplash.com/photo-1633356122544-f134324a6cee?w=1200&h=675&fit=crop',
+    image: 'https://images.unsplash.com/photo-1558591710-4b4a1ae0f04d?w=1200&h=675&fit=crop&q=80',
     tag: 'Step 02',
     title: 'Watch it come to life',
     description:
       'See your vision transform into a working prototype in real-time. Every component built by AI, visible as it happens.',
   },
   {
-    image: 'https://images.unsplash.com/photo-1550745165-9bc0b252726f?w=1200&h=675&fit=crop',
+    image: 'https://images.unsplash.com/photo-1557683316-973673baf926?w=1200&h=675&fit=crop&q=80',
     tag: 'Step 03',
     title: 'Refine and ship',
     description:
