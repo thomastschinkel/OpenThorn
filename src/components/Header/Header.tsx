@@ -30,10 +30,10 @@ const useCasesItems: DropdownItem[] = [
 ]
 
 const resourcesItems: DropdownItem[] = [
-  { label: 'Documentation', description: 'Learn how to use Bloom', href: '#' },
-  { label: 'API Reference', description: 'Integrate with our API', href: '#' },
+  { label: 'Blog', description: 'Stories, updates, and product news', href: '#' },
   { label: 'Templates', description: 'Start with pre-built designs', href: '#' },
-  { label: 'Blog', description: 'Stories and updates', href: '#' },
+  { label: 'Guides', description: 'In-depth tutorials and walkthroughs', href: '#' },
+  { label: 'Docs & FAQs', description: 'Documentation and common questions', href: '#' },
 ]
 
 type DropdownKey = 'solutions' | 'useCases' | 'resources'
