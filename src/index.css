@@ -1,33 +1,33 @@
 /* ===== Design Tokens ===== */
 :root {
-  /* Base */
-  --color-bg: #07050A;
-  --color-surface: #0E0B14;
-  --color-surface-raised: #14101C;
-  --color-surface-overlay: #1A1524;
+  /* Base — near-black with subtle warmth */
+  --color-bg: #08060B;
+  --color-surface: #0D0A12;
+  --color-surface-raised: #120F18;
+  --color-surface-overlay: #17131F;
 
-  /* Accent */
+  /* Accent — single signature purple */
   --color-accent: #A78BFA;
   --color-accent-glow: #8B5CF6;
-  --color-accent-subtle: rgba(139, 92, 246, 0.15);
-  --color-accent-wash: rgba(139, 92, 246, 0.07);
+  --color-accent-subtle: rgba(139, 92, 246, 0.12);
+  --color-accent-wash: rgba(139, 92, 246, 0.06);
 
-  /* Text */
-  --color-text: #F0ECF5;
-  --color-text-secondary: #9D97A8;
-  --color-text-muted: #5F5968;
+  /* Text — never pure white, slightly warm */
+  --color-text: #EBE7F0;
+  --color-text-secondary: #A099AA;
+  --color-text-muted: #645E6E;
 
-  /* Borders */
-  --color-border: rgba(255, 255, 255, 0.05);
-  --color-border-visible: rgba(255, 255, 255, 0.09);
-  --color-border-glow: rgba(139, 92, 246, 0.18);
+  /* Borders — subtle elevation cues */
+  --color-border: rgba(255, 255, 255, 0.04);
+  --color-border-visible: rgba(255, 255, 255, 0.08);
+  --color-border-glow: rgba(139, 92, 246, 0.15);
 
   /* Typography */
   --font-display: 'Roboto', -apple-system, 'Helvetica Neue', sans-serif;
   --font-body: 'Roboto', -apple-system, 'Helvetica Neue', sans-serif;
   --font-mono: 'JetBrains Mono', 'Fira Code', monospace;
 
-  /* Spacing */
+  /* Spacing — 4px base grid */
   --space-xs: 4px;
   --space-sm: 8px;
   --space-md: 16px;
@@ -40,11 +40,11 @@
   --space-6xl: 160px;
 
   /* Radii */
-  --radius-sm: 8px;
-  --radius-md: 12px;
-  --radius-lg: 18px;
-  --radius-xl: 24px;
-  --radius-2xl: 32px;
+  --radius-sm: 6px;
+  --radius-md: 10px;
+  --radius-lg: 16px;
+  --radius-xl: 20px;
+  --radius-2xl: 28px;
   --radius-full: 9999px;
 
   /* Transitions */
@@ -54,7 +54,20 @@
 
   /* Layout */
   --max-width: 1100px;
-  --header-height: 68px;
+  --header-height: 64px;
+}
+
+/* ===== Noise Texture — subtle ===== */
+body::before {
+  content: '';
+  position: fixed;
+  inset: 0;
+  z-index: 9998;
+  pointer-events: none;
+  opacity: 0.025;
+  background-image: url("data:image/svg+xml,%3Csvg viewBox='0 0 256 256' xmlns='http://www.w3.org/2000/svg'%3E%3Cfilter id='noise'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='0.9' numOctaves='4' stitchTiles='stitch'/%3E%3C/filter%3E%3Crect width='100%25' height='100%25' filter='url(%23noise)'/%3E%3C/svg%3E");
+  background-repeat: repeat;
+  background-size: 256px 256px;
 }
 
 /* ===== Noise Texture ===== */
@@ -86,12 +99,15 @@ html {
 
 body {
   font-family: var(--font-body);
-  font-size: 17px;
-  line-height: 1.65;
+  font-size: 16px;
+  line-height: 1.6;
+  letter-spacing: 0.01em;
   color: var(--color-text);
   background: var(--color-bg);
   overflow-x: hidden;
   position: relative;
+  -webkit-font-smoothing: antialiased;
+  -moz-osx-font-smoothing: grayscale;
 }
 
 img { display: block; max-width: 100%; }
@@ -100,12 +116,12 @@ button { font-family: inherit; cursor: pointer; border: none; background: none; 
 input, textarea { font-family: inherit; font-size: inherit; color: inherit; }
 
 ::selection {
-  background: rgba(139, 92, 246, 0.35);
+  background: rgba(139, 92, 246, 0.3);
   color: #fff;
 }
 
 :focus-visible {
-  outline: 2px solid var(--color-accent);
+  outline: 2px solid rgba(255, 255, 255, 0.3);
   outline-offset: 2px;
   border-radius: 4px;
 }
@@ -119,10 +135,9 @@ input, textarea { font-family: inherit; font-size: inherit; color: inherit; }
 }
 
 /* Scrollbar — cross-browser */
-* { scrollbar-width: thin; scrollbar-color: var(--color-text-muted) transparent; }
+* { scrollbar-width: thin; scrollbar-color: rgba(255,255,255,0.08) transparent; }
 
-/* WebKit fallback */
 *::-webkit-scrollbar { width: 5px; }
 *::-webkit-scrollbar-track { background: transparent; }
-*::-webkit-scrollbar-thumb { background: var(--color-text-muted); border-radius: 3px; }
-*::-webkit-scrollbar-thumb:hover { background: var(--color-text-secondary); }
+*::-webkit-scrollbar-thumb { background: rgba(255,255,255,0.08); border-radius: 3px; }
+*::-webkit-scrollbar-thumb:hover { background: rgba(255,255,255,0.14); }

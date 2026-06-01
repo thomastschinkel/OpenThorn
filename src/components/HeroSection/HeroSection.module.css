@@ -43,23 +43,24 @@
 /* Headline */
 .headline {
   font-family: var(--font-display);
-  font-size: clamp(42px, 6.5vw, 68px);
+  font-size: clamp(44px, 7vw, 72px);
   font-weight: 700;
-  line-height: 1.12;
+  line-height: 1.08;
   color: #FFFFFF;
-  letter-spacing: -0.01em;
+  letter-spacing: -0.015em;
   margin-bottom: var(--space-lg);
 }
 
 /* Subtitle */
 .subtitle {
   font-family: var(--font-body);
-  font-size: clamp(17px, 2.2vw, 20px);
+  font-size: clamp(16px, 2vw, 19px);
   color: var(--color-text-secondary);
-  max-width: 500px;
+  max-width: 520px;
   margin: 0 auto var(--space-2xl);
   line-height: 1.6;
   font-weight: 400;
+  letter-spacing: 0.005em;
 }
 
 /* Input wrapper */
@@ -76,8 +77,8 @@
   flex-wrap: wrap;
   justify-content: center;
   padding: 10px 24px;
-  background: rgba(139, 92, 246, 0.04);
-  border: 1px solid rgba(139, 92, 246, 0.08);
+  background: rgba(255, 255, 255, 0.03);
+  border: 1px solid var(--color-border);
   border-radius: var(--radius-full);
 }
 
@@ -86,6 +87,7 @@
   color: var(--color-text-secondary);
   font-weight: 400;
   padding: 4px 0;
+  letter-spacing: 0.01em;
 }
 
 .trustSep {
@@ -93,7 +95,7 @@
   height: 3px;
   border-radius: 50%;
   background: var(--color-text-muted);
-  opacity: 0.35;
+  opacity: 0.3;
   flex-shrink: 0;
 }
 
