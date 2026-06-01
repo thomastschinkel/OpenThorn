@@ -172,8 +172,16 @@ export default function ProvidersPage() {
             <h1 className={styles.title}>Configure providers</h1>
             <p className={styles.subtitle}>
               Add your API keys to connect Bloom to your preferred LLM providers.
-              Keys are stored locally and never sent to our servers.
+              Keys are stored in your browser's local storage and never leave your device.
             </p>
+            <div className={styles.securityNote}>
+              <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+                <path d="M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10z"/>
+                <line x1="12" y1="8" x2="12" y2="12"/>
+                <line x1="12" y1="16" x2="12.01" y2="16"/>
+              </svg>
+              <span>API keys are stored in localStorage. Make sure your browser and extensions are trusted before adding keys. For production use, consider proxying through a backend.</span>
+            </div>
           </div>
 
           <div className={styles.grid}>
