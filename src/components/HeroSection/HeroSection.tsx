@@ -13,15 +13,15 @@ export default function HeroSection() {
   return (
     <section className={styles.section}>
       <FloatingParticles
-        particleCount={70}
-        particleSize={3}
-        particleOpacity={0.5}
+        particleCount={50}
+        particleSize={2}
+        particleOpacity={0.18}
         particleColor="#A78BFA"
-        glowIntensity={15}
-        movementSpeed={0.4}
-        mouseInfluence={140}
+        glowIntensity={6}
+        movementSpeed={0.3}
+        mouseInfluence={160}
         mouseGravity="attract"
-        gravityStrength={35}
+        gravityStrength={30}
         glowAnimation="ease"
       />
 

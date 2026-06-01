@@ -48,8 +48,8 @@ export default function ProvidersPage() {
 
   useEffect(() => {
     if (!user) return
-    supabase.from('provider_keys').select('*').order('created_at').then(({ data }) => {
-      if (data) setSavedKeys(data)
+    supabase.from('provider_keys').select('*').eq('user_id', user.id).order('created_at').then(({ data, error }) => {
+      if (!error && data) setSavedKeys(data)
       setLoading(false)
     })
   }, [user])
@@ -93,34 +93,39 @@ export default function ProvidersPage() {
     const existing = savedKeys.find((k) => k.provider_id === editingProvider)
     let result
     if (existing) {
-      result = await supabase.from('provider_keys').update(payload).eq('id', existing.id).select()
+      result = await supabase.from('provider_keys').update(payload).eq('id', existing.id).eq('user_id', user.id).select()
     } else {
       result = await supabase.from('provider_keys').insert(payload).select()
     }
 
-    if (result.data) {
+    if (!result.error && result.data) {
       setSavedKeys((prev) => {
         const next = prev.filter((k) => k.provider_id !== editingProvider)
         return [...next, result.data![0]]
       })
+      setEditingProvider(null)
     }
     setSaving(false)
-    setEditingProvider(null)
   }
 
   const deleteKey = async () => {
-    if (!editingProvider) return
+    if (!user || !editingProvider) return
     const existing = savedKeys.find((k) => k.provider_id === editingProvider)
     if (!existing) return
-    await supabase.from('provider_keys').delete().eq('id', existing.id)
-    setSavedKeys((prev) => prev.filter((k) => k.id !== existing.id))
-    setEditingProvider(null)
+    const { error } = await supabase.from('provider_keys').delete().eq('id', existing.id).eq('user_id', user.id)
+    if (!error) {
+      setSavedKeys((prev) => prev.filter((k) => k.id !== existing.id))
+      setEditingProvider(null)
+    }
   }
 
   const toggleEnabled = async (key: ProviderKey) => {
+    if (!user) return
     const updated = { ...key, enabled: !key.enabled, updated_at: new Date().toISOString() }
-    await supabase.from('provider_keys').update(updated).eq('id', key.id)
-    setSavedKeys((prev) => prev.map((k) => (k.id === key.id ? updated : k)))
+    const { error } = await supabase.from('provider_keys').update(updated).eq('id', key.id).eq('user_id', user.id)
+    if (!error) {
+      setSavedKeys((prev) => prev.map((k) => (k.id === key.id ? updated : k)))
+    }
   }
 
   const openCustomEditor = () => {
