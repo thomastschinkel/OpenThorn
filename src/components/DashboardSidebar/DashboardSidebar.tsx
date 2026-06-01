@@ -1,5 +1,5 @@
-import { useState } from 'react'
-import { useNavigate } from 'react-router-dom'
+import { useState, useEffect } from 'react'
+import { useNavigate, useLocation } from 'react-router-dom'
 import type { ReactNode } from 'react'
 import { useAuth } from '../../lib/AuthContext'
 import styles from './DashboardSidebar.module.css'
@@ -107,8 +107,19 @@ const projectNavItems: NavItem[] = [
 export default function DashboardSidebar({ projects = [] }: DashboardSidebarProps) {
   const { user, signOut } = useAuth()
   const navigate = useNavigate()
-  const [activeNav, setActiveNav] = useState('Home')
+  const location = useLocation()
+  const [activeNav, setActiveNav] = useState(() => {
+    // Derive initial active item from the current route
+    if (location.pathname === '/providers') return 'Providers'
+    return 'Home'
+  })
   const [notificationsOpen, setNotificationsOpen] = useState(false)
+
+  // Sync activeNav when the route changes (browser back/forward, etc.)
+  useEffect(() => {
+    if (location.pathname === '/providers') setActiveNav('Providers')
+    else if (location.pathname === '/dashboard') setActiveNav('Home')
+  }, [location.pathname])
 
   const handleNavClick = (label: string) => {
     setActiveNav(label)
