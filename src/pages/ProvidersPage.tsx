@@ -143,15 +143,15 @@ export default function ProvidersPage() {
   return (
     <div className={styles.root}>
       <FloatingParticles
-        particleCount={40}
-        particleSize={2.5}
-        particleOpacity={0.35}
+        particleCount={50}
+        particleSize={2}
+        particleOpacity={0.18}
         particleColor="#A78BFA"
-        glowIntensity={10}
-        movementSpeed={0.35}
-        mouseInfluence={100}
+        glowIntensity={6}
+        movementSpeed={0.3}
+        mouseInfluence={160}
         mouseGravity="attract"
-        gravityStrength={25}
+        gravityStrength={30}
         glowAnimation="ease"
       />
 

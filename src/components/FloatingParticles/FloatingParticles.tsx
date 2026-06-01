@@ -175,8 +175,8 @@ export default function FloatingParticles({
               if (p.glowMultiplier < 1) p.glowMultiplier = 1
             }
 
-            // Decay opacity
-            p.opacity = Math.max(p.baseOpacity * 0.3, p.opacity - 0.02)
+            // Decay opacity back to base
+            p.opacity += (p.baseOpacity - p.opacity) * 0.05
           }
         }
       }
