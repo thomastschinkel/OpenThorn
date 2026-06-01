@@ -58,16 +58,24 @@ export default function ProvidersPage() {
   const [formCustom, setFormCustom] = useState(false)
   const [saving, setSaving] = useState(false)
   const [showKey, setShowKey] = useState(false)
-  const [defaultModels, setDefaultModels] = useState<Record<string, string[]>>({})
-  const [newModelInput, setNewModelInput] = useState('')
+  const [defaultModels, setDefaultModels] = useState<Record<string, {name: string, id: string}[]>>({})
+  const [newModelName, setNewModelName] = useState('')
+  const [newModelId, setNewModelId] = useState('')
+  const [showAdvanced, setShowAdvanced] = useState(false)
+
+  const parseModels = (raw: string): {name: string, id: string}[] => {
+    return raw.split(',').map((m) => {
+      const [name, id] = m.split('|').map((s) => s.trim())
+      return { name: name || id || '', id: id || name || '' }
+    }).filter((m) => m.id)
+  }
 
   useEffect(() => {
-    // Fetch system default models
     supabase.from('default_models').select('*').then(({ data }) => {
       if (data) {
-        const map: Record<string, string[]> = {}
+        const map: Record<string, {name: string, id: string}[]> = {}
         data.forEach((d: { provider_id: string; models: string }) => {
-          map[d.provider_id] = d.models.split(',').map((m) => m.trim()).filter(Boolean)
+          map[d.provider_id] = parseModels(d.models)
         })
         setDefaultModels(map)
       }
@@ -308,60 +316,58 @@ export default function ProvidersPage() {
                 <div className={styles.field}>
                   <label className={styles.fieldLabel}>Models</label>
                   <div className={styles.modelList}>
-                    {/* System defaults */}
-                    {(defaultModels[editingProvider] || []).map((m) => (
-                      <span key={m} className={styles.modelPill} title="System default">
-                        <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><polyline points="20 6 9 17 4 12"/></svg>
-                        {m}
-                      </span>
-                    ))}
-                    {/* User custom models */}
-                    {formModels.split(',').map((m) => m.trim()).filter(Boolean).map((m) => (
-                      <span key={m} className={`${styles.modelPill} ${styles.modelPillCustom}`}>
-                        {m}
-                        <button className={styles.modelRemove} onClick={() => {
-                          const updated = formModels.split(',').map((x) => x.trim()).filter((x) => x && x !== m).join(', ')
-                          setFormModels(updated)
-                        }} type="button" aria-label={`Remove ${m}`}>
-                          <svg width="10" height="10" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5"><line x1="18" y1="6" x2="6" y2="18"/><line x1="6" y1="6" x2="18" y2="18"/></svg>
+                    {[...(defaultModels[editingProvider] || []), ...parseModels(formModels)].map((m) => {
+                      const isDefault = (defaultModels[editingProvider] || []).some((d) => d.id === m.id)
+                      return (
+                        <span key={m.id} className={`${styles.modelPill} ${!isDefault ? styles.modelPillCustom : ''}`} title={m.id}>
+                          {isDefault && (
+                            <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><polyline points="20 6 9 17 4 12"/></svg>
+                          )}
+                          {m.name}
+                          {!isDefault && (
+                            <button className={styles.modelRemove} onClick={() => {
+                              const updated = parseModels(formModels).filter((x) => x.id !== m.id).map((x) => `${x.name}|${x.id}`).join(', ')
+                              setFormModels(updated)
+                            }} type="button" aria-label={`Remove ${m.name}`}>
+                              <svg width="10" height="10" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5"><line x1="18" y1="6" x2="6" y2="18"/><line x1="6" y1="6" x2="18" y2="18"/></svg>
+                            </button>
+                          )}
+                        </span>
+                      )
+                    })}
+                  </div>
+
+                  {/* Advanced: add custom model */}
+                  <button className={styles.advancedToggle} onClick={() => setShowAdvanced(!showAdvanced)} type="button">
+                    <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round"><circle cx="12" cy="12" r="3"/><path d="M12 1v4M12 19v4M4.22 4.22l2.83 2.83M16.95 16.95l2.83 2.83M1 12h4M19 12h4M4.22 19.78l2.83-2.83M16.95 7.05l2.83-2.83"/></svg>
+                    Advanced options
+                    <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" style={{ transform: showAdvanced ? 'rotate(180deg)' : 'none', transition: 'transform 0.2s' }}><polyline points="6 9 12 15 18 9"/></svg>
+                  </button>
+                  {showAdvanced && (
+                    <div className={styles.advancedSection}>
+                      <div className={styles.addModelRow}>
+                        <input className={styles.addModelInput} type="text" placeholder="Model name (e.g. My Fine-tune)" value={newModelName} onChange={(e) => setNewModelName(e.target.value)} />
+                        <input className={styles.addModelInput} type="text" placeholder="Model ID (e.g. ft:gpt-4.1:my-org::abc123)" value={newModelId} onChange={(e) => setNewModelId(e.target.value)} />
+                        <button
+                          className={styles.addModelBtn}
+                          onClick={() => {
+                            if (!newModelName.trim() || !newModelId.trim()) return
+                            const current = parseModels(formModels)
+                            if (!current.some((m) => m.id === newModelId.trim())) {
+                              const updated = [...current, { name: newModelName.trim(), id: newModelId.trim() }].map((x) => `${x.name}|${x.id}`).join(', ')
+                              setFormModels(updated)
+                            }
+                            setNewModelName('')
+                            setNewModelId('')
+                          }}
+                          type="button"
+                          disabled={!newModelName.trim() || !newModelId.trim()}
+                        >
+                          Add
                         </button>
-                      </span>
-                    ))}
-                  </div>
-                  <div className={styles.addModelRow}>
-                    <input
-                      className={styles.addModelInput}
-                      type="text"
-                      placeholder="Add custom model ID..."
-                      value={newModelInput}
-                      onChange={(e) => setNewModelInput(e.target.value)}
-                      onKeyDown={(e) => {
-                        if (e.key === 'Enter' && newModelInput.trim()) {
-                          e.preventDefault()
-                          const current = formModels.split(',').map((m) => m.trim()).filter(Boolean)
-                          if (!current.includes(newModelInput.trim())) {
-                            setFormModels([...current, newModelInput.trim()].join(', '))
-                          }
-                          setNewModelInput('')
-                        }
-                      }}
-                    />
-                    <button
-                      className={styles.addModelBtn}
-                      onClick={() => {
-                        if (!newModelInput.trim()) return
-                        const current = formModels.split(',').map((m) => m.trim()).filter(Boolean)
-                        if (!current.includes(newModelInput.trim())) {
-                          setFormModels([...current, newModelInput.trim()].join(', '))
-                        }
-                        setNewModelInput('')
-                      }}
-                      type="button"
-                      disabled={!newModelInput.trim()}
-                    >
-                      Add
-                    </button>
-                  </div>
+                      </div>
+                    </div>
+                  )}
                 </div>
               </div>
 
