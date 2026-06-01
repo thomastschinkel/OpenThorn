@@ -126,12 +126,9 @@ export default function AuthModal({ isOpen, onClose, initialMode }: AuthModalPro
             exit="exit"
             onClick={(e) => e.stopPropagation()}
           >
-            {/* Bloom icon */}
+            {/* Bloom logo */}
             <div className={styles.brandIcon}>
-              <svg width="24" height="24" viewBox="0 0 32 32" fill="none">
-                <circle cx="16" cy="16" r="14" stroke="var(--color-accent)" strokeWidth="2" opacity="0.6"/>
-                <circle cx="16" cy="16" r="6" fill="var(--color-accent)" opacity="0.8"/>
-              </svg>
+              <img src="/assets/logo.png" alt="Bloom" className={styles.brandLogo} />
             </div>
 
             {/* Tab switcher */}

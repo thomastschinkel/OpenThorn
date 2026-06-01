@@ -9,19 +9,20 @@
   background: rgba(7, 5, 10, 0.75);
   backdrop-filter: blur(16px) saturate(1.4);
   -webkit-backdrop-filter: blur(16px) saturate(1.4);
-  overflow-y: auto;
+  overflow: hidden;
 }
 
 .card {
   position: relative;
   width: 100%;
   max-width: 420px;
+  max-height: calc(100vh - 48px);
   padding: 36px 32px 28px;
   background: var(--color-surface-overlay);
   border: 1px solid var(--color-border-visible);
   border-radius: var(--radius-xl);
   box-shadow: 0 24px 64px rgba(0, 0, 0, 0.6), 0 0 0 1px rgba(139, 92, 246, 0.04);
-  margin: auto;
+  overflow-y: auto;
 }
 
 /* Close button — outside the card, in overlay top-right */
@@ -52,11 +53,17 @@
   border-color: var(--color-border-glow);
 }
 
-/* Brand icon */
+/* Brand logo */
 .brandIcon {
   display: flex;
   justify-content: center;
   margin-bottom: 20px;
+}
+
+.brandLogo {
+  height: 28px;
+  width: auto;
+  opacity: 0.9;
 }
 
 /* Tabs */
