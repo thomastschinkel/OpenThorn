@@ -1,5 +1,6 @@
 import { useState, useEffect } from 'react'
-import { Routes, Route } from 'react-router-dom'
+import { Routes, Route, Navigate } from 'react-router-dom'
+import { useAuth } from './lib/AuthContext'
 import ErrorBoundary from './components/ErrorBoundary/ErrorBoundary'
 import Header from './components/Header/Header'
 import HeroSection from './components/HeroSection/HeroSection'
@@ -13,6 +14,11 @@ import AuthModal from './components/AuthModal/AuthModal'
 import styles from './App.module.css'
 
 function HomePage() {
+  const { user, loading } = useAuth()
+
+  if (loading) return null
+  if (user) return <Navigate to="/dashboard" replace />
+
   return (
     <>
       <HeroSection />
