@@ -3,10 +3,37 @@ import PromptInput from '../PromptInput/PromptInput'
 import FloatingParticles from '../FloatingParticles/FloatingParticles'
 import styles from './HeroSection.module.css'
 
-const trustItems = [
-  'Bring your own API keys — any provider',
-  'Pay only for what you use, zero platform fees',
-  'Export your code, own your infrastructure',
+const valueProps = [
+  {
+    icon: (
+      <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round">
+        <path d="M21 2l-2 2m-7.61 7.61a5.5 5.5 0 1 1-7.778 7.778 5.5 5.5 0 0 1 7.777-7.777zm0 0L15.5 7.5m0 0l3 3L22 7l-3-3m-3.5 3.5L19 4"/>
+      </svg>
+    ),
+    title: 'Bring your own keys',
+    description: 'Use any AI provider — OpenAI, Anthropic, Google, or your own fine-tuned models.',
+  },
+  {
+    icon: (
+      <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round">
+        <line x1="12" y1="1" x2="12" y2="23"/>
+        <path d="M17 5H9.5a3.5 3.5 0 0 0 0 7h5a3.5 3.5 0 0 1 0 7H6"/>
+      </svg>
+    ),
+    title: 'Pay only for usage',
+    description: 'Zero platform fees. You only pay your AI provider for what you actually generate.',
+  },
+  {
+    icon: (
+      <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round">
+        <path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/>
+        <polyline points="7 10 12 15 17 10"/>
+        <line x1="12" y1="15" x2="12" y2="3"/>
+      </svg>
+    ),
+    title: 'Export & own it',
+    description: 'Download your full codebase. No lock-in, no walled garden — it\'s your infrastructure.',
+  },
 ]
 
 export default function HeroSection() {
@@ -69,17 +96,22 @@ export default function HeroSection() {
           <PromptInput />
         </motion.div>
 
-        {/* Trust */}
+        {/* Value props */}
         <motion.div
-          className={styles.trust}
-          initial={{ opacity: 0 }}
-          animate={{ opacity: 1 }}
+          className={styles.valueProps}
+          initial={{ opacity: 0, y: 16 }}
+          animate={{ opacity: 1, y: 0 }}
           transition={{ duration: 0.5, delay: 0.85 }}
         >
-          {trustItems.map((item, i) => [
-            <span key={item} className={styles.trustItem}>{item}</span>,
-            i < trustItems.length - 1 && <span key={`sep-${i}`} className={styles.trustSep} />,
-          ])}
+          {valueProps.map((prop) => (
+            <div key={prop.title} className={styles.valueCard}>
+              <div className={styles.valueIcon}>{prop.icon}</div>
+              <div className={styles.valueText}>
+                <span className={styles.valueTitle}>{prop.title}</span>
+                <span className={styles.valueDesc}>{prop.description}</span>
+              </div>
+            </div>
+          ))}
         </motion.div>
       </div>
 
