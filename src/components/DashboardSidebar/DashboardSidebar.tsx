@@ -1,4 +1,5 @@
 import { useState } from 'react'
+import { useNavigate } from 'react-router-dom'
 import type { ReactNode } from 'react'
 import { useAuth } from '../../lib/AuthContext'
 import styles from './DashboardSidebar.module.css'
@@ -105,8 +106,15 @@ const projectNavItems: NavItem[] = [
 
 export default function DashboardSidebar({ projects = [] }: DashboardSidebarProps) {
   const { user, signOut } = useAuth()
+  const navigate = useNavigate()
   const [activeNav, setActiveNav] = useState('Home')
   const [notificationsOpen, setNotificationsOpen] = useState(false)
+
+  const handleNavClick = (label: string) => {
+    setActiveNav(label)
+    if (label === 'Providers') navigate('/providers')
+    if (label === 'Home') navigate('/dashboard')
+  }
 
   const firstName = user?.user_metadata?.full_name?.split(' ')[0] ?? user?.email?.split('@')[0] ?? 'there'
   const userInitial = firstName.charAt(0).toUpperCase()
@@ -121,7 +129,7 @@ export default function DashboardSidebar({ projects = [] }: DashboardSidebarProp
     <button
       key={item.label}
       className={`${styles.navItem} ${isSub ? styles.navItemSub : ''} ${isActive ? styles.navItemActive : ''}`}
-      onClick={() => setActiveNav(item.label)}
+      onClick={() => handleNavClick(item.label)}
       type="button"
     >
       <span className={styles.navIcon}>{item.icon}</span>
@@ -188,7 +196,7 @@ export default function DashboardSidebar({ projects = [] }: DashboardSidebarProp
               <button
                 key={project.id}
                 className={`${styles.navItem} ${styles.recentItem} ${activeNav === project.id ? styles.navItemActive : ''}`}
-                onClick={() => setActiveNav(project.id)}
+                onClick={() => handleNavClick(project.id)}
                 type="button"
               >
                 <span className={styles.recentDot} />
