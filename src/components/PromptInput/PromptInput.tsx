@@ -1,5 +1,7 @@
 import { type FormEvent, useState, useEffect, useRef } from 'react'
+import { useNavigate } from 'react-router-dom'
 import { motion, AnimatePresence } from 'framer-motion'
+import { useAuth } from '../../lib/AuthContext'
 import styles from './PromptInput.module.css'
 
 interface PromptInputProps {
@@ -8,12 +10,12 @@ interface PromptInputProps {
 }
 
 const prompts = [
-  'Create a modern portfolio with a dark theme...',
-  'Build an e-commerce store for my brand...',
-  'Make a blog with a clean, minimal design...',
-  'Design a dashboard with charts and analytics...',
-  'Create a waitlist page for my startup...',
-  'Build a recipe app with beautiful photos...',
+  'Design a portfolio with a dark, cinematic feel...',
+  'Build a waitlist landing page for my SaaS idea...',
+  'Create a custom dashboard for tracking team metrics...',
+  'Make a marketplace with search, filters, and checkout...',
+  'Build a blog that feels like a magazine...',
+  'Create a booking page for a local service business...',
 ]
 
 function useTypingAnimation(active: boolean) {
@@ -75,6 +77,8 @@ function useTypingAnimation(active: boolean) {
 }
 
 export default function PromptInput({ size = 'default', onSubmit }: PromptInputProps) {
+  const { user } = useAuth()
+  const navigate = useNavigate()
   const [value, setValue] = useState('')
   const [isFocused, setIsFocused] = useState(false)
   const inputRef = useRef<HTMLInputElement>(null)
@@ -84,8 +88,18 @@ export default function PromptInput({ size = 'default', onSubmit }: PromptInputP
 
   const handleSubmit = (e: FormEvent) => {
     e.preventDefault()
-    if (value.trim() && onSubmit) {
-      onSubmit(value.trim())
+    const prompt = value.trim() || activeTyping || undefined
+
+    if (onSubmit && prompt) {
+      onSubmit(prompt)
+      return
+    }
+
+    // Auth gate: if not logged in, open sign-in modal; otherwise go to dashboard
+    if (!user) {
+      window.dispatchEvent(new CustomEvent('bloom:require-auth'))
+    } else {
+      navigate('/dashboard')
     }
   }
 
@@ -141,13 +155,13 @@ export default function PromptInput({ size = 'default', onSubmit }: PromptInputP
         >
           <AnimatePresence mode="wait" initial={false}>
             <motion.span
-              key="build"
+              key="generate"
               initial={{ y: 12, opacity: 0 }}
               animate={{ y: 0, opacity: 1 }}
               exit={{ y: -12, opacity: 0 }}
               transition={{ duration: 0.25, ease: [0.19, 1, 0.22, 1] }}
             >
-              Build
+              Generate
             </motion.span>
           </AnimatePresence>
         </motion.button>

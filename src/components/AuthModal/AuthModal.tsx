@@ -1,4 +1,5 @@
 import { useState, useEffect, useCallback } from 'react'
+import { useNavigate } from 'react-router-dom'
 import { motion, AnimatePresence } from 'framer-motion'
 import { useAuth } from '../../lib/AuthContext'
 import SocialButton from './SocialButton'
@@ -29,6 +30,7 @@ const cardVariants = {
 
 export default function AuthModal({ isOpen, onClose, initialMode }: AuthModalProps) {
   const { signIn, signUp, signInWithGoogle, signInWithGitHub } = useAuth()
+  const navigate = useNavigate()
   const [mode, setMode] = useState<'signin' | 'signup'>(initialMode)
   const [loading, setLoading] = useState(false)
   const [error, setError] = useState<string | null>(null)
@@ -87,8 +89,11 @@ export default function AuthModal({ isOpen, onClose, initialMode }: AuthModalPro
 
     if (result.error) {
       setError(result.error)
+    } else {
+      onClose()
+      navigate('/dashboard')
     }
-  }, [mode, signIn, signUp])
+  }, [mode, signIn, signUp, onClose, navigate])
 
   const switchMode = (newMode: 'signin' | 'signup') => {
     setMode(newMode)

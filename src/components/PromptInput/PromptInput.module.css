@@ -12,6 +12,14 @@
   border-radius: var(--radius-2xl);
   transition: border-color 0.3s var(--ease-out), box-shadow 0.3s var(--ease-out), background 0.25s;
   height: 60px;
+  outline: none;
+}
+
+.card:focus,
+.card:focus-within {
+  outline: none;
+  border-color: var(--color-border-visible);
+  box-shadow: none;
 }
 
 /* + icon */
@@ -27,6 +35,12 @@
   flex-shrink: 0;
   transition: border-color 0.2s, color 0.2s;
   cursor: pointer;
+  outline: none;
+}
+
+.plusIcon:focus,
+.plusIcon:focus-visible {
+  outline: none;
 }
 
 .plusIcon:hover {
@@ -51,6 +65,16 @@
   padding: 16px 0;
   font-weight: 400;
   font-family: var(--font-body);
+}
+
+.input:focus {
+  outline: none;
+  box-shadow: none;
+}
+
+.input:focus-visible {
+  outline: none;
+  box-shadow: none;
 }
 
 .input::placeholder {
@@ -106,8 +130,14 @@
   letter-spacing: -0.01em;
   cursor: pointer;
   border: none;
+  outline: none;
   position: relative;
   overflow: hidden;
+}
+
+.submitBtn:focus,
+.submitBtn:focus-visible {
+  outline: none;
 }
 
 .submitBtn:hover {

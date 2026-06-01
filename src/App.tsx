@@ -1,4 +1,4 @@
-import { useState } from 'react'
+import { useState, useEffect } from 'react'
 import { Routes, Route } from 'react-router-dom'
 import ErrorBoundary from './components/ErrorBoundary/ErrorBoundary'
 import Header from './components/Header/Header'
@@ -29,6 +29,12 @@ function Layout({ children }: { children: React.ReactNode }) {
 
   const openSignIn = () => { setAuthModalMode('signin'); setAuthModalOpen(true) }
   const openSignUp = () => { setAuthModalMode('signup'); setAuthModalOpen(true) }
+
+  useEffect(() => {
+    const handleRequireAuth = () => openSignIn()
+    window.addEventListener('bloom:require-auth', handleRequireAuth)
+    return () => window.removeEventListener('bloom:require-auth', handleRequireAuth)
+  }, [])
 
   return (
     <>
