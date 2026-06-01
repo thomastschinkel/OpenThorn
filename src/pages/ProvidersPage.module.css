@@ -29,12 +29,11 @@
   background: var(--color-surface-raised);
   border: 1px solid var(--color-border-visible);
   border-radius: var(--radius-xl);
-  padding: 28px;
-  position: relative;
+  padding: 24px 28px 28px;
 }
-.backArrow { position: absolute; top: 20px; left: 20px; display: flex; align-items: center; justify-content: center; width: 36px; height: 36px; border-radius: 50%; color: var(--color-text-muted); background: transparent; border: none; cursor: pointer; transition: color 0.15s, background 0.15s; }
+.backArrow { display: flex; align-items: center; justify-content: center; width: 36px; height: 36px; border-radius: 50%; color: var(--color-text-muted); background: transparent; border: none; cursor: pointer; transition: color 0.15s, background 0.15s; }
 .backArrow:hover { color: var(--color-text); background: rgba(255,255,255,0.05); }
-.editorHeader { display: flex; align-items: center; gap: 16px; margin-bottom: 24px; padding-left: 44px; }
+.editorHeader { display: flex; align-items: center; gap: 16px; margin-bottom: 24px; }
 .editorLogoImg { width: 48px; height: 48px; border-radius: 12px; object-fit: contain; flex-shrink: 0; }
 .editorLogoPlaceholder { display: flex; align-items: center; justify-content: center; width: 48px; height: 48px; border-radius: 12px; flex-shrink: 0; background: rgba(255,255,255,0.06); color: var(--color-text-muted); }
 .editorTitle { font-size: 20px; font-weight: 700; color: var(--color-text); letter-spacing: -0.01em; }
@@ -139,7 +138,7 @@
 .pickerLogo { display: flex; align-items: center; justify-content: center; width: 52px; height: 52px; border-radius: 14px; background: rgba(255,255,255,0.04); }
 .pickerLogoImg { width: 40px; height: 40px; object-fit: contain; }
 .pickerName { font-size: 13px; font-weight: 500; color: var(--color-text-secondary); text-align: center; }
-.pickerCardTop { display: flex; align-items: center; justify-content: flex-end; gap: 6px; margin-bottom: 4px; min-height: 26px; }
+.editorTopRow { display: flex; align-items: center; justify-content: space-between; margin-bottom: 20px; }
 .pickerCardCustom { border-style: dashed; }
 .pickerCardCustom .pickerCardInner { cursor: pointer; }
 .configuredBadge { font-size: 10px; font-weight: 600; color: #34D399; text-transform: uppercase; letter-spacing: 0.04em; }

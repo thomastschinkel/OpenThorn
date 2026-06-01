@@ -138,22 +138,6 @@ export default function ProvidersPage() {
     }
   }
 
-  const quickToggle = async (providerId: string) => {
-    if (!user) return
-    const existing = savedKeys.find((k) => k.provider_id === providerId)
-    if (!existing || !existing.api_key) {
-      // No key yet — open editor
-      openEditor(providerId)
-      return
-    }
-    // Toggle enabled
-    const updated = { ...existing, enabled: !existing.enabled, updated_at: new Date().toISOString() }
-    const { error } = await supabase.from('provider_keys').update(updated).eq('id', existing.id).eq('user_id', user.id)
-    if (!error) {
-      setSavedKeys((prev) => prev.map((k) => (k.id === existing.id ? updated : k)))
-    }
-  }
-
   const openCustomEditor = () => {
     const id = `custom-${Date.now()}`
     setFormKey('')
@@ -218,9 +202,15 @@ export default function ProvidersPage() {
           {/* Editing a provider */}
           {editingProvider && (
             <div className={styles.editorCard}>
-              <button className={styles.backArrow} onClick={() => setEditingProvider(null)} type="button">
-                <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round"><polyline points="15 18 9 12 15 6"/></svg>
-              </button>
+              <div className={styles.editorTopRow}>
+                <button className={styles.backArrow} onClick={() => setEditingProvider(null)} type="button">
+                  <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round"><polyline points="15 18 9 12 15 6"/></svg>
+                </button>
+                <label className={styles.toggle}>
+                  <input type="checkbox" checked={formEnabled} onChange={() => setFormEnabled(!formEnabled)} />
+                  <span className={styles.toggleSlider} />
+                </label>
+              </div>
 
               <div className={styles.editorHeader}>
                 {editingDef && !formCustom ? (
@@ -331,21 +321,13 @@ export default function ProvidersPage() {
                 const isEnabled = saved?.enabled ?? false
                 const hasKey = !!(saved?.api_key)
                 return (
-                  <div key={p.id} className={`${styles.pickerCard} ${isEnabled ? styles.pickerCardActive : ''}`}>
-                    <div className={styles.pickerCardTop}>
-                      {hasKey && <span className={styles.configuredBadge}>Key set</span>}
-                      <label className={styles.toggle} onClick={(e) => e.stopPropagation()}>
-                        <input type="checkbox" checked={isEnabled} onChange={() => quickToggle(p.id)} />
-                        <span className={styles.toggleSlider} />
-                      </label>
+                  <button key={p.id} className={`${styles.pickerCard} ${isEnabled ? styles.pickerCardActive : ''}`} onClick={() => openEditor(p.id)} type="button">
+                    <div className={styles.pickerLogo}>
+                      <img src={LOGO_MAP[p.id]} alt={p.name} className={styles.pickerLogoImg} />
                     </div>
-                    <button className={styles.pickerCardInner} onClick={() => openEditor(p.id)} type="button">
-                      <div className={styles.pickerLogo}>
-                        <img src={LOGO_MAP[p.id]} alt={p.name} className={styles.pickerLogoImg} />
-                      </div>
-                      <span className={styles.pickerName}>{p.name}</span>
-                    </button>
-                  </div>
+                    <span className={styles.pickerName}>{p.name}</span>
+                    {hasKey && <span className={styles.configuredBadge}>Key set</span>}
+                  </button>
                 )
               })}
               <button className={`${styles.pickerCard} ${styles.pickerCardCustom}`} onClick={openCustomEditor} type="button">
