@@ -4,36 +4,9 @@ import FloatingParticles from '../FloatingParticles/FloatingParticles'
 import styles from './HeroSection.module.css'
 
 const valueProps = [
-  {
-    icon: (
-      <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round">
-        <path d="M21 2l-2 2m-7.61 7.61a5.5 5.5 0 1 1-7.778 7.778 5.5 5.5 0 0 1 7.777-7.777zm0 0L15.5 7.5m0 0l3 3L22 7l-3-3m-3.5 3.5L19 4"/>
-      </svg>
-    ),
-    title: 'Bring your own keys',
-    description: 'Use any AI provider — OpenAI, Anthropic, Google, or your own fine-tuned models.',
-  },
-  {
-    icon: (
-      <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round">
-        <line x1="12" y1="1" x2="12" y2="23"/>
-        <path d="M17 5H9.5a3.5 3.5 0 0 0 0 7h5a3.5 3.5 0 0 1 0 7H6"/>
-      </svg>
-    ),
-    title: 'Pay only for usage',
-    description: 'Zero platform fees. You only pay your AI provider for what you actually generate.',
-  },
-  {
-    icon: (
-      <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round">
-        <path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/>
-        <polyline points="7 10 12 15 17 10"/>
-        <line x1="12" y1="15" x2="12" y2="3"/>
-      </svg>
-    ),
-    title: 'Export & own it',
-    description: 'Download your full codebase. No lock-in, no walled garden — it\'s your infrastructure.',
-  },
+  { label: 'Bring your own API keys', detail: 'any provider' },
+  { label: 'Pay only for what you use', detail: 'zero platform fees' },
+  { label: 'Export your code', detail: 'own your infrastructure' },
 ]
 
 export default function HeroSection() {
@@ -96,21 +69,18 @@ export default function HeroSection() {
           <PromptInput />
         </motion.div>
 
-        {/* Value props */}
+        {/* Value props — clean editorial strip */}
         <motion.div
           className={styles.valueProps}
-          initial={{ opacity: 0, y: 16 }}
+          initial={{ opacity: 0, y: 12 }}
           animate={{ opacity: 1, y: 0 }}
           transition={{ duration: 0.5, delay: 0.85 }}
         >
           {valueProps.map((prop) => (
-            <div key={prop.title} className={styles.valueCard}>
-              <div className={styles.valueIcon}>{prop.icon}</div>
-              <div className={styles.valueText}>
-                <span className={styles.valueTitle}>{prop.title}</span>
-                <span className={styles.valueDesc}>{prop.description}</span>
-              </div>
-            </div>
+            <span key={prop.label} className={styles.valueItem}>
+              <span className={styles.valueLabel}>{prop.label}</span>
+              <span className={styles.valueDetail}>{prop.detail}</span>
+            </span>
           ))}
         </motion.div>
       </div>
