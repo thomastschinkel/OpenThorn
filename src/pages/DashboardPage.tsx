@@ -47,6 +47,7 @@ export default function DashboardPage() {
       const { data, error } = await supabase
         .from('projects')
         .select('id, title, preview_url, created_at')
+        .eq('user_id', user.id)
         .order('created_at', { ascending: false })
 
       if (!error && data) {
