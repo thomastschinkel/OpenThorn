@@ -332,19 +332,19 @@ export default function ProvidersPage() {
                 const hasKey = !!(saved?.api_key)
                 return (
                   <div key={p.id} className={`${styles.pickerCard} ${isEnabled ? styles.pickerCardActive : ''}`}>
-                    <button className={styles.pickerCardInner} onClick={() => openEditor(p.id)} type="button">
-                      <div className={styles.pickerLogo}>
-                        <img src={LOGO_MAP[p.id]} alt={p.name} className={styles.pickerLogoImg} />
-                      </div>
-                      <span className={styles.pickerName}>{p.name}</span>
-                    </button>
-                    <div className={styles.pickerToggleRow}>
+                    <div className={styles.pickerCardTop}>
                       {hasKey && <span className={styles.configuredBadge}>Key set</span>}
                       <label className={styles.toggle} onClick={(e) => e.stopPropagation()}>
                         <input type="checkbox" checked={isEnabled} onChange={() => quickToggle(p.id)} />
                         <span className={styles.toggleSlider} />
                       </label>
                     </div>
+                    <button className={styles.pickerCardInner} onClick={() => openEditor(p.id)} type="button">
+                      <div className={styles.pickerLogo}>
+                        <img src={LOGO_MAP[p.id]} alt={p.name} className={styles.pickerLogoImg} />
+                      </div>
+                      <span className={styles.pickerName}>{p.name}</span>
+                    </button>
                   </div>
                 )
               })}

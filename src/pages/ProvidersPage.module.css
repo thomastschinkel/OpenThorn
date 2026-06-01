@@ -139,7 +139,7 @@
 .pickerLogo { display: flex; align-items: center; justify-content: center; width: 52px; height: 52px; border-radius: 14px; background: rgba(255,255,255,0.04); }
 .pickerLogoImg { width: 40px; height: 40px; object-fit: contain; }
 .pickerName { font-size: 13px; font-weight: 500; color: var(--color-text-secondary); text-align: center; }
-.pickerToggleRow { display: flex; align-items: center; justify-content: space-between; padding: 0 2px; }
+.pickerCardTop { display: flex; align-items: center; justify-content: flex-end; gap: 6px; margin-bottom: 4px; min-height: 26px; }
 .pickerCardCustom { border-style: dashed; }
 .pickerCardCustom .pickerCardInner { cursor: pointer; }
 .configuredBadge { font-size: 10px; font-weight: 600; color: #34D399; text-transform: uppercase; letter-spacing: 0.04em; }
