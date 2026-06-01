@@ -3,20 +3,27 @@ import type { ReactNode } from 'react'
 import { useAuth } from '../../lib/AuthContext'
 import styles from './DashboardSidebar.module.css'
 
+interface Project {
+  id: string
+  title: string
+}
+
+interface DashboardSidebarProps {
+  projects?: Project[]
+}
+
 interface NavItem {
   label: string
   icon: ReactNode
   active?: boolean
-  href?: string
 }
 
-export default function DashboardSidebar() {
+export default function DashboardSidebar({ projects = [] }: DashboardSidebarProps) {
   const { user, signOut } = useAuth()
   const [notificationsOpen, setNotificationsOpen] = useState(false)
   const [activeNav, setActiveNav] = useState('Home')
 
   const firstName = user?.user_metadata?.full_name?.split(' ')[0] ?? user?.email?.split('@')[0] ?? 'there'
-
   const userInitial = firstName.charAt(0).toUpperCase()
 
   const topNavItems: NavItem[] = [
@@ -62,7 +69,6 @@ export default function DashboardSidebar() {
     },
   ]
 
-  // Dummy notifications
   const notifications = [
     { text: 'Welcome to Bloom! Start building your first project.', time: 'Just now' },
     { text: 'New templates are available in the Templates section.', time: '2h ago' },
@@ -94,66 +100,95 @@ export default function DashboardSidebar() {
         </a>
       </div>
 
-      {/* Notifications dropdown */}
+      {/* Notifications popover */}
       {notificationsOpen && (
-        <div className={styles.notifications}>
-          <h4 className={styles.notifTitle}>What's new</h4>
-          {notifications.map((n, i) => (
-            <div key={i} className={styles.notifItem}>
-              <p className={styles.notifText}>{n.text}</p>
-              <span className={styles.notifTime}>{n.time}</span>
-            </div>
-          ))}
-        </div>
+        <>
+          <div className={styles.notifBackdrop} onClick={() => setNotificationsOpen(false)} />
+          <div className={styles.notifPopover}>
+            <h4 className={styles.notifTitle}>What's new</h4>
+            {notifications.map((n, i) => (
+              <div key={i} className={styles.notifItem}>
+                <p className={styles.notifText}>{n.text}</p>
+                <span className={styles.notifTime}>{n.time}</span>
+              </div>
+            ))}
+          </div>
+        </>
       )}
 
-      {/* Navigation */}
-      <nav className={styles.nav}>
-        {topNavItems.map((item) => (
+      {/* Scrollable middle area */}
+      <div className={styles.scrollArea}>
+        {/* Main navigation */}
+        <nav className={styles.nav}>
+          {topNavItems.map((item) => (
+            <button
+              key={item.label}
+              className={`${styles.navItem} ${activeNav === item.label ? styles.navItemActive : ''}`}
+              onClick={() => setActiveNav(item.label)}
+              type="button"
+            >
+              {item.icon}
+              <span>{item.label}</span>
+            </button>
+          ))}
+
+          {/* Projects section */}
+          <div className={styles.sectionLabel}>Projects</div>
           <button
-            key={item.label}
-            className={`${styles.navItem} ${activeNav === item.label ? styles.navItemActive : ''}`}
-            onClick={() => setActiveNav(item.label)}
+            className={`${styles.navItem} ${styles.navItemSub} ${activeNav === 'All projects' ? styles.navItemActive : ''}`}
+            onClick={() => setActiveNav('All projects')}
             type="button"
           >
-            {item.icon}
-            <span>{item.label}</span>
+            <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+              <rect x="3" y="3" width="7" height="7"/>
+              <rect x="14" y="3" width="7" height="7"/>
+              <rect x="14" y="14" width="7" height="7"/>
+              <rect x="3" y="14" width="7" height="7"/>
+            </svg>
+            <span>All projects</span>
           </button>
-        ))}
+          <button
+            className={`${styles.navItem} ${styles.navItemSub} ${activeNav === 'Starred' ? styles.navItemActive : ''}`}
+            onClick={() => setActiveNav('Starred')}
+            type="button"
+          >
+            <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+              <polygon points="12 2 15.09 8.26 22 9.27 17 14.14 18.18 21.02 12 17.77 5.82 21.02 7 14.14 2 9.27 8.91 8.26 12 2"/>
+            </svg>
+            <span>Starred</span>
+          </button>
+          <button
+            className={`${styles.navItem} ${styles.navItemSub} ${activeNav === 'Created by me' ? styles.navItemActive : ''}`}
+            onClick={() => setActiveNav('Created by me')}
+            type="button"
+          >
+            <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+              <path d="M16 21v-2a4 4 0 0 0-4-4H5a4 4 0 0 0-4 4v2"/>
+              <circle cx="8.5" cy="7" r="4"/>
+              <line x1="20" y1="8" x2="20" y2="14"/>
+              <line x1="23" y1="11" x2="17" y2="11"/>
+            </svg>
+            <span>Created by me</span>
+          </button>
+        </nav>
 
-        {/* Projects section */}
-        <div className={styles.sectionLabel}>Projects</div>
-        <button
-          className={`${styles.navItem} ${styles.navItemSub} ${activeNav === 'All projects' ? styles.navItemActive : ''}`}
-          onClick={() => setActiveNav('All projects')}
-          type="button"
-        >
-          <span>All projects</span>
-        </button>
-        <button
-          className={`${styles.navItem} ${styles.navItemSub} ${activeNav === 'Starred' ? styles.navItemActive : ''}`}
-          onClick={() => setActiveNav('Starred')}
-          type="button"
-        >
-          <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
-            <polygon points="12 2 15.09 8.26 22 9.27 17 14.14 18.18 21.02 12 17.77 5.82 21.02 7 14.14 2 9.27 8.91 8.26 12 2"/>
-          </svg>
-          <span>Starred</span>
-        </button>
-        <button
-          className={`${styles.navItem} ${styles.navItemSub} ${activeNav === 'Created by me' ? styles.navItemActive : ''}`}
-          onClick={() => setActiveNav('Created by me')}
-          type="button"
-        >
-          <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
-            <path d="M16 21v-2a4 4 0 0 0-4-4H5a4 4 0 0 0-4 4v2"/>
-            <circle cx="8.5" cy="7" r="4"/>
-            <line x1="20" y1="8" x2="20" y2="14"/>
-            <line x1="23" y1="11" x2="17" y2="11"/>
-          </svg>
-          <span>Created by me</span>
-        </button>
-      </nav>
+        {/* Recent projects */}
+        {projects.length > 0 && (
+          <div className={styles.recentSection}>
+            <div className={styles.sectionLabel}>Recent</div>
+            {projects.map((project) => (
+              <button
+                key={project.id}
+                className={`${styles.navItem} ${styles.recentItem} ${activeNav === project.id ? styles.navItemActive : ''}`}
+                onClick={() => setActiveNav(project.id)}
+                type="button"
+              >
+                <span className={styles.recentTitle}>{project.title}</span>
+              </button>
+            ))}
+          </div>
+        )}
+      </div>
 
       {/* Bottom: sign out */}
       <div className={styles.bottom}>

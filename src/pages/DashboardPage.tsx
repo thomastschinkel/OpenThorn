@@ -86,7 +86,7 @@ export default function DashboardPage() {
         glowAnimation="ease"
       />
 
-      <DashboardSidebar />
+      <DashboardSidebar projects={projects} />
 
       <main className={`${styles.main} ${hasProjects ? styles.mainWithProjects : ''}`}>
         <div className={styles.content}>

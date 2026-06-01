@@ -19,6 +19,7 @@
   justify-content: space-between;
   margin-bottom: 20px;
   padding: 0 4px;
+  flex-shrink: 0;
 }
 
 .userArea {
@@ -73,13 +74,26 @@
   opacity: 0.85;
 }
 
-/* Notifications dropdown */
-.notifications {
-  margin-bottom: 16px;
-  padding: 12px;
-  background: var(--color-surface-raised);
+/* Notifications popover */
+.notifBackdrop {
+  position: fixed;
+  inset: 0;
+  z-index: 60;
+}
+
+.notifPopover {
+  position: fixed;
+  top: 56px;
+  left: 56px;
+  z-index: 61;
+  width: 300px;
+  max-height: 360px;
+  overflow-y: auto;
+  padding: 16px;
+  background: var(--color-surface-overlay);
   border: 1px solid var(--color-border-visible);
-  border-radius: var(--radius-md);
+  border-radius: var(--radius-lg);
+  box-shadow: 0 16px 48px rgba(0, 0, 0, 0.5), 0 0 0 1px rgba(139, 92, 246, 0.06);
 }
 
 .notifTitle {
@@ -113,12 +127,33 @@
   color: var(--color-text-muted);
 }
 
+/* Scrollable middle area */
+.scrollArea {
+  flex: 1;
+  overflow-y: auto;
+  overflow-x: hidden;
+  margin: 0 -16px;
+  padding: 0 16px;
+}
+
+.scrollArea::-webkit-scrollbar {
+  width: 4px;
+}
+
+.scrollArea::-webkit-scrollbar-track {
+  background: transparent;
+}
+
+.scrollArea::-webkit-scrollbar-thumb {
+  background: var(--color-text-muted);
+  border-radius: 2px;
+}
+
 /* Navigation */
 .nav {
   display: flex;
   flex-direction: column;
   gap: 2px;
-  flex: 1;
 }
 
 .navItem {
@@ -137,6 +172,7 @@
   cursor: pointer;
   transition: background 0.15s ease, color 0.15s ease;
   text-align: left;
+  flex-shrink: 0;
 }
 
 .navItem:hover {
@@ -163,9 +199,8 @@
   padding: 16px 14px 6px;
 }
 
-/* Sub nav items (indented, smaller) */
+/* Sub nav items */
 .navItemSub {
-  padding-left: 14px;
   font-size: 13px;
   font-weight: 400;
 }
@@ -174,10 +209,28 @@
   margin-left: 0;
 }
 
+/* Recent projects section */
+.recentSection {
+  padding-bottom: 12px;
+}
+
+.recentItem {
+  padding: 8px 14px;
+  font-size: 13px;
+  font-weight: 400;
+}
+
+.recentTitle {
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
 /* Bottom: sign out */
 .bottom {
   padding-top: 8px;
   border-top: 1px solid var(--color-border-visible);
+  flex-shrink: 0;
 }
 
 .signOutBtn {
