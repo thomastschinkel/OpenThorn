@@ -1,20 +1,22 @@
-import { useState, type FormEvent } from 'react'
 import styles from './Footer.module.css'
 
 const solutionsLinks = [
   { label: 'Founders', href: '#' },
-  { label: 'Sales', href: '#' },
+  { label: 'Developers', href: '#' },
   { label: 'Product Managers', href: '#' },
   { label: 'Designers', href: '#' },
   { label: 'Marketers', href: '#' },
+  { label: 'Agencies', href: '#' },
+  { label: 'Ops', href: '#' },
 ]
 
 const useCasesLinks = [
   { label: 'Productivity', href: '#' },
   { label: 'E-Commerce', href: '#' },
   { label: 'Marketing & Sales', href: '#' },
-  { label: 'Finance', href: '#' },
+  { label: 'SaaS & Startups', href: '#' },
   { label: 'Education', href: '#' },
+  { label: 'Community platforms', href: '#' },
 ]
 
 const resourcesLinks = [
@@ -31,15 +33,6 @@ const legalLinks = [
 ]
 
 export default function Footer() {
-  const [email, setEmail] = useState('')
-
-  const handleNewsletter = (e: FormEvent) => {
-    e.preventDefault()
-    if (email.trim()) {
-      setEmail('')
-    }
-  }
-
   return (
     <footer className={styles.footer}>
       <div className={styles.inner}>
@@ -51,21 +44,8 @@ export default function Footer() {
               <span className={styles.logoText}>Bloom</span>
             </a>
             <p className={styles.tagline}>
-              The BYOK AI website builder. Build with AI, ship with confidence, own your stack.
+              Turn a description into a deployed website — with your own API keys and your own infrastructure.
             </p>
-            <form className={styles.newsletter} onSubmit={handleNewsletter}>
-              <input
-                type="email"
-                className={styles.newsInput}
-                placeholder="Your email"
-                value={email}
-                onChange={(e) => setEmail(e.target.value)}
-                aria-label="Email for updates"
-              />
-              <button type="submit" className={styles.newsBtn}>
-                Join
-              </button>
-            </form>
           </div>
 
           {/* Solutions */}

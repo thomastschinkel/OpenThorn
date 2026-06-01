@@ -1,5 +1,9 @@
 import { useState, useEffect, useRef, useCallback, startTransition } from 'react'
 import { motion, AnimatePresence } from 'framer-motion'
+
+const FALLBACK_IMAGE = 'data:image/svg+xml,' + encodeURIComponent(
+  '<svg xmlns="http://www.w3.org/2000/svg" width="800" height="450" viewBox="0 0 800 450"><rect width="800" height="450" fill="#14101C"/><text x="400" y="225" text-anchor="middle" dominant-baseline="central" fill="#5F5968" font-family="sans-serif" font-size="16">Image unavailable</text></svg>'
+)
 import styles from './ReelCarousel.module.css'
 
 export interface CarouselSlide {
@@ -21,23 +25,23 @@ const bloomSlides: CarouselSlide[] = [
   {
     image: 'https://images.unsplash.com/photo-1620641788421-7a1c342ea42e?w=1200&h=675&fit=crop&q=80',
     tag: 'Step 01',
-    title: 'Start with an idea',
+    title: 'Describe what you need',
     description:
-      'Describe the app or website you want to create, or drop in screenshots and docs. Bloom understands your vision instantly.',
+      'Tell Bloom what you\'re building — a storefront, a dashboard, a blog. Plain English is all it takes.',
   },
   {
     image: 'https://images.unsplash.com/photo-1558591710-4b4a1ae0f04d?w=1200&h=675&fit=crop&q=80',
     tag: 'Step 02',
-    title: 'Watch it come to life',
+    title: 'See it take shape',
     description:
-      'See your vision transform into a working prototype in real-time. Every component built by AI, visible as it happens.',
+      'Bloom generates real components and styles live — every file visible as it\'s written.',
   },
   {
     image: 'https://images.unsplash.com/photo-1557683316-973673baf926?w=1200&h=675&fit=crop&q=80',
     tag: 'Step 03',
-    title: 'Refine and ship',
+    title: 'Edit and publish',
     description:
-      'Iterate with simple feedback and deploy to the world with one click. No DevOps, no friction.',
+      'Tweak anything with a follow-up message, then deploy to your domain or export to your own repo.',
   },
 ]
 
@@ -124,6 +128,7 @@ export default function ReelCarousel({
             src={slide.image}
             alt={slide.title}
             loading="lazy"
+            onError={(e) => { (e.target as HTMLImageElement).src = FALLBACK_IMAGE }}
           />
           <div className={styles.overlay} />
         </motion.div>

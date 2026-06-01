@@ -8,22 +8,22 @@ interface SubItem {
 
 const solutionsSub: SubItem[] = [
   { label: 'Founders', href: '#' },
-  { label: 'Sales', href: '#' },
+  { label: 'Developers', href: '#' },
   { label: 'Product Managers', href: '#' },
   { label: 'Designers', href: '#' },
   { label: 'Marketers', href: '#' },
+  { label: 'Agencies', href: '#' },
   { label: 'Ops', href: '#' },
-  { label: 'People', href: '#' },
 ]
 
 const useCasesSub: SubItem[] = [
   { label: 'Productivity', href: '#' },
   { label: 'E-Commerce', href: '#' },
   { label: 'Marketing & Sales', href: '#' },
-  { label: 'Finance', href: '#' },
+  { label: 'SaaS & Startups', href: '#' },
   { label: 'HR & Recruitment', href: '#' },
   { label: 'Education', href: '#' },
-  { label: 'Health & Wellness', href: '#' },
+  { label: 'Community platforms', href: '#' },
 ]
 
 const resourcesSub: SubItem[] = [
@@ -105,8 +105,8 @@ export default function MobileMenu({ isOpen, onClose }: MobileMenuProps) {
         </nav>
 
         <div className={styles.actions}>
-          <button className={styles.loginMobile} onClick={onClose}>Login</button>
-          <button className={styles.ctaMobile} onClick={onClose}>Get Started</button>
+          <button className={styles.loginMobile} onClick={onClose}>Sign in</button>
+          <button className={styles.ctaMobile} onClick={onClose}>Start free</button>
         </div>
       </div>
     </>

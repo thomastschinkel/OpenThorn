@@ -74,15 +74,15 @@ export default function DashboardPage() {
   return (
     <div className={styles.root}>
       <FloatingParticles
-        particleCount={30}
-        particleSize={2}
-        particleOpacity={0.3}
+        particleCount={60}
+        particleSize={3}
+        particleOpacity={0.5}
         particleColor="#A78BFA"
-        glowIntensity={8}
-        movementSpeed={0.3}
-        mouseInfluence={80}
+        glowIntensity={15}
+        movementSpeed={0.4}
+        mouseInfluence={140}
         mouseGravity="attract"
-        gravityStrength={20}
+        gravityStrength={35}
         glowAnimation="ease"
       />
 

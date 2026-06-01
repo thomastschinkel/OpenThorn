@@ -15,10 +15,10 @@ export default function BottomCTA() {
       >
         <h2 className={styles.title}>
           Ready to{' '}
-          <span className={styles.titleItalic}>build</span>?
+          <span className={styles.titleItalic}>ship</span> something?
         </h2>
         <p className={styles.subtitle}>
-          Start building now — no credit card, no subscription, no limits.
+          Start building now — no credit card, no subscription, no lock-in.
         </p>
         <div className={styles.inputWrapper}>
           <PromptInput size="small" />

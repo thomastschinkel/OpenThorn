@@ -4,9 +4,9 @@ import FloatingParticles from '../FloatingParticles/FloatingParticles'
 import styles from './HeroSection.module.css'
 
 const trustItems = [
-  'Configure your own API keys',
-  'No hidden costs, no ads',
-  'Full control, full privacy',
+  'Bring your own API keys — any provider',
+  'Pay only for what you use, zero platform fees',
+  'Export your code, own your infrastructure',
 ]
 
 export default function HeroSection() {
@@ -55,8 +55,8 @@ export default function HeroSection() {
           animate={{ opacity: 1, y: 0 }}
           transition={{ duration: 0.6, ease: [0.19, 1, 0.22, 1], delay: 0.4 }}
         >
-          Create beautiful websites by talking to AI. Describe your idea —
-          Bloom builds it, and you ship it.
+          Just describe what you want and Bloom generates the code —
+          ready to customize and deploy anywhere.
         </motion.p>
 
         {/* Big input */}

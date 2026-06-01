@@ -7,27 +7,27 @@ const featureCards: Carousel3DCard[] = [
   {
     icon: <KeyIcon />,
     title: 'Bring your own keys',
-    description: 'Connect OpenAI, Anthropic, Google — any provider. Use the models you already pay for.',
+    description: 'Hook up OpenAI, Anthropic, Gemini — whatever you use. Bloom never touches your API keys.',
   },
   {
     icon: <DollarIcon />,
-    title: 'Zero platform markup',
-    description: 'Unlike Lovable or Base44, Bloom charges no subscription and no hidden fees. Pay only API costs.',
+    title: 'Zero platform tax',
+    description: 'No subscription, no per-request markup. You pay providers directly and keep what you save.',
   },
   {
     icon: <CodeIcon />,
-    title: 'Full stack control',
-    description: 'Deploy anywhere. Export your code. No vendor lock-in — your project, your rules.',
+    title: 'Your code, your repo',
+    description: 'Export everything to GitHub, deploy to your own Vercel account. There is no Bloom lock-in.',
   },
   {
     icon: <SparkIcon />,
-    title: 'AI that builds, not chats',
-    description: 'Bloom writes real code in real time. See every file, every component, every change.',
+    title: 'Real code, real time',
+    description: 'Bloom writes production-grade code — not a drag-and-drop approximation. Watch every file appear.',
   },
   {
     icon: <GlobeIcon />,
-    title: 'One-click deploy',
-    description: 'Push to Vercel, Netlify, or your own server. Go from idea to live in minutes.',
+    title: 'Deploy in one click',
+    description: 'From prompt to production in under a minute. Push live when you\'re ready, not when a plan allows.',
   },
 ]
 
@@ -46,10 +46,11 @@ export default function BYOKSection() {
           your control
         </h2>
         <p className={styles.bodyText}>
-          Most AI website builders lock you into expensive subscriptions.
-          <span className={styles.bodyHighlight}> Bloom is different.</span> BYOK —
-          bring your own keys, deploy anywhere.
-          No markup, no lock-in.
+          Most AI website builders bundle the AI cost and mark it up behind
+          a subscription you can't escape.
+          <span className={styles.bodyHighlight}> Bloom is different.</span> You
+          bring your own AI keys, pay providers directly, and keep every line
+          of code. No vendor lock-in, no recurring tax on your creativity.
         </p>
       </motion.div>
 
