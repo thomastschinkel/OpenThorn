@@ -59,10 +59,30 @@ export default function ProvidersPage() {
 
   useEffect(() => {
     if (!user) return
+
+    // Initial fetch
     supabase.from('provider_keys').select('*').eq('user_id', user.id).order('created_at').then(({ data, error }) => {
       if (!error && data) setSavedKeys(data)
       setLoading(false)
     })
+
+    // Real-time subscription for cross-device sync
+    const channel = supabase
+      .channel('provider_keys_changes')
+      .on('postgres_changes', {
+        event: '*',
+        schema: 'public',
+        table: 'provider_keys',
+        filter: `user_id=eq.${user.id}`,
+      }, () => {
+        // Refetch all keys on any change
+        supabase.from('provider_keys').select('*').eq('user_id', user.id).order('created_at').then(({ data, error }) => {
+          if (!error && data) setSavedKeys(data)
+        })
+      })
+      .subscribe()
+
+    return () => { supabase.removeChannel(channel) }
   }, [user])
 
   const openEditor = useCallback((providerId: string) => {

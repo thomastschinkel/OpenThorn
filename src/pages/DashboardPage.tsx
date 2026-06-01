@@ -46,7 +46,7 @@ export default function DashboardPage() {
     }
   }, [user, authLoading, navigate])
 
-  // Fetch projects
+  // Fetch projects + real-time sync
   useEffect(() => {
     if (!user) return
 
@@ -64,6 +64,20 @@ export default function DashboardPage() {
     }
 
     fetchProjects()
+
+    const channel = supabase
+      .channel('projects_changes')
+      .on('postgres_changes', {
+        event: '*',
+        schema: 'public',
+        table: 'projects',
+        filter: `user_id=eq.${user.id}`,
+      }, () => {
+        fetchProjects()
+      })
+      .subscribe()
+
+    return () => { supabase.removeChannel(channel) }
   }, [user])
 
   const handlePromptSubmit = useCallback((_prompt: string) => {
