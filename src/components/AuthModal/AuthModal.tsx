@@ -110,6 +110,14 @@ export default function AuthModal({ isOpen, onClose, initialMode }: AuthModalPro
           role="dialog"
           aria-label={mode === 'signin' ? 'Sign in' : 'Sign up'}
         >
+          {/* Close button — outside card, fixed to viewport */}
+          <button className={styles.closeBtn} onClick={onClose} aria-label="Close">
+            <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+              <line x1="18" y1="6" x2="6" y2="18"/>
+              <line x1="6" y1="6" x2="18" y2="18"/>
+            </svg>
+          </button>
+
           <motion.div
             className={styles.card}
             variants={cardVariants}
@@ -118,13 +126,13 @@ export default function AuthModal({ isOpen, onClose, initialMode }: AuthModalPro
             exit="exit"
             onClick={(e) => e.stopPropagation()}
           >
-            {/* Close button */}
-            <button className={styles.closeBtn} onClick={onClose} aria-label="Close">
-              <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
-                <line x1="18" y1="6" x2="6" y2="18"/>
-                <line x1="6" y1="6" x2="18" y2="18"/>
+            {/* Bloom icon */}
+            <div className={styles.brandIcon}>
+              <svg width="24" height="24" viewBox="0 0 32 32" fill="none">
+                <circle cx="16" cy="16" r="14" stroke="var(--color-accent)" strokeWidth="2" opacity="0.6"/>
+                <circle cx="16" cy="16" r="6" fill="var(--color-accent)" opacity="0.8"/>
               </svg>
-            </button>
+            </div>
 
             {/* Tab switcher */}
             <div className={styles.tabs}>
