@@ -9,6 +9,7 @@ import BYOKSection from './components/BYOKSection/BYOKSection'
 import BottomCTA from './components/BottomCTA/BottomCTA'
 import Footer from './components/Footer/Footer'
 import PricingPage from './pages/PricingPage'
+import DashboardPage from './pages/DashboardPage'
 import NotFoundPage from './pages/NotFoundPage'
 import AuthModal from './components/AuthModal/AuthModal'
 import styles from './App.module.css'
@@ -63,6 +64,7 @@ export default function App() {
         <Routes>
           <Route path="/" element={<Layout><HomePage /></Layout>} />
           <Route path="/pricing" element={<Layout><PricingPage /></Layout>} />
+          <Route path="/dashboard" element={<DashboardPage />} />
           <Route path="*" element={<NotFoundPage />} />
         </Routes>
       </div>

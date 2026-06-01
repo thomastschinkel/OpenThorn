@@ -6,6 +6,7 @@ import styles from './PromptInput.module.css'
 
 interface PromptInputProps {
   size?: 'default' | 'small'
+  value?: string
   onSubmit?: (prompt: string) => void
 }
 
@@ -76,12 +77,14 @@ function useTypingAnimation(active: boolean) {
   return displayText
 }
 
-export default function PromptInput({ size = 'default', onSubmit }: PromptInputProps) {
+export default function PromptInput({ size = 'default', value: controlledValue, onSubmit }: PromptInputProps) {
   const { user } = useAuth()
   const navigate = useNavigate()
-  const [value, setValue] = useState('')
+  const [internalValue, setInternalValue] = useState('')
   const [isFocused, setIsFocused] = useState(false)
   const inputRef = useRef<HTMLInputElement>(null)
+
+  const value = controlledValue !== undefined ? controlledValue : internalValue
 
   const showTyping = !isFocused && value.length === 0
   const activeTyping = useTypingAnimation(showTyping)
@@ -133,7 +136,7 @@ export default function PromptInput({ size = 'default', onSubmit }: PromptInputP
             className={styles.input}
             type="text"
             value={value}
-            onChange={(e) => setValue(e.target.value)}
+            onChange={(e) => setInternalValue(e.target.value)}
             onFocus={() => setIsFocused(true)}
             onBlur={() => setIsFocused(false)}
             placeholder=""

@@ -1,0 +1,200 @@
+.root {
+  min-height: 100vh;
+  background: var(--color-bg);
+  position: relative;
+  overflow: hidden;
+}
+
+.main {
+  margin-left: 240px;
+  min-height: 100vh;
+  display: flex;
+  justify-content: center;
+  padding: 80px var(--space-2xl) var(--space-4xl);
+  position: relative;
+  z-index: 1;
+}
+
+.content {
+  width: 100%;
+  max-width: 720px;
+}
+
+/* Greeting */
+.greeting {
+  font-family: var(--font-display);
+  font-size: clamp(28px, 4vw, 40px);
+  font-weight: 700;
+  color: var(--color-text);
+  line-height: 1.2;
+  letter-spacing: -0.02em;
+  margin-bottom: var(--space-xl);
+  text-align: center;
+}
+
+.name {
+  color: var(--color-accent);
+}
+
+/* Prompt */
+.promptWrapper {
+  margin-bottom: var(--space-lg);
+}
+
+/* Example chips */
+.examples {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+  justify-content: center;
+  margin-bottom: var(--space-4xl);
+}
+
+.exampleChip {
+  padding: 8px 16px;
+  border-radius: var(--radius-full);
+  font-family: var(--font-body);
+  font-size: 13px;
+  font-weight: 400;
+  color: var(--color-text-secondary);
+  background: rgba(255, 255, 255, 0.04);
+  border: 1px solid var(--color-border-visible);
+  cursor: pointer;
+  transition: background 0.15s ease, color 0.15s ease, border-color 0.15s ease;
+  white-space: nowrap;
+}
+
+.exampleChip:hover {
+  color: var(--color-text);
+  background: rgba(139, 92, 246, 0.1);
+  border-color: var(--color-border-glow);
+}
+
+/* Projects section */
+.projectsSection {
+  margin-top: var(--space-2xl);
+}
+
+.sectionTitle {
+  font-family: var(--font-display);
+  font-size: 20px;
+  font-weight: 600;
+  color: var(--color-text);
+  margin-bottom: var(--space-lg);
+}
+
+/* Project grid */
+.projectGrid {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(220px, 1fr));
+  gap: 16px;
+}
+
+.projectCard {
+  background: var(--color-surface-raised);
+  border: 1px solid var(--color-border-visible);
+  border-radius: var(--radius-lg);
+  overflow: hidden;
+  cursor: pointer;
+  transition: border-color 0.2s ease, transform 0.2s ease;
+}
+
+.projectCard:hover {
+  border-color: var(--color-border-glow);
+  transform: translateY(-2px);
+}
+
+.projectPreview {
+  aspect-ratio: 16 / 10;
+  background: var(--color-surface);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  overflow: hidden;
+}
+
+.projectPreview img {
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+}
+
+.projectPlaceholder {
+  color: var(--color-text-muted);
+  opacity: 0.4;
+}
+
+.projectMeta {
+  padding: 14px 16px;
+}
+
+.projectTitle {
+  font-size: 14px;
+  font-weight: 600;
+  color: var(--color-text);
+  margin-bottom: 4px;
+  line-height: 1.3;
+  display: -webkit-box;
+  -webkit-line-clamp: 2;
+  -webkit-box-orient: vertical;
+  overflow: hidden;
+}
+
+.projectDate {
+  font-size: 12px;
+  color: var(--color-text-muted);
+}
+
+/* Empty state */
+.emptyState {
+  text-align: center;
+  padding: var(--space-3xl) var(--space-lg);
+  background: var(--color-surface-raised);
+  border: 1px solid var(--color-border-visible);
+  border-radius: var(--radius-lg);
+}
+
+.emptyIcon {
+  color: var(--color-text-muted);
+  opacity: 0.4;
+  margin-bottom: var(--space-md);
+}
+
+.emptyTitle {
+  font-size: 16px;
+  font-weight: 600;
+  color: var(--color-text-secondary);
+  margin-bottom: var(--space-sm);
+}
+
+.emptyText {
+  font-size: 14px;
+  color: var(--color-text-muted);
+  line-height: 1.5;
+  max-width: 360px;
+  margin: 0 auto;
+}
+
+@media (max-width: 768px) {
+  .main {
+    margin-left: 0;
+    padding: 24px var(--space-lg) var(--space-3xl);
+  }
+
+  .content {
+    padding-top: 60px;
+  }
+
+  .greeting {
+    text-align: left;
+    font-size: 24px;
+  }
+
+  .examples {
+    justify-content: flex-start;
+  }
+
+  .projectGrid {
+    grid-template-columns: 1fr;
+  }
+}
