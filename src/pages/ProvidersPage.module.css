@@ -141,6 +141,7 @@
 .pickerLogoImg { width: 40px; height: 40px; object-fit: contain; }
 .pickerName { font-size: 13px; font-weight: 500; color: var(--color-text-secondary); text-align: center; }
 .editorTopRow { display: flex; align-items: center; justify-content: space-between; margin-bottom: 20px; }
+.toggleWarning { padding: 10px 14px; margin-bottom: 16px; border-radius: 8px; font-size: 13px; color: #FBBF24; background: rgba(251, 191, 36, 0.08); border: 1px solid rgba(251, 191, 36, 0.2); }
 .pickerCardCustom { border-style: dashed; }
 .pickerCardCustom .pickerCardInner { cursor: pointer; }
 .configuredBadge { font-size: 10px; font-weight: 600; color: #34D399; text-transform: uppercase; letter-spacing: 0.04em; }

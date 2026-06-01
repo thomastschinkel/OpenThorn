@@ -50,7 +50,8 @@ export default function ProvidersPage() {
   const [editingProvider, setEditingProvider] = useState<string | null>(null)
   const [formKey, setFormKey] = useState('')
   const [formUrl, setFormUrl] = useState('')
-  const [formEnabled, setFormEnabled] = useState(true)
+  const [formEnabled, setFormEnabled] = useState(false)
+  const [toggleWarning, setToggleWarning] = useState(false)
   const [formName, setFormName] = useState('')
   const [formCustom, setFormCustom] = useState(false)
   const [saving, setSaving] = useState(false)
@@ -76,7 +77,7 @@ export default function ProvidersPage() {
     } else if (def) {
       setFormKey('')
       setFormUrl(def.baseUrl)
-      setFormEnabled(true)
+      setFormEnabled(false)
       setFormName(def.name)
       setFormCustom(false)
     }
@@ -142,7 +143,7 @@ export default function ProvidersPage() {
     const id = `custom-${Date.now()}`
     setFormKey('')
     setFormUrl('')
-    setFormEnabled(true)
+    setFormEnabled(false)
     setFormName('')
     setFormCustom(true)
     setEditingProvider(id)
@@ -207,10 +208,21 @@ export default function ProvidersPage() {
                   <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round"><polyline points="15 18 9 12 15 6"/></svg>
                 </button>
                 <label className={styles.toggle}>
-                  <input type="checkbox" checked={formEnabled} onChange={() => setFormEnabled(!formEnabled)} />
+                  <input type="checkbox" checked={formEnabled} onChange={() => {
+                    if (!formEnabled && !formKey.trim()) {
+                      setToggleWarning(true)
+                      setTimeout(() => setToggleWarning(false), 3000)
+                      return
+                    }
+                    setFormEnabled(!formEnabled)
+                    setToggleWarning(false)
+                  }} />
                   <span className={styles.toggleSlider} />
                 </label>
               </div>
+              {toggleWarning && (
+                <div className={styles.toggleWarning}>Set an API key first before enabling</div>
+              )}
 
               <div className={styles.editorHeader}>
                 {editingDef && !formCustom ? (
