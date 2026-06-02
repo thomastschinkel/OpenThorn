@@ -1,29 +1,35 @@
 /* ===== Design Tokens ===== */
 :root {
   /* Base — near-black with subtle warmth */
-  --color-bg: #08060B;
-  --color-surface: #0D0A12;
-  --color-surface-raised: #120F18;
-  --color-surface-overlay: #17131F;
+  --color-bg: #09070B;
+  --color-bg-soft: #110D12;
+  --color-surface: #120E13;
+  --color-surface-raised: #1A141C;
+  --color-surface-overlay: #211925;
+  --color-surface-warm: #211711;
 
   /* Accent — single signature purple */
   --color-accent: #A78BFA;
   --color-accent-glow: #8B5CF6;
   --color-accent-subtle: rgba(139, 92, 246, 0.12);
   --color-accent-wash: rgba(139, 92, 246, 0.06);
+  --color-secondary: #5EEAD4;
+  --color-secondary-wash: rgba(94, 234, 212, 0.09);
+  --color-warm-accent: #F6C177;
+  --color-warm-wash: rgba(246, 193, 119, 0.1);
 
   /* Text — never pure white, slightly warm */
-  --color-text: #EBE7F0;
-  --color-text-secondary: #A099AA;
-  --color-text-muted: #645E6E;
+  --color-text: #F4EFF8;
+  --color-text-secondary: #C9C1D3;
+  --color-text-muted: #8B8197;
 
   /* Borders — subtle elevation cues */
-  --color-border: rgba(255, 255, 255, 0.04);
-  --color-border-visible: rgba(255, 255, 255, 0.08);
+  --color-border: rgba(255, 255, 255, 0.06);
+  --color-border-visible: rgba(255, 255, 255, 0.12);
   --color-border-glow: rgba(139, 92, 246, 0.15);
 
   /* Typography */
-  --font-display: 'Roboto', -apple-system, 'Helvetica Neue', sans-serif;
+  --font-display: 'Fraunces', Georgia, serif;
   --font-body: 'Roboto', -apple-system, 'Helvetica Neue', sans-serif;
   --font-mono: 'JetBrains Mono', 'Fira Code', monospace;
 
@@ -101,9 +107,13 @@ body {
   font-family: var(--font-body);
   font-size: 16px;
   line-height: 1.6;
-  letter-spacing: 0.01em;
+  letter-spacing: 0;
   color: var(--color-text);
-  background: var(--color-bg);
+  background:
+    linear-gradient(180deg, rgba(23, 16, 22, 0.88) 0%, var(--color-bg) 34%, #09070B 100%),
+    linear-gradient(135deg, rgba(94, 234, 212, 0.07) 0%, transparent 32%),
+    linear-gradient(225deg, rgba(246, 193, 119, 0.06) 0%, transparent 36%),
+    var(--color-bg);
   overflow-x: hidden;
   position: relative;
   -webkit-font-smoothing: antialiased;

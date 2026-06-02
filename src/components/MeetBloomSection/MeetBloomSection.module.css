@@ -1,8 +1,9 @@
 .section {
-  padding: var(--space-5xl) var(--space-lg);
+  padding: var(--space-4xl) var(--space-lg);
   text-align: center;
   position: relative;
   border-top: 1px solid var(--color-border);
+  background: linear-gradient(180deg, rgba(33, 23, 17, 0.22), transparent 72%);
 }
 
 .kicker {
@@ -11,19 +12,19 @@
   font-weight: 600;
   text-transform: uppercase;
   letter-spacing: 0.12em;
-  color: var(--color-accent);
+  color: var(--color-secondary);
   margin-bottom: var(--space-md);
-  opacity: 0.85;
+  opacity: 1;
 }
 
 .title {
   font-family: var(--font-display);
-  font-size: clamp(32px, 5vw, 52px);
-  font-weight: 600;
+  font-size: 52px;
+  font-weight: 700;
   color: var(--color-text);
   line-height: 1.12;
-  letter-spacing: -0.02em;
-  margin-bottom: var(--space-3xl);
+  letter-spacing: 0;
+  margin-bottom: var(--space-2xl);
 }
 
 .titleItalic {
@@ -36,9 +37,15 @@
   margin: 0 auto;
   border-radius: var(--radius-xl);
   overflow: hidden;
-  border: 1px solid var(--color-border);
+  border: 1px solid var(--color-border-visible);
+  box-shadow: 0 24px 70px rgba(0, 0, 0, 0.28);
 }
 
 @media (max-width: 640px) {
-  .section { padding: var(--space-4xl) var(--space-md); }
+  .section { padding: var(--space-3xl) var(--space-md); }
+  .title { font-size: 36px; }
+}
+
+@media (min-width: 641px) and (max-width: 1100px) {
+  .title { font-size: 44px; }
 }

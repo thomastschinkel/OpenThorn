@@ -1,9 +1,10 @@
 .section {
-  padding: var(--space-6xl) var(--space-lg);
+  padding: var(--space-4xl) var(--space-lg);
   text-align: center;
   border-top: 1px solid var(--color-border);
   position: relative;
   overflow: hidden;
+  background: linear-gradient(180deg, transparent 0%, rgba(94, 234, 212, 0.035) 45%, transparent 100%);
 }
 
 .kicker {
@@ -12,31 +13,32 @@
   font-weight: 600;
   text-transform: uppercase;
   letter-spacing: 0.13em;
-  color: var(--color-accent);
+  color: var(--color-warm-accent);
   margin-bottom: var(--space-md);
 }
 
 .title {
   font-family: var(--font-display);
-  font-size: clamp(32px, 4.5vw, 48px);
-  font-weight: 500;
+  font-size: 48px;
+  font-weight: 700;
   color: var(--color-text);
   line-height: 1.12;
-  letter-spacing: -0.015em;
+  letter-spacing: 0;
   margin-bottom: var(--space-lg);
 }
 
 .titleItalic {
   font-weight: 700;
-  color: var(--color-accent);
+  color: var(--color-secondary);
 }
 
 .bodyText {
-  max-width: 600px;
+  max-width: 640px;
   margin: 0 auto;
-  font-size: 16px;
+  font-size: 17px;
   color: var(--color-text-secondary);
   line-height: 1.7;
+  font-weight: 500;
 }
 
 .bodyHighlight {
@@ -46,8 +48,8 @@
 
 /* 3D carousel area */
 .carouselArea {
-  height: 420px;
-  margin: var(--space-xl) auto;
+  height: 330px;
+  margin: var(--space-lg) auto 0;
   max-width: 900px;
 }
 
@@ -58,6 +60,12 @@
 }
 
 @media (max-width: 640px) {
-  .section { padding: var(--space-4xl) var(--space-md); }
-  .carouselArea { height: 340px; }
+  .section { padding: var(--space-3xl) var(--space-md); }
+  .title { font-size: 36px; }
+  .bodyText { font-size: 16px; }
+  .carouselArea { height: 300px; }
+}
+
+@media (min-width: 641px) and (max-width: 1100px) {
+  .title { font-size: 42px; }
 }

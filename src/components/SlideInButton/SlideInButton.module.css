@@ -7,7 +7,7 @@
   font-family: var(--font-body);
   font-size: 14px;
   font-weight: 600;
-  letter-spacing: -0.02em;
+  letter-spacing: 0;
   color: var(--color-text);
   background: var(--color-surface-raised);
   border: 1px solid var(--color-border-visible);

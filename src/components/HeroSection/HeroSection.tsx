@@ -13,9 +13,9 @@ export default function HeroSection() {
   return (
     <section className={styles.section}>
       <FloatingParticles
-        particleCount={60}
+        particleCount={42}
         particleSize={2.5}
-        particleOpacity={0.45}
+        particleOpacity={0.38}
         particleColor="#A78BFA"
         glowIntensity={14}
         movementSpeed={0.35}
@@ -74,7 +74,7 @@ export default function HeroSection() {
           className={styles.valueProps}
           initial={{ opacity: 0, y: 12 }}
           animate={{ opacity: 1, y: 0 }}
-          transition={{ duration: 0.5, delay: 0.85 }}
+          transition={{ duration: 0.5, delay: 0.65 }}
         >
           {valueProps.map((prop) => (
             <span key={prop.label} className={styles.valueItem}>

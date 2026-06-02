@@ -2,7 +2,6 @@ import { useState, useEffect, useCallback } from 'react'
 import { useAuth } from '../lib/AuthContext'
 import { supabase } from '../lib/supabase'
 import DashboardSidebar from '../components/DashboardSidebar/DashboardSidebar'
-import FloatingParticles from '../components/FloatingParticles/FloatingParticles'
 import styles from './ProvidersPage.module.css'
 
 interface ProviderKey {
@@ -207,19 +206,6 @@ export default function ProvidersPage() {
 
   return (
     <div className={styles.root}>
-      <FloatingParticles
-        particleCount={60}
-        particleSize={2.5}
-        particleOpacity={0.45}
-        particleColor="#A78BFA"
-        glowIntensity={14}
-        movementSpeed={0.35}
-        mouseInfluence={140}
-        mouseGravity="attract"
-        gravityStrength={32}
-        glowAnimation="ease"
-      />
-
       <DashboardSidebar />
 
       <main className={styles.main}>

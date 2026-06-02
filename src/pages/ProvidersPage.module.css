@@ -11,7 +11,7 @@
 /* ===== Empty state ===== */
 .emptyState { text-align: center; padding: var(--space-3xl) 0; }
 .emptyIcon { margin-bottom: var(--space-lg); }
-.emptyTitle { font-family: var(--font-display); font-size: 24px; font-weight: 700; color: var(--color-text); margin-bottom: 10px; letter-spacing: -0.015em; }
+.emptyTitle { font-family: var(--font-display); font-size: 24px; font-weight: 700; color: var(--color-text); margin-bottom: 10px; letter-spacing: 0; }
 .emptyText { font-size: 14px; color: var(--color-text-muted); line-height: 1.5; max-width: 380px; margin: 0 auto var(--space-xl); }
 
 .configureBtn {
@@ -38,7 +38,7 @@
 .editorHeader { display: flex; align-items: center; gap: 16px; margin-bottom: 24px; }
 .editorLogoImg { width: 48px; height: 48px; border-radius: 12px; object-fit: contain; flex-shrink: 0; }
 .editorLogoPlaceholder { display: flex; align-items: center; justify-content: center; width: 48px; height: 48px; border-radius: 12px; flex-shrink: 0; background: rgba(255,255,255,0.06); color: var(--color-text-muted); }
-.editorTitle { font-size: 20px; font-weight: 700; color: var(--color-text); letter-spacing: -0.01em; }
+.editorTitle { font-size: 20px; font-weight: 700; color: var(--color-text); letter-spacing: 0; }
 .editorSubtitle { font-size: 13px; color: var(--color-text-muted); margin-top: 2px; }
 .nameInput { height: 38px; padding: 0 12px; border-radius: 8px; font-size: 18px; font-weight: 700; font-family: var(--font-body); color: var(--color-text); background: rgba(255,255,255,0.04); border: 1px solid var(--color-border-visible); outline: none; width: 220px; }
 .nameInput:focus { border-color: var(--color-border-glow); }
@@ -162,7 +162,7 @@
 .pickerOverlay { position: fixed; inset: 0; z-index: 300; background: rgba(8,6,11,0.8); backdrop-filter: blur(12px); display: flex; align-items: center; justify-content: center; padding: var(--space-lg); }
 .pickerModal { width: 100%; max-width: 560px; background: var(--color-surface-overlay); border: 1px solid var(--color-border-visible); border-radius: var(--radius-xl); padding: 28px; box-shadow: 0 24px 64px rgba(0,0,0,0.5); }
 .pickerHeader { display: flex; align-items: center; justify-content: space-between; margin-bottom: 24px; }
-.pickerHeader h3 { font-size: 20px; font-weight: 700; color: var(--color-text); letter-spacing: -0.01em; }
+.pickerHeader h3 { font-size: 20px; font-weight: 700; color: var(--color-text); letter-spacing: 0; }
 .pickerClose { display: flex; align-items: center; justify-content: center; width: 36px; height: 36px; border-radius: 50%; color: var(--color-text-muted); background: transparent; border: none; cursor: pointer; }
 .pickerClose:hover { color: var(--color-text); background: rgba(255,255,255,0.05); }
 

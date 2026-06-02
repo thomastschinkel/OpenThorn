@@ -1,29 +1,31 @@
 .page {
   min-height: 100vh;
-  padding: calc(var(--header-height) + var(--space-5xl)) var(--space-lg) var(--space-5xl);
+  padding: calc(var(--header-height) + var(--space-3xl)) var(--space-lg) var(--space-4xl);
   max-width: var(--max-width);
   margin: 0 auto;
 }
 
 .header {
   text-align: center;
-  margin-bottom: var(--space-5xl);
+  margin-bottom: var(--space-4xl);
 }
 
 .title {
   font-family: var(--font-display);
-  font-size: clamp(36px, 5vw, 56px);
-  font-weight: 700;
+  font-size: 56px;
+  font-weight: 800;
   color: var(--color-text);
   margin-bottom: var(--space-md);
+  letter-spacing: 0;
 }
 
 .subtitle {
-  font-size: 17px;
+  font-size: 18px;
   color: var(--color-text-secondary);
   max-width: 520px;
   margin: 0 auto;
   line-height: 1.6;
+  font-weight: 500;
 }
 
 /* Section */
@@ -37,7 +39,7 @@
 
 .chartSubtitle {
   font-size: 14px;
-  color: var(--color-text-muted);
+  color: var(--color-text-secondary);
   margin-bottom: var(--space-xl);
 }
 
@@ -47,7 +49,9 @@
 }
 
 .chartBox {
-  background: var(--color-surface);
+  background:
+    linear-gradient(180deg, rgba(255, 255, 255, 0.025), transparent),
+    var(--color-surface);
   border: 1px solid var(--color-border-visible);
   border-radius: var(--radius-xl);
   padding: var(--space-2xl) var(--space-xl) var(--space-xl);
@@ -152,7 +156,7 @@
   width: 10px;
   height: 10px;
   border-radius: 50%;
-  background: var(--color-accent);
+  background: var(--color-secondary);
   opacity: 0.7;
   transition: transform 0.2s, opacity 0.2s, box-shadow 0.2s;
   flex-shrink: 0;
@@ -161,7 +165,7 @@
 .dot:hover .dotCircle {
   transform: scale(1.8);
   opacity: 1;
-  box-shadow: 0 0 24px rgba(139, 92, 246, 0.5);
+  box-shadow: 0 0 24px rgba(94, 234, 212, 0.45);
 }
 
 .dotName {
@@ -247,8 +251,8 @@
   border-radius: var(--radius-full);
   font-size: 11px;
   font-weight: 500;
-  background: var(--color-accent-wash);
-  color: var(--color-accent);
+  background: var(--color-secondary-wash);
+  color: var(--color-secondary);
 }
 
 .price {
@@ -306,6 +310,8 @@
 }
 
 @media (max-width: 768px) {
+  .page { padding-top: calc(var(--header-height) + var(--space-2xl)); }
+  .title { font-size: 40px; }
   .chartArea { height: 320px; margin-left: 40px; }
   .yLabel { left: -36px; font-size: 10px; }
   .table th, .table td { padding: 12px 14px; font-size: 13px; }
