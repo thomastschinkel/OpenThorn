@@ -124,34 +124,7 @@ export default function ProjectBuilderPage() {
           </div>
         </div>
 
-        <div className={styles.modeSwitch} aria-label="View mode">
-          <button
-            className={viewMode === 'preview' ? styles.modeActive : ''}
-            type="button"
-            onClick={() => setViewMode('preview')}
-          >
-            <GlobeIcon />
-            Preview
-          </button>
-          <button
-            className={viewMode === 'code' ? styles.modeActive : ''}
-            type="button"
-            onClick={() => setViewMode('code')}
-          >
-            <CodeIcon />
-            Code
-          </button>
-        </div>
-
         <div className={styles.topActions}>
-          <button className={styles.iconBtn} type="button" onClick={() => navigate('/dashboard')} aria-label="Back to dashboard">
-            <svg width="17" height="17" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
-              <rect x="3" y="3" width="7" height="7" rx="1"/>
-              <rect x="14" y="3" width="7" height="7" rx="1"/>
-              <rect x="3" y="14" width="7" height="7" rx="1"/>
-              <rect x="14" y="14" width="7" height="7" rx="1"/>
-            </svg>
-          </button>
           <a className={styles.iconBtn} href="https://github.com" target="_blank" rel="noopener noreferrer" aria-label="GitHub repository">
             <GithubIcon />
           </a>
@@ -222,20 +195,40 @@ export default function ProjectBuilderPage() {
         <section className={`${styles.previewPane} ${fullscreen ? styles.previewPaneFullscreen : ''}`}>
           <div className={styles.previewToolbar}>
             <div className={styles.previewTools}>
+              <div className={styles.modeSwitch} aria-label="View mode">
+                <button
+                  className={viewMode === 'preview' ? styles.modeActive : ''}
+                  type="button"
+                  onClick={() => setViewMode('preview')}
+                >
+                  <GlobeIcon />
+                  Preview
+                </button>
+                <button
+                  className={viewMode === 'code' ? styles.modeActive : ''}
+                  type="button"
+                  onClick={() => setViewMode('code')}
+                >
+                  <CodeIcon />
+                  Code
+                </button>
+              </div>
+            </div>
+
+            <div className={styles.previewCenter}>
               <button
-                className={styles.iconBtnActive}
+                className={styles.iconBtn}
                 type="button"
                 aria-label={`Switch device preview. Current: ${deviceMode}`}
                 onClick={() => setDeviceMode((current) => deviceOrder[(deviceOrder.indexOf(current) + 1) % deviceOrder.length])}
               >
                 <DeviceIcon mode={deviceMode} />
               </button>
-            </div>
-
-            <div className={styles.addressBar}>
-              <RefreshIcon />
-              <span>/</span>
-              <ChevronDownIcon />
+              <div className={styles.addressBar}>
+                <RefreshIcon />
+                <span>/</span>
+                <ChevronDownIcon />
+              </div>
             </div>
 
             <div className={styles.previewTools}>

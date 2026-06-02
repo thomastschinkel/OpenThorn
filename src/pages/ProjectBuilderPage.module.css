@@ -12,7 +12,7 @@
   height: 68px;
   flex-shrink: 0;
   display: grid;
-  grid-template-columns: minmax(280px, 1fr) auto minmax(360px, 1fr);
+  grid-template-columns: 1fr auto;
   align-items: center;
   gap: 16px;
   padding: 0 18px;
@@ -23,8 +23,8 @@
 .topbarLeft,
 .topActions,
 .brandCluster,
-.modeSwitch,
 .navAction,
+.modeSwitch,
 .previewTools,
 .assistantTop,
 .previewChrome,
@@ -41,34 +41,51 @@
 }
 
 .backBtn,
-.iconBtn,
-.iconBtnActive {
-  width: 40px;
-  height: 40px;
+.iconBtn {
+  width: 38px;
+  height: 38px;
   flex: 0 0 auto;
   display: inline-flex;
   align-items: center;
   justify-content: center;
-  border-radius: 12px;
-  color: var(--color-text-secondary);
-  background: rgba(255, 255, 255, 0.055);
-  border: 1px solid rgba(255, 255, 255, 0.09);
+  border-radius: 10px;
+  color: var(--color-text-muted);
+  background: transparent;
+  border: 1px solid transparent;
   cursor: pointer;
-  transition: background 0.18s ease, border-color 0.18s ease, color 0.18s ease, transform 0.18s ease;
+  transition: background 0.2s ease, border-color 0.2s ease, color 0.2s ease, transform 0.15s ease;
 }
 
 .backBtn:hover,
-.iconBtn:hover,
-.iconBtnActive:hover {
+.iconBtn:hover {
   color: var(--color-text);
-  background: rgba(255, 255, 255, 0.085);
-  border-color: rgba(255, 255, 255, 0.16);
+  background: rgba(255, 255, 255, 0.06);
+  border-color: rgba(255, 255, 255, 0.1);
+}
+
+.iconBtnActive {
+  width: 38px;
+  height: 38px;
+  flex: 0 0 auto;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  border-radius: 10px;
+  color: var(--color-text);
+  background: rgba(255, 255, 255, 0.08);
+  border: 1px solid rgba(255, 255, 255, 0.14);
+  cursor: pointer;
+  transition: background 0.2s ease, border-color 0.2s ease, color 0.2s ease, transform 0.15s ease;
+}
+
+.iconBtnActive:hover {
+  background: rgba(255, 255, 255, 0.11);
+  border-color: rgba(255, 255, 255, 0.2);
 }
 
 .backBtn:active,
 .iconBtn:active,
 .iconBtnActive:active,
-.navAction:active,
 .shareBtn:active,
 .deployBtn:active {
   transform: translateY(1px);
@@ -108,26 +125,28 @@
 }
 
 .modeSwitch {
-  justify-self: center;
-  gap: 3px;
-  padding: 4px;
-  border-radius: 16px;
+  display: inline-flex;
+  align-items: center;
+  gap: 2px;
+  padding: 3px;
+  border-radius: 12px;
   background: rgba(255, 255, 255, 0.06);
-  border: 1px solid rgba(255, 255, 255, 0.09);
+  border: 1px solid rgba(255, 255, 255, 0.08);
 }
 
 .modeSwitch button {
-  height: 38px;
+  height: 34px;
   display: inline-flex;
   align-items: center;
-  gap: 8px;
-  padding: 0 16px;
-  border-radius: 12px;
+  gap: 7px;
+  padding: 0 13px;
+  border-radius: 10px;
   color: var(--color-text-muted);
-  font-size: 13px;
-  font-weight: 800;
+  font-size: 12.5px;
+  font-weight: 750;
   cursor: pointer;
-  transition: color 0.18s ease, background 0.18s ease;
+  transition: color 0.2s ease, background 0.2s ease, box-shadow 0.2s ease;
+  white-space: nowrap;
 }
 
 .modeSwitch button:hover {
@@ -137,7 +156,7 @@
 .modeSwitch .modeActive {
   color: #09060c;
   background: linear-gradient(135deg, var(--color-secondary), var(--color-warm-accent));
-  box-shadow: 0 8px 24px rgba(86, 222, 205, 0.14);
+  box-shadow: 0 4px 14px rgba(86, 222, 205, 0.18);
 }
 
 .topActions {
@@ -146,46 +165,55 @@
   gap: 8px;
 }
 
-.navAction,
+.divider {
+  width: 1px;
+  height: 24px;
+  background: rgba(255, 255, 255, 0.08);
+  margin: 0 4px;
+}
+
 .shareBtn,
 .deployBtn {
-  min-height: 40px;
+  height: 38px;
+  display: inline-flex;
+  align-items: center;
   justify-content: center;
-  border-radius: 12px;
-  font-size: 13px;
-  font-weight: 800;
+  border-radius: 10px;
+  font-size: 12.5px;
+  font-weight: 750;
   cursor: pointer;
-  transition: background 0.18s ease, border-color 0.18s ease, color 0.18s ease, transform 0.18s ease;
-}
-
-.navAction {
-  gap: 7px;
-  padding: 0 12px;
-  color: var(--color-text-secondary);
-  background: rgba(255, 255, 255, 0.045);
-  border: 1px solid rgba(255, 255, 255, 0.09);
-  text-decoration: none;
-}
-
-.navAction:hover,
-.shareBtn:hover {
-  color: var(--color-text);
-  background: rgba(255, 255, 255, 0.075);
-  border-color: rgba(255, 255, 255, 0.15);
+  transition: background 0.2s ease, border-color 0.2s ease, color 0.2s ease, transform 0.15s ease, box-shadow 0.2s ease;
 }
 
 .shareBtn {
-  padding: 0 15px;
+  padding: 0 14px;
   color: var(--color-text-secondary);
-  background: rgba(255, 255, 255, 0.045);
+  background: rgba(255, 255, 255, 0.04);
   border: 1px solid rgba(255, 255, 255, 0.09);
 }
 
+.shareBtn:hover {
+  color: var(--color-text);
+  background: rgba(255, 255, 255, 0.07);
+  border-color: rgba(255, 255, 255, 0.16);
+}
+
 .deployBtn {
-  padding: 0 18px;
+  padding: 0 16px;
   color: #09060c;
   background: linear-gradient(135deg, var(--color-secondary), var(--color-warm-accent));
   border: 0;
+  box-shadow: 0 2px 12px rgba(86, 222, 205, 0.15);
+}
+
+.deployBtn:hover {
+  box-shadow: 0 4px 20px rgba(86, 222, 205, 0.25);
+  transform: translateY(-1px);
+}
+
+.deployBtn:active {
+  transform: translateY(0);
+  box-shadow: 0 2px 8px rgba(86, 222, 205, 0.12);
 }
 
 .shell {
@@ -401,23 +429,33 @@
 }
 
 .previewToolbar {
-  height: 58px;
+  height: 54px;
   flex-shrink: 0;
   display: grid;
-  grid-template-columns: minmax(90px, 1fr) minmax(220px, 520px) minmax(90px, 1fr);
+  grid-template-columns: auto 1fr auto;
   align-items: center;
-  gap: 14px;
-  padding: 0 16px;
-  background: #100d12;
-  border-bottom: 1px solid rgba(255, 255, 255, 0.08);
+  gap: 12px;
+  padding: 0 14px;
+  background: #0e0b10;
+  border-bottom: 1px solid rgba(255, 255, 255, 0.07);
 }
 
 .previewTools {
+  display: flex;
+  align-items: center;
   gap: 8px;
 }
 
 .previewTools:last-child {
   justify-content: flex-end;
+}
+
+.previewCenter {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 10px;
+  min-width: 0;
 }
 
 .iconBtnActive {
@@ -427,24 +465,32 @@
 }
 
 .addressBar {
-  height: 38px;
-  min-width: 0;
+  height: 36px;
+  flex: 1;
+  min-width: 160px;
+  max-width: 480px;
   display: grid;
-  grid-template-columns: 20px minmax(0, 1fr) 20px;
+  grid-template-columns: 18px minmax(0, 1fr) 18px;
   align-items: center;
-  gap: 10px;
-  padding: 0 13px;
+  gap: 8px;
+  padding: 0 12px;
   border-radius: 999px;
-  color: var(--color-text-secondary);
-  background: rgba(255, 255, 255, 0.06);
-  border: 1px solid rgba(255, 255, 255, 0.09);
+  color: var(--color-text-muted);
+  background: rgba(255, 255, 255, 0.05);
+  border: 1px solid rgba(255, 255, 255, 0.08);
+  transition: background 0.2s ease, border-color 0.2s ease;
+}
+
+.addressBar:hover {
+  background: rgba(255, 255, 255, 0.07);
+  border-color: rgba(255, 255, 255, 0.13);
 }
 
 .addressBar span {
   overflow: hidden;
   color: var(--color-text);
-  font-size: 15px;
-  font-weight: 850;
+  font-size: 13px;
+  font-weight: 750;
   text-align: center;
   text-overflow: ellipsis;
   white-space: nowrap;
@@ -871,14 +917,6 @@
 }
 
 @media (max-width: 1240px) {
-  .topbar {
-    grid-template-columns: minmax(240px, 1fr) auto minmax(240px, 1fr);
-  }
-
-  .navAction {
-    padding: 0 10px;
-  }
-
   .shell {
     grid-template-columns: 350px minmax(0, 1fr);
   }
@@ -886,20 +924,13 @@
 
 @media (max-width: 1040px) {
   .topbar {
-    grid-template-columns: minmax(0, 1fr) auto;
-  }
-
-  .topActions {
-    grid-column: 1 / -1;
-    justify-content: flex-start;
-    overflow-x: auto;
-    padding-bottom: 2px;
-  }
-
-  .topbar {
     height: auto;
     min-height: 68px;
     padding: 10px 14px;
+  }
+
+  .topActions {
+    overflow-x: auto;
   }
 }
 
@@ -917,13 +948,8 @@
     grid-template-columns: 1fr;
   }
 
-  .modeSwitch {
-    justify-self: stretch;
-  }
-
-  .modeSwitch button {
-    flex: 1;
-    justify-content: center;
+  .topActions {
+    display: none;
   }
 
   .shell {
@@ -942,12 +968,19 @@
 
   .previewToolbar {
     height: auto;
-    grid-template-columns: 1fr;
+    grid-template-columns: 1fr 1fr;
+    gap: 8px;
     padding: 10px;
   }
 
-  .addressBar {
+  .previewCenter {
     order: -1;
+    grid-column: 1 / -1;
+    justify-content: stretch;
+  }
+
+  .addressBar {
+    flex: 1;
   }
 
   .previewStage {
