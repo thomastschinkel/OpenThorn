@@ -12,6 +12,7 @@
   "dependencies": {
     "@supabase/supabase-js": "^2.106.2",
     "framer-motion": "^12.12.1",
+    "jszip": "^3.10.1",
     "react": "^19.2.6",
     "react-dom": "^19.2.6",
     "react-router-dom": "^7.16.0"

@@ -1,0 +1,192 @@
+
+> bloom@0.0.0 dev
+> vite --host 127.0.0.1 --port 4173
+
+
+  [32m[1mVITE[22m v6.4.2[39m  [2mready in [0m[1m1269[22m[2m[0m ms[22m
+
+  [32m➜[39m  [1mLocal[22m:   [36mhttp://127.0.0.1:[1m4173[22m/[39m
+[2m[32m  ➜[39m[22m[2m  press [22m[1mh + enter[22m[2m to show help[22m
+[2m10:08:43[22m [36m[1m[vite][22m[39m [90m[2m(client)[22m[39m [32mpage reload [39m[2mindex.html[22m
+[2m10:09:09[22m [36m[1m[vite][22m[39m [90m[2m(client)[22m[39m [32mhmr update [39m[2m/src/index.css[22m
+[2m10:09:42[22m [36m[1m[vite][22m[39m [90m[2m(client)[22m[39m [32mhmr update [39m[2m/src/components/HeroSection/HeroSection.tsx[22m
+[2m10:10:22[22m [36m[1m[vite][22m[39m [90m[2m(client)[22m[39m [32mhmr update [39m[2m/src/components/MeetBloomSection/MeetBloomSection.tsx[22m
+[2m10:10:22[22m [36m[1m[vite][22m[39m [90m[2m(client)[22m[39m [32mhmr update [39m[2m/src/components/BYOKSection/BYOKSection.tsx[22m
+[2m10:10:22[22m [36m[1m[vite][22m[39m [90m[2m(client)[22m[39m [32mhmr update [39m[2m/src/components/BottomCTA/BottomCTA.tsx[22m
+[2m10:10:48[22m [36m[1m[vite][22m[39m [90m[2m(client)[22m[39m [32mhmr update [39m[2m/src/pages/DashboardPage.tsx[22m
+[2m10:10:48[22m [36m[1m[vite][22m[39m [90m[2m(client)[22m[39m [32mhmr update [39m[2m/src/pages/ProvidersPage.tsx[22m
+[2m10:10:48[22m [36m[1m[vite][22m[39m [90m[2m(client)[22m[39m [32mhmr update [39m[2m/src/components/HeroSection/HeroSection.tsx[22m
+[2m10:11:17[22m [36m[1m[vite][22m[39m [90m[2m(client)[22m[39m [32mhmr update [39m[2m/src/components/PromptInput/PromptInput.tsx[22m
+[2m10:11:17[22m [36m[1m[vite][22m[39m [90m[2m(client)[22m[39m [32mhmr update [39m[2m/src/components/ReelCarousel/ReelCarousel.tsx[22m
+[2m10:11:17[22m [36m[1m[vite][22m[39m [90m[2m(client)[22m[39m [32mhmr update [39m[2m/src/components/Carousel3D/Carousel3D.tsx[22m
+[2m10:11:51[22m [36m[1m[vite][22m[39m [90m[2m(client)[22m[39m [32mhmr update [39m[2m/src/components/Header/Header.tsx[22m
+[2m10:11:51[22m [36m[1m[vite][22m[39m [90m[2m(client)[22m[39m [32mhmr update [39m[2m/src/components/Footer/Footer.tsx[22m
+[2m10:11:51[22m [36m[1m[vite][22m[39m [90m[2m(client)[22m[39m [32mhmr update [39m[2m/src/pages/PricingPage.tsx[22m
+[2m10:13:44[22m [36m[1m[vite][22m[39m [90m[2m(client)[22m[39m [32mhmr update [39m[2m/src/pages/DashboardPage.tsx[22m
+[2m10:13:44[22m [36m[1m[vite][22m[39m [90m[2m(client)[22m[39m [32mhmr update [39m[2m/src/pages/ProvidersPage.tsx[22m
+[2m10:13:44[22m [36m[1m[vite][22m[39m [90m[2m(client)[22m[39m [32mhmr update [39m[2m/src/components/PromptInput/PromptInput.tsx[22m
+[2m10:13:44[22m [36m[1m[vite][22m[39m [90m[2m(client)[22m[39m [32mhmr update [39m[2m/src/components/ModelSelector/ModelSelector.tsx[22m
+[2m10:13:44[22m [36m[1m[vite][22m[39m [90m[2m(client)[22m[39m [32mhmr update [39m[2m/src/components/AuthModal/AuthForm.tsx[22m
+[2m10:13:44[22m [36m[1m[vite][22m[39m [90m[2m(client)[22m[39m [32mhmr update [39m[2m/src/components/SlideInButton/SlideInButton.tsx[22m
+[2m10:13:44[22m [36m[1m[vite][22m[39m [90m[2m(client)[22m[39m [32mhmr update [39m[2m/src/components/NeumorphButton/NeumorphButton.tsx[22m
+[2m10:16:50[22m [36m[1m[vite][22m[39m [90m[2m(client)[22m[39m [32mhmr update [39m[2m/src/components/HeroSection/HeroSection.tsx[22m
+[2m10:16:50[22m [36m[1m[vite][22m[39m [90m[2m(client)[22m[39m [32mhmr update [39m[2m/src/components/Header/Header.tsx[22m
+[2m10:18:13[22m [36m[1m[vite][22m[39m [90m[2m(client)[22m[39m [32mhmr update [39m[2m/src/components/HeroSection/HeroSection.tsx[22m
+[2m10:18:13[22m [36m[1m[vite][22m[39m [90m[2m(client)[22m[39m [32mhmr update [39m[2m/src/components/HeroSection/HeroSection.tsx[22m
+[2m12:33:15[22m [36m[1m[vite][22m[39m [90m[2m(client)[22m[39m [32mhmr update [39m[2m/src/components/HeroSection/HeroSection.tsx[22m
+[2m12:33:27[22m [36m[1m[vite][22m[39m [90m[2m(client)[22m[39m [32mhmr update [39m[2m/src/components/MeetBloomSection/MeetBloomSection.tsx[22m
+[2m12:33:40[22m [36m[1m[vite][22m[39m [90m[2m(client)[22m[39m [32mhmr update [39m[2m/src/components/BYOKSection/BYOKSection.tsx[22m
+[2m12:34:17[22m [36m[1m[vite][22m[39m [90m[2m(client)[22m[39m [32mhmr update [39m[2m/src/components/BottomCTA/BottomCTA.tsx[22m
+[2m12:34:28[22m [36m[1m[vite][22m[39m [90m[2m(client)[22m[39m [32mhmr update [39m[2m/src/components/BottomCTA/BottomCTA.tsx[22m
+[2m12:34:46[22m [36m[1m[vite][22m[39m [90m[2m(client)[22m[39m [32mhmr update [39m[2m/src/pages/PricingPage.tsx[22m
+[2m12:35:06[22m [31m[1m[vite][22m[39m [31m[2m(client)[22m[39m Pre-transform error: Failed to load url /src/pages/PricingPage.tsx (resolved id: C:/Users/Thoma/OneDrive/Dokumente/Informatik/Bloom/src/pages/PricingPage.tsx) in C:/Users/Thoma/OneDrive/Dokumente/Informatik/Bloom/src/App.tsx. Does the file exist?
+[2m12:35:45[22m [36m[1m[vite][22m[39m [90m[2m(client)[22m[39m [32mhmr update [39m[2m/src/pages/PricingPage.tsx[22m
+[2m12:36:10[22m [36m[1m[vite][22m[39m [90m[2m(client)[22m[39m [32mhmr update [39m[2m/src/components/HeroSection/HeroSection.tsx[22m
+[2m12:36:30[22m [36m[1m[vite][22m[39m [90m[2m(client)[22m[39m [32mhmr update [39m[2m/src/components/MeetBloomSection/MeetBloomSection.tsx[22m
+[2m12:36:54[22m [36m[1m[vite][22m[39m [90m[2m(client)[22m[39m [32mhmr update [39m[2m/src/components/BYOKSection/BYOKSection.tsx[22m
+[2m12:36:59[22m [36m[1m[vite][22m[39m [90m[2m(client)[22m[39m [32mhmr update [39m[2m/src/components/BottomCTA/BottomCTA.tsx[22m
+[2m12:36:59[22m [31m[1m[vite][22m[39m [31m[2m(client)[22m[39m Pre-transform error: Failed to load url /src/components/BottomCTA/BottomCTA.module.css (resolved id: C:/Users/Thoma/OneDrive/Dokumente/Informatik/Bloom/src/components/BottomCTA/BottomCTA.module.css) in C:/Users/Thoma/OneDrive/Dokumente/Informatik/Bloom/src/components/BottomCTA/BottomCTA.tsx. Does the file exist?
+[2m12:37:20[22m [36m[1m[vite][22m[39m [90m[2m(client)[22m[39m [32mhmr update [39m[2m/src/components/BottomCTA/BottomCTA.tsx[22m
+[2m12:37:29[22m [36m[1m[vite][22m[39m [90m[2m(client)[22m[39m [32mhmr update [39m[2m/src/pages/PricingPage.tsx[22m
+[2m12:37:29[22m [31m[1m[vite][22m[39m [31m[2m(client)[22m[39m Pre-transform error: Failed to load url /src/pages/PricingPage.module.css (resolved id: C:/Users/Thoma/OneDrive/Dokumente/Informatik/Bloom/src/pages/PricingPage.module.css) in C:/Users/Thoma/OneDrive/Dokumente/Informatik/Bloom/src/pages/PricingPage.tsx. Does the file exist?
+[2m12:38:45[22m [36m[1m[vite][22m[39m [90m[2m(client)[22m[39m [32mhmr update [39m[2m/src/pages/PricingPage.tsx[22m
+[2m12:41:32[22m [36m[1m[vite][22m[39m [90m[2m(client)[22m[39m [32mhmr update [39m[2m/src/pages/PricingPage.tsx[22m
+[2m12:44:22[22m [36m[1m[vite][22m[39m [90m[2m(client)[22m[39m [32mhmr update [39m[2m/src/components/Header/Header.tsx[22m
+[2m12:44:33[22m [36m[1m[vite][22m[39m [90m[2m(client)[22m[39m [32mhmr update [39m[2m/src/components/MobileMenu/MobileMenu.tsx[22m
+[2m12:44:47[22m [36m[1m[vite][22m[39m [90m[2m(client)[22m[39m [32mhmr update [39m[2m/src/components/Header/Header.tsx[22m
+[2m12:44:54[22m [36m[1m[vite][22m[39m [90m[2m(client)[22m[39m [32mhmr update [39m[2m/src/components/MobileMenu/MobileMenu.tsx[22m
+[2m12:45:04[22m [36m[1m[vite][22m[39m [90m[2m(client)[22m[39m [32mhmr update [39m[2m/src/components/HeroSection/HeroSection.tsx[22m
+[2m12:45:12[22m [36m[1m[vite][22m[39m [90m[2m(client)[22m[39m [32mhmr update [39m[2m/src/components/AuthModal/AuthModal.tsx[22m
+[2m12:45:21[22m [36m[1m[vite][22m[39m [90m[2m(client)[22m[39m [32mhmr update [39m[2m/src/components/AuthModal/AuthModal.tsx[22m
+[2m12:46:16[22m [36m[1m[vite][22m[39m [90m[2m(client)[22m[39m [32mhmr update [39m[2m/src/pages/DashboardPage.tsx[22m
+[2m12:46:59[22m [36m[1m[vite][22m[39m [90m[2m(client)[22m[39m [32mhmr update [39m[2m/src/pages/DashboardPage.tsx[22m
+[2m12:47:05[22m [36m[1m[vite][22m[39m [90m[2m(client)[22m[39m [32mhmr update [39m[2m/src/pages/DashboardPage.tsx[22m
+[2m12:47:05[22m [31m[1m[vite][22m[39m [31m[2m(client)[22m[39m Pre-transform error: Failed to load url /src/pages/DashboardPage.module.css (resolved id: C:/Users/Thoma/OneDrive/Dokumente/Informatik/Bloom/src/pages/DashboardPage.module.css) in C:/Users/Thoma/OneDrive/Dokumente/Informatik/Bloom/src/pages/DashboardPage.tsx. Does the file exist?
+[2m12:47:47[22m [36m[1m[vite][22m[39m [90m[2m(client)[22m[39m [32mhmr update [39m[2m/src/pages/DashboardPage.tsx[22m
+[2m12:47:57[22m [36m[1m[vite][22m[39m [90m[2m(client)[22m[39m [32mhmr update [39m[2m/src/pages/ProvidersPage.tsx[22m
+[2m12:49:32[22m [31m[1m[vite][22m[39m [31m[2m(client)[22m[39m Pre-transform error: Failed to load url /src/pages/ProvidersPage.tsx (resolved id: C:/Users/Thoma/OneDrive/Dokumente/Informatik/Bloom/src/pages/ProvidersPage.tsx) in C:/Users/Thoma/OneDrive/Dokumente/Informatik/Bloom/src/App.tsx. Does the file exist?
+[2m12:52:11[22m [36m[1m[vite][22m[39m [90m[2m(client)[22m[39m [32mhmr update [39m[2m/src/pages/ProvidersPage.tsx[22m
+[2m12:52:18[22m [36m[1m[vite][22m[39m [90m[2m(client)[22m[39m [32mhmr update [39m[2m/src/pages/ProvidersPage.tsx[22m
+[2m12:52:18[22m [31m[1m[vite][22m[39m [31m[2m(client)[22m[39m Pre-transform error: Failed to load url /src/pages/ProvidersPage.module.css (resolved id: C:/Users/Thoma/OneDrive/Dokumente/Informatik/Bloom/src/pages/ProvidersPage.module.css) in C:/Users/Thoma/OneDrive/Dokumente/Informatik/Bloom/src/pages/ProvidersPage.tsx. Does the file exist?
+[2m12:53:04[22m [36m[1m[vite][22m[39m [90m[2m(client)[22m[39m [32mhmr update [39m[2m/src/pages/ProvidersPage.tsx[22m
+[2m12:53:52[22m [36m[1m[vite][22m[39m [90m[2m(client)[22m[39m [32mhmr update [39m[2m/src/pages/ProvidersPage.tsx[22m
+[2m13:02:51[22m [36m[1m[vite][22m[39m [90m[2m(client)[22m[39m [32mhmr update [39m[2m/src/pages/ProvidersPage.tsx[22m
+[2m13:03:17[22m [36m[1m[vite][22m[39m [90m[2m(client)[22m[39m [32mhmr update [39m[2m/src/pages/ProvidersPage.tsx[22m
+[2m13:04:34[22m [36m[1m[vite][22m[39m [90m[2m(client)[22m[39m [32mhmr update [39m[2m/src/pages/ProvidersPage.tsx[22m
+[2m13:04:34[22m [36m[1m[vite][22m[39m [90m[2m(client)[22m[39m [32mhmr update [39m[2m/src/pages/ProvidersPage.tsx[22m
+[2m13:05:56[22m [36m[1m[vite][22m[39m [90m[2m(client)[22m[39m [32mhmr update [39m[2m/src/components/Header/Header.tsx[22m
+[2m13:05:56[22m [36m[1m[vite][22m[39m [90m[2m(client)[22m[39m [32mhmr update [39m[2m/src/components/MobileMenu/MobileMenu.tsx[22m
+[2m13:05:56[22m [36m[1m[vite][22m[39m [90m[2m(client)[22m[39m [32mhmr update [39m[2m/src/pages/ProvidersPage.tsx[22m
+[2m13:05:56[22m [36m[1m[vite][22m[39m [90m[2m(client)[22m[39m [32mhmr update [39m[2m/src/components/Header/Header.tsx[22m
+[2m13:05:56[22m [36m[1m[vite][22m[39m [90m[2m(client)[22m[39m [32mhmr update [39m[2m/src/components/MobileMenu/MobileMenu.tsx[22m
+[2m13:05:56[22m [36m[1m[vite][22m[39m [90m[2m(client)[22m[39m [32mhmr update [39m[2m/src/components/AuthModal/AuthModal.tsx[22m
+[2m13:05:56[22m [36m[1m[vite][22m[39m [90m[2m(client)[22m[39m [32mhmr update [39m[2m/src/components/AuthModal/AuthModal.tsx[22m
+[2m13:05:56[22m [36m[1m[vite][22m[39m [90m[2m(client)[22m[39m [32mhmr update [39m[2m/src/pages/ProvidersPage.tsx[22m
+[2m13:07:57[22m [36m[1m[vite][22m[39m [90m[2m(client)[22m[39m [32mhmr update [39m[2m/src/pages/DashboardPage.tsx[22m
+[2m13:07:57[22m [36m[1m[vite][22m[39m [90m[2m(client)[22m[39m [32mhmr update [39m[2m/src/pages/DashboardPage.tsx[22m
+[2m13:08:11[22m [36m[1m[vite][22m[39m [90m[2m(client)[22m[39m [32mhmr update [39m[2m/src/components/HeroSection/HeroSection.tsx[22m
+[2m13:09:45[22m [36m[1m[vite][22m[39m [90m[2m(client)[22m[39m [32mhmr update [39m[2m/src/components/BYOKSection/BYOKSection.tsx[22m
+[2m13:09:45[22m [36m[1m[vite][22m[39m [90m[2m(client)[22m[39m [32mhmr update [39m[2m/src/components/BYOKSection/BYOKSection.tsx[22m
+[2m13:09:45[22m [36m[1m[vite][22m[39m [90m[2m(client)[22m[39m [32mhmr update [39m[2m/src/components/MeetBloomSection/MeetBloomSection.tsx[22m
+[2m13:09:45[22m [36m[1m[vite][22m[39m [90m[2m(client)[22m[39m [32mhmr update [39m[2m/src/components/MeetBloomSection/MeetBloomSection.tsx[22m
+[2m13:21:28[22m [36m[1m[vite][22m[39m [90m[2m(client)[22m[39m [32mhmr update [39m[2m/src/pages/DashboardPage.tsx[22m
+[2m13:24:05[22m [36m[1m[vite][22m[39m [90m[2m(client)[22m[39m [32mhmr update [39m[2m/src/App.tsx[22m
+[2m13:28:57[22m [36m[1m[vite][22m[39m [90m[2m(client)[22m[39m [32mhmr update [39m[2m/src/components/PromptInput/PromptInput.tsx[22m
+[2m13:29:35[22m [36m[1m[vite][22m[39m [90m[2m(client)[22m[39m [32mhmr update [39m[2m/src/pages/ProjectBuilderPage.tsx[22m
+[2m13:29:50[22m [36m[1m[vite][22m[39m [90m[2m(client)[22m[39m [32mhmr update [39m[2m/src/pages/ProjectBuilderPage.tsx[22m
+[2m13:29:50[22m [31m[1m[vite][22m[39m [31m[2m(client)[22m[39m Pre-transform error: Failed to load url /src/pages/ProjectBuilderPage.module.css (resolved id: C:/Users/Thoma/OneDrive/Dokumente/Informatik/Bloom/src/pages/ProjectBuilderPage.module.css) in C:/Users/Thoma/OneDrive/Dokumente/Informatik/Bloom/src/pages/ProjectBuilderPage.tsx. Does the file exist?
+[2m13:31:25[22m [36m[1m[vite][22m[39m [90m[2m(client)[22m[39m [32mhmr update [39m[2m/src/pages/ProjectBuilderPage.tsx[22m
+[2m13:39:15[22m [36m[1m[vite][22m[39m [90m[2m(client)[22m[39m [32mhmr update [39m[2m/src/pages/ProjectBuilderPage.tsx[22m
+[2m13:41:17[22m [36m[1m[vite][22m[39m [90m[2m(client)[22m[39m [32mhmr update [39m[2m/src/pages/ProjectBuilderPage.tsx[22m
+[2m13:41:35[22m [36m[1m[vite][22m[39m [90m[2m(client)[22m[39m [32mhmr update [39m[2m/src/pages/ProjectBuilderPage.tsx[22m
+[2m13:41:35[22m [31m[1m[vite][22m[39m [31m[2m(client)[22m[39m Pre-transform error: Failed to load url /src/pages/ProjectBuilderPage.module.css (resolved id: C:/Users/Thoma/OneDrive/Dokumente/Informatik/Bloom/src/pages/ProjectBuilderPage.module.css) in C:/Users/Thoma/OneDrive/Dokumente/Informatik/Bloom/src/pages/ProjectBuilderPage.tsx. Does the file exist?
+[2m13:43:51[22m [36m[1m[vite][22m[39m [90m[2m(client)[22m[39m [32mhmr update [39m[2m/src/pages/ProjectBuilderPage.tsx[22m
+[2m13:44:44[22m [36m[1m[vite][22m[39m [90m[2m(client)[22m[39m [32mhmr update [39m[2m/src/pages/ProjectBuilderPage.tsx[22m
+[2m13:45:26[22m [36m[1m[vite][22m[39m [90m[2m(client)[22m[39m [32mhmr update [39m[2m/src/pages/ProjectBuilderPage.tsx[22m
+[2m13:45:49[22m [36m[1m[vite][22m[39m [90m[2m(client)[22m[39m [32mhmr update [39m[2m/src/pages/ProjectBuilderPage.tsx[22m
+[2m13:47:08[22m [36m[1m[vite][22m[39m [90m[2m(client)[22m[39m [32mhmr update [39m[2m/src/pages/ProjectBuilderPage.tsx[22m
+[2m13:50:37[22m [36m[1m[vite][22m[39m [90m[2m(client)[22m[39m [32mhmr update [39m[2m/src/pages/DashboardPage.tsx[22m
+[2m13:58:31[22m [36m[1m[vite][22m[39m [90m[2m(client)[22m[39m [32mhmr update [39m[2m/src/pages/ProjectBuilderPage.tsx[22m
+[2m13:58:37[22m [36m[1m[vite][22m[39m [90m[2m(client)[22m[39m [32mhmr update [39m[2m/src/pages/ProjectBuilderPage.tsx[22m
+[2m13:58:46[22m [36m[1m[vite][22m[39m [90m[2m(client)[22m[39m [32mhmr update [39m[2m/src/pages/ProjectBuilderPage.tsx[22m
+[2m13:58:52[22m [36m[1m[vite][22m[39m [90m[2m(client)[22m[39m [32mhmr update [39m[2m/src/pages/ProjectBuilderPage.tsx[22m
+[2m13:59:00[22m [36m[1m[vite][22m[39m [90m[2m(client)[22m[39m [32mhmr update [39m[2m/src/pages/ProjectBuilderPage.tsx[22m
+[2m13:59:05[22m [36m[1m[vite][22m[39m [90m[2m(client)[22m[39m [32mhmr update [39m[2m/src/pages/ProjectBuilderPage.tsx[22m
+[2m13:59:20[22m [36m[1m[vite][22m[39m [90m[2m(client)[22m[39m [32mhmr update [39m[2m/src/pages/ProjectBuilderPage.tsx[22m
+[2m13:59:43[22m [36m[1m[vite][22m[39m [90m[2m(client)[22m[39m [32mhmr update [39m[2m/src/pages/ProjectBuilderPage.tsx[22m
+[2m13:59:55[22m [36m[1m[vite][22m[39m [90m[2m(client)[22m[39m [32mhmr update [39m[2m/src/pages/DashboardPage.tsx[22m
+[2m14:41:31[22m [36m[1m[vite][22m[39m [90m[2m(client)[22m[39m [32mhmr update [39m[2m/src/pages/ProjectBuilderPage.tsx[22m
+[2m14:41:46[22m [36m[1m[vite][22m[39m [90m[2m(client)[22m[39m [32mhmr update [39m[2m/src/pages/ProjectBuilderPage.tsx[22m
+[2m14:42:18[22m [36m[1m[vite][22m[39m [90m[2m(client)[22m[39m [32mhmr update [39m[2m/src/pages/ProjectBuilderPage.tsx[22m
+[2m14:42:28[22m [36m[1m[vite][22m[39m [90m[2m(client)[22m[39m [32mhmr update [39m[2m/src/pages/ProjectBuilderPage.tsx[22m
+[2m14:43:09[22m [36m[1m[vite][22m[39m [90m[2m(client)[22m[39m [32mhmr update [39m[2m/src/pages/ProjectBuilderPage.tsx[22m
+[2m14:44:06[22m [36m[1m[vite][22m[39m [90m[2m(client)[22m[39m [32mhmr update [39m[2m/src/pages/ProjectBuilderPage.tsx[22m
+[2m14:46:37[22m [36m[1m[vite][22m[39m [90m[2m(client)[22m[39m [32mhmr update [39m[2m/src/pages/ProjectBuilderPage.tsx[22m
+[2m14:55:27[22m [36m[1m[vite][22m[39m [90m[2m(client)[22m[39m [32mhmr update [39m[2m/src/pages/DashboardPage.tsx[22m
+[2m14:59:15[22m [36m[1m[vite][22m[39m [90m[2m(client)[22m[39m [32mhmr update [39m[2m/src/pages/ProjectBuilderPage.tsx[22m
+[2m14:59:29[22m [36m[1m[vite][22m[39m [90m[2m(client)[22m[39m [32mhmr update [39m[2m/src/pages/ProjectBuilderPage.tsx[22m
+[2m14:59:39[22m [36m[1m[vite][22m[39m [90m[2m(client)[22m[39m [32mhmr update [39m[2m/src/pages/ProjectBuilderPage.tsx[22m
+[2m14:59:49[22m [36m[1m[vite][22m[39m [90m[2m(client)[22m[39m [32mhmr update [39m[2m/src/pages/ProjectBuilderPage.tsx[22m
+[2m15:00:03[22m [36m[1m[vite][22m[39m [90m[2m(client)[22m[39m [32mhmr update [39m[2m/src/pages/ProjectBuilderPage.tsx[22m
+[2m15:00:19[22m [36m[1m[vite][22m[39m [90m[2m(client)[22m[39m [32mhmr update [39m[2m/src/pages/ProjectBuilderPage.tsx[22m
+[2m15:00:28[22m [36m[1m[vite][22m[39m [90m[2m(client)[22m[39m [32mhmr update [39m[2m/src/pages/ProjectBuilderPage.tsx[22m
+[2m15:00:51[22m [36m[1m[vite][22m[39m [90m[2m(client)[22m[39m [32mhmr update [39m[2m/src/pages/ProjectBuilderPage.tsx[22m
+[2m15:00:58[22m [36m[1m[vite][22m[39m [90m[2m(client)[22m[39m [32mhmr update [39m[2m/src/pages/ProjectBuilderPage.tsx[22m
+[2m15:01:13[22m [36m[1m[vite][22m[39m [90m[2m(client)[22m[39m [32mhmr update [39m[2m/src/pages/ProjectBuilderPage.tsx[22m
+[2m15:01:26[22m [36m[1m[vite][22m[39m [90m[2m(client)[22m[39m [32mhmr update [39m[2m/src/pages/ProjectBuilderPage.tsx[22m
+[2m15:01:50[22m [36m[1m[vite][22m[39m [90m[2m(client)[22m[39m [32mhmr update [39m[2m/src/pages/ProjectBuilderPage.tsx[22m
+[2m17:11:51[22m [36m[1m[vite][22m[39m [90m[2m(client)[22m[39m [32mhmr update [39m[2m/src/components/PromptInput/PromptInput.tsx[22m
+[2m17:11:58[22m [36m[1m[vite][22m[39m [90m[2m(client)[22m[39m [32mhmr update [39m[2m/src/components/PromptInput/PromptInput.tsx[22m
+[2m17:12:10[22m [36m[1m[vite][22m[39m [90m[2m(client)[22m[39m [32mhmr update [39m[2m/src/pages/DashboardPage.tsx[22m
+[2m17:16:14[22m [36m[1m[vite][22m[39m [90m[2m(client)[22m[39m [32mhmr update [39m[2m/src/pages/ProjectBuilderPage.tsx[22m
+[2m17:17:47[22m [36m[1m[vite][22m[39m [90m[2m(client)[22m[39m [32mhmr update [39m[2m/src/pages/ProjectBuilderPage.tsx[22m
+[2m17:18:37[22m [36m[1m[vite][22m[39m [90m[2m(client)[22m[39m [32mhmr update [39m[2m/src/pages/ProjectBuilderPage.tsx[22m
+[2m17:18:51[22m [36m[1m[vite][22m[39m [90m[2m(client)[22m[39m [32mhmr update [39m[2m/src/pages/ProjectBuilderPage.tsx[22m
+[2m17:19:16[22m [36m[1m[vite][22m[39m [90m[2m(client)[22m[39m [32mhmr update [39m[2m/src/pages/ProjectBuilderPage.tsx[22m
+[2m17:22:30[22m [36m[1m[vite][22m[39m [90m[2m(client)[22m[39m [32mhmr update [39m[2m/src/pages/ProjectBuilderPage.tsx[22m
+[2m17:22:37[22m [36m[1m[vite][22m[39m [90m[2m(client)[22m[39m [32mhmr update [39m[2m/src/pages/ProjectBuilderPage.tsx[22m
+[2m17:22:58[22m [36m[1m[vite][22m[39m [90m[2m(client)[22m[39m [32mhmr update [39m[2m/src/pages/ProjectBuilderPage.tsx[22m
+[2m17:23:53[22m [36m[1m[vite][22m[39m [90m[2m(client)[22m[39m [32mhmr update [39m[2m/src/pages/ProjectBuilderPage.tsx[22m
+[2m17:24:38[22m [36m[1m[vite][22m[39m [90m[2m(client)[22m[39m [32mhmr update [39m[2m/src/pages/ProjectBuilderPage.tsx[22m
+[2m17:24:46[22m [36m[1m[vite][22m[39m [90m[2m(client)[22m[39m [32mhmr update [39m[2m/src/pages/ProjectBuilderPage.tsx[22m
+[2m17:24:54[22m [36m[1m[vite][22m[39m [90m[2m(client)[22m[39m [32mhmr update [39m[2m/src/pages/ProjectBuilderPage.tsx[22m
+[2m17:25:40[22m [36m[1m[vite][22m[39m [90m[2m(client)[22m[39m [32mhmr update [39m[2m/src/pages/ProjectBuilderPage.tsx[22m
+[2m17:25:50[22m [36m[1m[vite][22m[39m [90m[2m(client)[22m[39m [32mhmr update [39m[2m/src/pages/ProjectBuilderPage.tsx[22m
+[2m17:25:59[22m [36m[1m[vite][22m[39m [90m[2m(client)[22m[39m [32mhmr update [39m[2m/src/pages/ProjectBuilderPage.tsx[22m
+[2m17:26:07[22m [36m[1m[vite][22m[39m [90m[2m(client)[22m[39m [32mhmr update [39m[2m/src/pages/ProjectBuilderPage.tsx[22m
+[2m17:26:15[22m [36m[1m[vite][22m[39m [90m[2m(client)[22m[39m [32mhmr update [39m[2m/src/pages/ProjectBuilderPage.tsx[22m
+[2m17:26:22[22m [36m[1m[vite][22m[39m [90m[2m(client)[22m[39m [32mhmr update [39m[2m/src/pages/ProjectBuilderPage.tsx[22m
+[2m18:03:50[22m [36m[1m[vite][22m[39m [90m[2m(client)[22m[39m [32mhmr update [39m[2m/src/pages/ProjectBuilderPage.tsx[22m
+[2m18:03:58[22m [36m[1m[vite][22m[39m [90m[2m(client)[22m[39m [32mhmr update [39m[2m/src/pages/ProjectBuilderPage.tsx[22m
+[2m18:04:02[22m [36m[1m[vite][22m[39m [90m[2m(client)[22m[39m [32m✨ new dependencies optimized: [33mjszip[32m[39m
+[2m18:04:02[22m [36m[1m[vite][22m[39m [90m[2m(client)[22m[39m [32m✨ optimized dependencies changed. reloading[39m
+[2m18:04:06[22m [36m[1m[vite][22m[39m [90m[2m(client)[22m[39m [32mhmr update [39m[2m/src/pages/ProjectBuilderPage.tsx[22m
+[2m18:04:14[22m [36m[1m[vite][22m[39m [90m[2m(client)[22m[39m [32mhmr update [39m[2m/src/pages/ProjectBuilderPage.tsx[22m
+[2m18:05:11[22m [36m[1m[vite][22m[39m [90m[2m(client)[22m[39m [32mhmr update [39m[2m/src/pages/ProjectBuilderPage.tsx[22m
+[2m18:06:02[22m [36m[1m[vite][22m[39m [90m[2m(client)[22m[39m [32mhmr update [39m[2m/src/pages/ProjectBuilderPage.tsx[22m
+[2m18:08:36[22m [36m[1m[vite][22m[39m [90m[2m(client)[22m[39m [32mhmr update [39m[2m/src/pages/ProjectBuilderPage.tsx[22m
+[2m18:08:44[22m [36m[1m[vite][22m[39m [90m[2m(client)[22m[39m [32mhmr update [39m[2m/src/pages/ProjectBuilderPage.tsx[22m
+[2m18:09:19[22m [36m[1m[vite][22m[39m [90m[2m(client)[22m[39m [32mhmr update [39m[2m/src/pages/ProjectBuilderPage.tsx[22m
+[2m18:09:39[22m [36m[1m[vite][22m[39m [90m[2m(client)[22m[39m [32mhmr update [39m[2m/src/pages/ProjectBuilderPage.tsx[22m
+[2m18:16:57[22m [36m[1m[vite][22m[39m [90m[2m(client)[22m[39m [32mhmr update [39m[2m/src/pages/ProjectBuilderPage.tsx[22m
+[2m18:18:15[22m [36m[1m[vite][22m[39m [90m[2m(client)[22m[39m [32mhmr update [39m[2m/src/pages/ProjectBuilderPage.tsx[22m
+[2m18:20:38[22m [36m[1m[vite][22m[39m [90m[2m(client)[22m[39m [32mhmr update [39m[2m/src/pages/ProjectBuilderPage.tsx[22m
+[2m18:20:50[22m [36m[1m[vite][22m[39m [90m[2m(client)[22m[39m [32mhmr update [39m[2m/src/pages/ProjectBuilderPage.tsx[22m
+[2m18:21:06[22m [36m[1m[vite][22m[39m [90m[2m(client)[22m[39m [32mhmr update [39m[2m/src/pages/ProjectBuilderPage.tsx[22m
+[2m18:22:06[22m [36m[1m[vite][22m[39m [90m[2m(client)[22m[39m [32mhmr update [39m[2m/src/pages/ProjectBuilderPage.tsx[22m
+[2m18:22:30[22m [36m[1m[vite][22m[39m [90m[2m(client)[22m[39m [32mhmr update [39m[2m/src/pages/ProjectBuilderPage.tsx[22m
+[2m18:23:13[22m [36m[1m[vite][22m[39m [90m[2m(client)[22m[39m [32mhmr update [39m[2m/src/pages/ProjectBuilderPage.tsx[22m
+[2m18:23:27[22m [36m[1m[vite][22m[39m [90m[2m(client)[22m[39m [32mhmr update [39m[2m/src/pages/ProjectBuilderPage.tsx[22m
+[2m18:29:07[22m [36m[1m[vite][22m[39m [90m[2m(client)[22m[39m [32mhmr update [39m[2m/src/pages/ProjectBuilderPage.tsx[22m
+[2m18:45:02[22m [36m[1m[vite][22m[39m [90m[2m(client)[22m[39m [32mhmr update [39m[2m/src/pages/ProjectBuilderPage.tsx[22m
+[2m18:45:10[22m [36m[1m[vite][22m[39m [90m[2m(client)[22m[39m [32mhmr update [39m[2m/src/pages/ProjectBuilderPage.tsx[22m
+[2m18:45:23[22m [36m[1m[vite][22m[39m [90m[2m(client)[22m[39m [32mhmr update [39m[2m/src/pages/ProjectBuilderPage.tsx[22m
+[2m18:45:32[22m [36m[1m[vite][22m[39m [90m[2m(client)[22m[39m [32mhmr update [39m[2m/src/pages/ProjectBuilderPage.tsx[22m
+[2m18:45:40[22m [36m[1m[vite][22m[39m [90m[2m(client)[22m[39m [32mhmr update [39m[2m/src/pages/ProjectBuilderPage.tsx[22m
+[2m18:46:21[22m [36m[1m[vite][22m[39m [90m[2m(client)[22m[39m [32mhmr update [39m[2m/src/pages/ProjectBuilderPage.tsx[22m
+[2m18:46:28[22m [36m[1m[vite][22m[39m [90m[2m(client)[22m[39m [32mhmr update [39m[2m/src/pages/ProjectBuilderPage.tsx[22m
+[2m18:46:36[22m [36m[1m[vite][22m[39m [90m[2m(client)[22m[39m [32mhmr update [39m[2m/src/pages/ProjectBuilderPage.tsx[22m
+[2m18:46:51[22m [36m[1m[vite][22m[39m [90m[2m(client)[22m[39m [32mhmr update [39m[2m/src/pages/ProjectBuilderPage.tsx[22m
+[2m19:00:47[22m [36m[1m[vite][22m[39m [90m[2m(client)[22m[39m [32mhmr update [39m[2m/src/pages/ProjectBuilderPage.tsx[22m
+[2m19:00:53[22m [36m[1m[vite][22m[39m [90m[2m(client)[22m[39m [32mhmr update [39m[2m/src/pages/ProjectBuilderPage.tsx[22m
+[2m19:01:01[22m [36m[1m[vite][22m[39m [90m[2m(client)[22m[39m [32mhmr update [39m[2m/src/pages/ProjectBuilderPage.tsx[22m

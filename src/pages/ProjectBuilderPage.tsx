@@ -1,4 +1,4 @@
-import { type FormEvent, useCallback, useEffect, useMemo, useState } from 'react'
+import { type FormEvent, useCallback, useEffect, useMemo, useRef, useState } from 'react'
 import { useLocation, useNavigate, useParams } from 'react-router-dom'
 import JSZip from 'jszip'
 import { useAuth } from '../lib/AuthContext'
@@ -89,6 +89,7 @@ export default function ProjectBuilderPage() {
   const [githubError, setGithubError] = useState('')
   const [githubPushing, setGithubPushing] = useState(false)
   const [githubPushSuccess, setGithubPushSuccess] = useState('')
+  const githubInputRef = useRef<HTMLInputElement>(null)
 
   const prompt = state.prompt || 'Build a polished web app with a strong hero, product sections, and a deploy-ready layout.'
   const title = state.title || 'Untitled project'
@@ -817,8 +818,13 @@ export default function ProjectBuilderPage() {
                     </a>{' '}
                     with <strong>repo</strong> scope and paste it below.
                   </p>
-                  <div className={styles.emailInputWrap}>
+                  <div
+                    className={styles.emailInputWrap}
+                    onClick={() => githubInputRef.current?.focus()}
+                    style={{ cursor: 'text' }}
+                  >
                     <input
+                      ref={githubInputRef}
                       type="password"
                       value={githubTokenInput}
                       onChange={(e) => {
