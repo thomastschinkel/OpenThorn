@@ -10,6 +10,8 @@ interface PromptInputProps {
   defaultValue?: string
   onSubmit?: (prompt: string) => void
   page?: 'landing' | 'dashboard'
+  disableTyping?: boolean
+  placeholder?: string
 }
 
 const typingPrompts = [
@@ -79,7 +81,14 @@ function useTypingAnimation(active: boolean) {
   return displayText
 }
 
-export default function PromptInput({ size = 'default', defaultValue, onSubmit, page = 'landing' }: PromptInputProps) {
+export default function PromptInput({
+  size = 'default',
+  defaultValue,
+  onSubmit,
+  page = 'landing',
+  disableTyping = false,
+  placeholder = '',
+}: PromptInputProps) {
   const { user } = useAuth()
   const navigate = useNavigate()
   const [internalValue, setInternalValue] = useState(defaultValue ?? '')
@@ -108,7 +117,7 @@ export default function PromptInput({ size = 'default', defaultValue, onSubmit, 
     autoResize()
   }, [internalValue, autoResize])
 
-  const showTyping = !isFocused && internalValue.length === 0
+  const showTyping = !disableTyping && !isFocused && internalValue.length === 0
   const activeTyping = useTypingAnimation(showTyping)
 
   const handleChange = (e: React.ChangeEvent<HTMLTextAreaElement>) => {
@@ -221,11 +230,11 @@ export default function PromptInput({ size = 'default', defaultValue, onSubmit, 
                 onFocus={() => setIsFocused(true)}
                 onBlur={() => setIsFocused(false)}
                 onKeyDown={handleKeyDown}
-                placeholder=""
+                placeholder={placeholder}
                 rows={1}
                 aria-label="Describe your website idea"
               />
-              {!internalValue && !isFocused && (
+              {showTyping && (
                 <span className={styles.typingPlaceholder} aria-hidden="true">
                   {activeTyping}
                   <span className={styles.cursor} />

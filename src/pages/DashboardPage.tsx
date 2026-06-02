@@ -79,9 +79,38 @@ export default function DashboardPage() {
     return () => { supabase.removeChannel(channel) }
   }, [user])
 
-  const handlePromptSubmit = useCallback((_prompt: string) => {
-    // TODO: implement project generation
-  }, [])
+  const handlePromptSubmit = useCallback(async (prompt: string) => {
+    const projectId = typeof crypto !== 'undefined' && 'randomUUID' in crypto
+      ? crypto.randomUUID()
+      : `draft-${Date.now()}`
+
+    const title = prompt
+      .replace(/^(build|create|design|make)\s+/i, '')
+      .split(/[.,-]/)[0]
+      .trim()
+      .slice(0, 54) || 'Untitled project'
+
+    // Save project to Supabase
+    if (user) {
+      const { error } = await supabase
+        .from('projects')
+        .upsert({
+          id: projectId,
+          user_id: user.id,
+          title,
+          preview_url: null,
+          created_at: new Date().toISOString(),
+        }, { onConflict: 'id' })
+
+      if (error) {
+        console.error('Failed to save project:', error.message)
+      }
+    }
+
+    navigate(`/projects/${projectId}`, {
+      state: { prompt, title },
+    })
+  }, [navigate, user])
 
   const handleExampleClick = (prompt: string) => {
     setPromptDefault(prompt)
@@ -104,7 +133,7 @@ export default function DashboardPage() {
             </h1>
 
             <div className={styles.promptWrapper}>
-              <PromptInput defaultValue={promptDefault} onSubmit={handlePromptSubmit} />
+              <PromptInput defaultValue={promptDefault} onSubmit={handlePromptSubmit} page="dashboard" />
             </div>
 
             <div className={styles.examples}>

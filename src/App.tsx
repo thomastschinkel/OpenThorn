@@ -10,6 +10,7 @@ import BottomCTA from './components/BottomCTA/BottomCTA'
 import Footer from './components/Footer/Footer'
 import PricingPage from './pages/PricingPage'
 import DashboardPage from './pages/DashboardPage'
+import ProjectBuilderPage from './pages/ProjectBuilderPage'
 import ProvidersPage from './pages/ProvidersPage'
 import NotFoundPage from './pages/NotFoundPage'
 import AuthModal from './components/AuthModal/AuthModal'
@@ -66,6 +67,7 @@ export default function App() {
           <Route path="/" element={<Layout><HomePage /></Layout>} />
           <Route path="/pricing" element={<Layout><PricingPage /></Layout>} />
           <Route path="/dashboard" element={<DashboardPage />} />
+          <Route path="/projects/:projectId" element={<ProjectBuilderPage />} />
           <Route path="/providers" element={<ProvidersPage />} />
           <Route path="*" element={<NotFoundPage />} />
         </Routes>
