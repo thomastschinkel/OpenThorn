@@ -139,18 +139,17 @@ export default function DashboardSidebar({ projects = [], activeFilter = 'all', 
 
   const handleProjectFilterClick = (label: string) => {
     const filter = filterMap[label]
-    if (filter && onProjectFilterChange) {
-      onProjectFilterChange(filter)
-      setActiveNav(label)
-      navigate('/dashboard')
-    }
+    if (!filter) return
+    if (onProjectFilterChange) onProjectFilterChange(filter)
+    setActiveNav(label)
+    navigate('/dashboard', { state: { activeFilter: filter, scrollToProjects: true } })
   }
 
   const firstName = user?.user_metadata?.full_name?.split(' ')[0] ?? user?.email?.split('@')[0] ?? 'there'
   const userInitial = firstName.charAt(0).toUpperCase()
 
   const notifications = [
-    { text: 'Welcome to Bloom! Start building your first project.', time: 'Just now' },
+    { text: 'Welcome to Florvia! Start building your first project.', time: 'Just now' },
     { text: 'New templates are available in the Templates section.', time: '2h ago' },
     { text: 'Community Apps feature coming soon.', time: '1d ago' },
   ]
@@ -172,7 +171,7 @@ export default function DashboardSidebar({ projects = [], activeFilter = 'all', 
       {/* Logo */}
       <div className={styles.logoRow}>
         <a href="/dashboard" className={styles.logo}>
-          <img src="/assets/logo.png" alt="Bloom" className={styles.logoImg} />
+          <img src="/assets/logo.png" alt="Florvia" className={styles.logoImg} />
         </a>
         <button
           className={`${styles.bellBtn} ${notificationsOpen ? styles.bellBtnActive : ''}`}

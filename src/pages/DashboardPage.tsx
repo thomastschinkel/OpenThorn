@@ -1,9 +1,10 @@
 import { useState, useEffect, useCallback, useRef } from 'react'
-import { useNavigate } from 'react-router-dom'
+import { useNavigate, useLocation } from 'react-router-dom'
 import { useAuth } from '../lib/AuthContext'
 import { supabase } from '../lib/supabase'
 import DashboardSidebar, { type ProjectFilter } from '../components/DashboardSidebar/DashboardSidebar'
 import PromptInput from '../components/PromptInput/PromptInput'
+import FloatingParticles from '../components/FloatingParticles/FloatingParticles'
 import type { SelectedModel } from '../components/ModelSelector/ModelSelector'
 import styles from './DashboardPage.module.css'
 
@@ -32,17 +33,30 @@ const INITIAL_VISIBLE = 4
 export default function DashboardPage() {
   const { user, loading: authLoading } = useAuth()
   const navigate = useNavigate()
+  const location = useLocation()
+  const locationState = (location.state ?? {}) as { activeFilter?: ProjectFilter; scrollToProjects?: boolean }
   const [promptDefault, setPromptDefault] = useState('')
   const [projects, setProjects] = useState<Project[]>([])
   const [projectsLoading, setProjectsLoading] = useState(true)
   const [showAllPrompts, setShowAllPrompts] = useState(false)
-  const [activeFilter, setActiveFilter] = useState<ProjectFilter>('all')
+  const [activeFilter, setActiveFilter] = useState<ProjectFilter>(locationState.activeFilter ?? 'all')
+  const projectsSectionRef = useRef<HTMLElement>(null)
   const [modelError, setModelError] = useState(false)
   const [contextMenu, setContextMenu] = useState<{ projectId: string; x: number; y: number } | null>(null)
   const [renamingProject, setRenamingProject] = useState<{ id: string; title: string } | null>(null)
   const contextMenuRef = useRef<HTMLDivElement>(null)
 
   const visiblePrompts = showAllPrompts ? examplePrompts : examplePrompts.slice(0, INITIAL_VISIBLE)
+
+  // Scroll to projects section when navigating here with scrollToProjects flag
+  useEffect(() => {
+    if (locationState.scrollToProjects && projectsSectionRef.current) {
+      const timer = setTimeout(() => {
+        projectsSectionRef.current?.scrollIntoView({ behavior: 'smooth', block: 'start' })
+      }, 100)
+      return () => clearTimeout(timer)
+    }
+  }, [])
 
   const firstName = user?.user_metadata?.full_name?.split(' ')[0] ?? user?.email?.split('@')[0] ?? 'there'
 
@@ -99,11 +113,11 @@ export default function DashboardPage() {
     return () => { supabase.removeChannel(channel) }
   }, [user])
 
-  const handlePromptSubmit = useCallback(async (prompt: string, selectedModel: SelectedModel | null) => {
+  const handlePromptSubmit = useCallback(async (prompt: string, selectedModel: SelectedModel | null): Promise<boolean> => {
     if (!selectedModel) {
       setModelError(true)
       setTimeout(() => setModelError(false), 3000)
-      return
+      return false
     }
     setModelError(false)
 
@@ -212,6 +226,18 @@ export default function DashboardPage() {
 
   return (
     <div className={styles.root}>
+      <FloatingParticles
+        particleCount={30}
+        particleSize={2}
+        particleOpacity={0.25}
+        particleColor="#A78BFA"
+        glowIntensity={10}
+        movementSpeed={0.25}
+        mouseInfluence={100}
+        mouseGravity="attract"
+        gravityStrength={20}
+        glowAnimation="ease"
+      />
       <DashboardSidebar
         projects={projects}
         activeFilter={activeFilter}
@@ -257,7 +283,7 @@ export default function DashboardPage() {
           </div>
 
           {/* Projects section */}
-          <section className={styles.projectsSection}>
+          <section ref={projectsSectionRef} className={styles.projectsSection}>
             <h2 className={styles.sectionTitle}>{filterLabel}</h2>
 
             {projectsLoading ? (

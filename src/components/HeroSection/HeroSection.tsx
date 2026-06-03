@@ -45,7 +45,7 @@ export default function HeroSection() {
           animate={{ opacity: 1, y: 0 }}
           transition={{ duration: 0.7, ease: [0.19, 1, 0.22, 1], delay: 0.15 }}
         >
-          Build with Bloom
+          Build with Florvia
         </motion.h1>
 
         {/* Subtitle */}
@@ -55,7 +55,7 @@ export default function HeroSection() {
           animate={{ opacity: 1, y: 0 }}
           transition={{ duration: 0.6, ease: [0.19, 1, 0.22, 1], delay: 0.4 }}
         >
-          Just describe what you want and Bloom generates the code —
+          Just describe what you want and Florvia generates the code —
           ready to customize and deploy anywhere.
         </motion.p>
 

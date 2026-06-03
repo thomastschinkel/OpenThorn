@@ -27,14 +27,14 @@ const bloomSlides: CarouselSlide[] = [
     tag: 'Step 01',
     title: 'Describe what you need',
     description:
-      'Tell Bloom what you\'re building — a storefront, a dashboard, a blog. Plain English is all it takes.',
+      'Tell Florvia what you\'re building — a storefront, a dashboard, a blog. Plain English is all it takes.',
   },
   {
     image: 'https://images.unsplash.com/photo-1558591710-4b4a1ae0f04d?w=1200&h=675&fit=crop&q=80',
     tag: 'Step 02',
     title: 'See it take shape',
     description:
-      'Bloom generates real components and styles live — every file visible as it\'s written.',
+      'Florvia generates real components and styles live — every file visible as it\'s written.',
   },
   {
     image: 'https://images.unsplash.com/photo-1557683316-973673baf926?w=1200&h=675&fit=crop&q=80',

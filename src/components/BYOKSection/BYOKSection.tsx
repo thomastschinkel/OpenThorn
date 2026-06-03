@@ -7,7 +7,7 @@ const featureCards: Carousel3DCard[] = [
   {
     icon: <KeyIcon />,
     title: 'Bring your own keys',
-    description: 'Hook up OpenAI, Anthropic, Gemini — whatever you use. Bloom never touches your API keys.',
+    description: 'Hook up OpenAI, Anthropic, Gemini — whatever you use. Florvia never touches your API keys.',
   },
   {
     icon: <DollarIcon />,
@@ -17,12 +17,12 @@ const featureCards: Carousel3DCard[] = [
   {
     icon: <CodeIcon />,
     title: 'Your code, your repo',
-    description: 'Export everything to GitHub, deploy to your own Vercel account. There is no Bloom lock-in.',
+    description: 'Export everything to GitHub, deploy to your own Vercel account. There is no Florvia lock-in.',
   },
   {
     icon: <SparkIcon />,
     title: 'Real code, real time',
-    description: 'Bloom writes production-grade code — not a drag-and-drop approximation. Watch every file appear.',
+    description: 'Florvia writes production-grade code — not a drag-and-drop approximation. Watch every file appear.',
   },
   {
     icon: <GlobeIcon />,
@@ -40,7 +40,7 @@ export default function BYOKSection() {
         viewport={{ once: true, margin: '-60px' }}
         transition={{ duration: 0.5, ease: [0.19, 1, 0.22, 1] }}
       >
-        <div className={styles.kicker}>Why Bloom</div>
+        <div className={styles.kicker}>Why Florvia</div>
         <h2 className={styles.title}>
           Your keys,{' '}
           your control
@@ -48,7 +48,7 @@ export default function BYOKSection() {
         <p className={styles.bodyText}>
           Most AI website builders bundle the AI cost and mark it up behind
           a subscription you can't escape.
-          <span className={styles.bodyHighlight}> Bloom is different.</span> You
+          <span className={styles.bodyHighlight}> Florvia is different.</span> You
           bring your own AI keys, pay providers directly, and keep every line
           of code. No vendor lock-in, no recurring tax on your creativity.
         </p>

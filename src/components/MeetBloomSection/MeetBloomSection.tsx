@@ -11,7 +11,7 @@ export default function MeetBloomSection() {
         viewport={{ once: true, margin: '-60px' }}
         transition={{ duration: 0.5, ease: [0.19, 1, 0.22, 1] }}
       >
-        <div className={styles.kicker}>How Bloom works</div>
+        <div className={styles.kicker}>How Florvia works</div>
         <h2 className={styles.title}>
           From <span className={styles.titleItalic}>prompt</span> to{' '}
           <span className={styles.titleItalic}>production</span>

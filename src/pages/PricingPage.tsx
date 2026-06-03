@@ -73,34 +73,6 @@ export default function PricingPage() {
           animate={{ opacity: 1, y: 0 }}
           transition={{ duration: 0.5, delay: 0.1 }}
         >
-          <div className={styles.sectionHeader}>
-            <div>
-              <h2 className={styles.sectionTitle}>Quality vs cost</h2>
-              <p className={styles.chartSubtitle}>
-                Higher is smarter. Further right is more expensive per output token.
-              </p>
-            </div>
-            <div className={styles.legend}>
-              <span><i className={styles.legendFeatured} /> Recommended picks</span>
-              <span><i className={styles.legendStandard} /> Other flagships</span>
-            </div>
-          </div>
-
-          {highlightCards.length > 0 && (
-            <div className={styles.storyGrid}>
-              {highlightCards.map(({ role, model }) => (
-                <article key={role} className={`${styles.storyCard} ${styles[role]}`}>
-                  <span className={styles.storyLabel}>{roleCopy[role].label}</span>
-                  <strong>{model.name}</strong>
-                  <p>{roleCopy[role].detail}</p>
-                  <span className={styles.storyMetric}>
-                    {model.qualityIndex} quality / ${model.outputPer1M.toFixed(2)} output
-                  </span>
-                </article>
-              ))}
-            </div>
-          )}
-
           <div className={styles.chartBox}>
             <div className={styles.chartArea}>
               <span className={styles.yLabel}>Quality Index</span>
@@ -187,7 +159,6 @@ export default function PricingPage() {
                 <tr>
                   <th>Model</th>
                   <th>Provider</th>
-                  <th>Best for</th>
                   <th>Quality</th>
                   <th>Context</th>
                   <th>Input $/MTok</th>
@@ -209,17 +180,6 @@ export default function PricingPage() {
                     >
                       <td className={styles.modelName}>{m.name}</td>
                       <td><span className={styles.providerTag}>{m.provider}</span></td>
-                      <td>
-                        <div className={styles.roleCell}>
-                          {roles.length > 0
-                            ? roles.map((role) => (
-                              <span key={role} className={`${styles.roleTag} ${styles[role]}`}>
-                                {roleCopy[role].label}
-                              </span>
-                            ))
-                            : <span className={styles.strengthText}>{m.strengths || 'General purpose'}</span>}
-                        </div>
-                      </td>
                       <td className={styles.price}>{m.qualityIndex}</td>
                       <td className={styles.price}>{(m.contextLength / 1000).toFixed(0)}K</td>
                       <td className={styles.price}>${m.inputPer1M.toFixed(2)}</td>

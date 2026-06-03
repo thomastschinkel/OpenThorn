@@ -41,8 +41,8 @@ function Layout({ children }: { children: React.ReactNode }) {
 
   useEffect(() => {
     const handleRequireAuth = () => openSignIn()
-    window.addEventListener('bloom:require-auth', handleRequireAuth)
-    return () => window.removeEventListener('bloom:require-auth', handleRequireAuth)
+    window.addEventListener('florvia:require-auth', handleRequireAuth)
+    return () => window.removeEventListener('florvia:require-auth', handleRequireAuth)
   }, [])
 
   return (

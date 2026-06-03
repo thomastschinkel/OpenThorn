@@ -8,7 +8,8 @@ import styles from './PromptInput.module.css'
 interface PromptInputProps {
   size?: 'default' | 'small'
   defaultValue?: string
-  onSubmit?: (prompt: string, selectedModel: SelectedModel | null) => void | Promise<void>
+  initialModel?: SelectedModel | null
+  onSubmit?: (prompt: string, selectedModel: SelectedModel | null) => void | boolean | Promise<void | boolean>
   page?: 'landing' | 'dashboard'
   disableTyping?: boolean
   placeholder?: string
@@ -86,6 +87,7 @@ function useTypingAnimation(active: boolean) {
 export default function PromptInput({
   size = 'default',
   defaultValue,
+  initialModel,
   onSubmit,
   page = 'landing',
   disableTyping = false,
@@ -97,7 +99,7 @@ export default function PromptInput({
   const navigate = useNavigate()
   const [internalValue, setInternalValue] = useState(defaultValue ?? '')
   const [isFocused, setIsFocused] = useState(false)
-  const [selectedModel, setSelectedModel] = useState<SelectedModel | null>(null)
+  const [selectedModel, setSelectedModel] = useState<SelectedModel | null>(initialModel ?? null)
   const [uploadedFiles, setUploadedFiles] = useState<File[]>([])
   const textareaRef = useRef<HTMLTextAreaElement>(null)
   const fileInputRef = useRef<HTMLInputElement>(null)
@@ -128,20 +130,22 @@ export default function PromptInput({
     setInternalValue(e.target.value)
   }
 
-  const handleSubmit = (e: FormEvent) => {
+  const handleSubmit = async (e: FormEvent) => {
     e.preventDefault()
     if (disabled) return
 
     const prompt = internalValue.trim() || activeTyping || undefined
 
     if (onSubmit && prompt) {
-      void onSubmit(prompt, selectedModel)
-      setInternalValue('')
+      const result = await Promise.resolve(onSubmit(prompt, selectedModel))
+      if (result !== false) {
+        setInternalValue('')
+      }
       return
     }
 
     if (!user) {
-      window.dispatchEvent(new CustomEvent('bloom:require-auth'))
+      window.dispatchEvent(new CustomEvent('florvia:require-auth'))
     } else {
       navigate('/dashboard')
     }

@@ -41,7 +41,7 @@ const resourcesItems: DropdownItem[] = [
   { label: 'Blog', description: 'Changelog, product updates, and behind-the-scenes', href: '#' },
   { label: 'Templates', description: 'Jump-start your next project', href: '#' },
   { label: 'Guides', description: 'Step-by-step walkthroughs for every skill level', href: '#' },
-  { label: 'Docs & FAQs', description: 'How Bloom works, answered clearly', href: '#' },
+  { label: 'Docs & FAQs', description: 'How Florvia works, answered clearly', href: '#' },
 ]
 
 type DropdownKey = 'solutions' | 'useCases' | 'resources'
@@ -116,7 +116,7 @@ export default function Header({ onSignIn, onSignUp }: HeaderProps) {
       <div className={styles.inner}>
         <a href="/" className={styles.logo}>
           <img src="/assets/logo.png" alt="" className={styles.logoImg} />
-          <span className={styles.logoText}>Bloom</span>
+          <span className={styles.logoText}>Florvia</span>
         </a>
 
         <nav className={styles.nav}>

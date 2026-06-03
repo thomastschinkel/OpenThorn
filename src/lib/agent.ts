@@ -13,8 +13,6 @@ import {
 import { buildPreview } from './preview-bundle'
 import { runtimeSmokeTest, formatRuntimeReport } from './preview-runtime-check'
 import { supabase } from './supabase'
-import { runSubagent } from './subagent'
-import type { SubagentResult } from './subagent'
 import {
   type LessonEntry,
   type ChangelogEntry,
@@ -53,7 +51,7 @@ export interface AgentProgressEvent {
     | 'done'
     | 'status'
     | 'compaction'
-    | 'subagent'
+    | 'title'
   text?: string
   toolName?: string
   toolInput?: Record<string, unknown>
@@ -61,7 +59,6 @@ export interface AgentProgressEvent {
   toolError?: boolean
   files?: AgentCodeFile[]
   message?: string
-  subagentResult?: SubagentResult
 }
 
 export interface AgentRunInput {
@@ -624,7 +621,7 @@ function generateProgressSummary(
 
 // ─── Main Agent Loop ────────────────────────────────────────────────────────
 
-export async function runBloomAgent(input: AgentRunInput): Promise<AgentRunResult> {
+export async function runFlorviaAgent(input: AgentRunInput): Promise<AgentRunResult> {
   const sessionId = generateSessionId()
 
   // ── Resolve provider with fallback ────────────────────────────
@@ -696,8 +693,6 @@ export async function runBloomAgent(input: AgentRunInput): Promise<AgentRunResul
   let currentFiles = normalizeFiles(input.files)
   let turnCount = 0
   let lastSummaryTurn = 0
-  let ralphCheckCount = 0
-  const MAX_RALPH_CHECKS = 2
   let runtimeRejectCount = 0
   const MAX_RUNTIME_REJECTS = 3
 
@@ -816,50 +811,8 @@ export async function runBloomAgent(input: AgentRunInput): Promise<AgentRunResul
           }
         }
 
-        if (ralphCheckCount < MAX_RALPH_CHECKS) {
-          // Run self-verification subagent
-          const verified = await runRalphCheck(
-            tc, result, input, currentFiles, provider, messages,
-          )
-
-          if (!verified.passed) {
-            // Verification failed — inject feedback and continue
-            ralphCheckCount++
-            input.onProgress?.({
-              type: 'status',
-              message: `Ralph check ${ralphCheckCount}/${MAX_RALPH_CHECKS}: ${verified.feedback.slice(0, 120)}`,
-            })
-
-            // Push the done tool result as error (so the agent knows done was rejected)
-            messages.push({
-              role: 'user',
-              content: [
-                {
-                  type: 'tool_result',
-                  tool_use_id: tc.id,
-                  content: RALPH_PROMPT + '\n\n' + verified.feedback,
-                  is_error: true,
-                },
-              ],
-            })
-
-            // Inject verify phase prompt if this is the second check
-            if (ralphCheckCount >= MAX_RALPH_CHECKS - 1) {
-              messages.push({ role: 'user', content: VERIFY_PHASE_PROMPT })
-            }
-
-            // Skip done handling — loop continues
-            continue
-          } else {
-            // Verification passed
-            hasDone = true
-            doneResult = result
-          }
-        } else {
-          // Max ralph checks reached — accept done
-          hasDone = true
-          doneResult = result
-        }
+        hasDone = true
+        doneResult = result
       }
 
       // Push normal tool result
@@ -974,63 +927,7 @@ async function runDoneRuntimeGate(
   }
 }
 
-// ─── Ralph Check (Self-Verification) ────────────────────────────────────────
 
-interface RalphCheckResult {
-  passed: boolean
-  feedback: string
-}
-
-async function runRalphCheck(
-  _toolCall: ToolCall,
-  _result: ToolResult,
-  input: AgentRunInput,
-  currentFiles: AgentCodeFile[],
-  provider: ResolvedProvider,
-  _messages: LlmMessage[],
-): Promise<RalphCheckResult> {
-  input.onProgress?.({ type: 'status', message: 'Running self-verification...' })
-
-  try {
-    const subResult = await runSubagent({
-      task: `Verify that the project satisfies ALL of the user's requirements. Be critical — catch every missing feature, bug, or oversight.`,
-      context: `Original user request: "${input.prompt}"\n\nProject title: ${input.title}\n\nCheck EVERY requirement:\n1. Are all requested features implemented?\n2. Is the design responsive (390px, 768px, 1200px+)?\n3. Is HTML semantic with proper landmarks?\n4. Are there any visible focus states?\n5. Do all interactive elements work?\n6. Are all internal links valid (no dead links)?\n7. Did the last compile pass BOTH build and runtime checks (no crashes)?\n8. Is the color system consistent?\n9. Are there any TODOs or placeholders?`,
-      files: currentFiles,
-      providerId: provider.key.provider_id,
-      baseUrl: provider.baseUrl,
-      apiKey: provider.key.api_key,
-      modelId: provider.model.id,
-      signal: input.signal,
-      onProgress: input.onProgress,
-    })
-
-    // If the subagent found issues, report them
-    const hasIssues = subResult.recommendations.length > 0 ||
-      subResult.findings.toLowerCase().includes('missing') ||
-      subResult.findings.toLowerCase().includes('issue') ||
-      subResult.findings.toLowerCase().includes('should') ||
-      subResult.findings.toLowerCase().includes('not implemented')
-
-    if (hasIssues) {
-      const issues = subResult.recommendations.length > 0
-        ? subResult.recommendations.map((r, i) => `${i + 1}. ${r}`).join('\n')
-        : subResult.findings
-
-      return {
-        passed: false,
-        feedback: `## Verification Failed\n\nThe project does NOT fully satisfy the requirements:\n\n${issues}\n\nFix these issues and try calling done again.`,
-      }
-    }
-
-    return {
-      passed: true,
-      feedback: 'All requirements satisfied.',
-    }
-  } catch {
-    // If the subagent fails, let the main agent proceed
-    return { passed: true, feedback: 'Verification skipped (subagent failed).' }
-  }
-}
 
 // ─── Memory Management ──────────────────────────────────────────────────────
 
@@ -1145,7 +1042,6 @@ async function executeToolsParallel(
 
   const reads: { index: number; call: ToolCall }[] = []
   const writes: { index: number; call: ToolCall }[] = []
-  const subagents: { index: number; call: ToolCall }[] = []
   let compileCall: { index: number; call: ToolCall } | null = null
   let doneCall: { index: number; call: ToolCall } | null = null
 
@@ -1155,7 +1051,6 @@ async function executeToolsParallel(
     switch (category) {
       case 'read': reads.push({ index: i, call: tc }); break
       case 'write': writes.push({ index: i, call: tc }); break
-      case 'subagent': subagents.push({ index: i, call: tc }); break
       case 'compile': compileCall = { index: i, call: tc }; break
       case 'done': doneCall = { index: i, call: tc }; break
     }
@@ -1163,8 +1058,8 @@ async function executeToolsParallel(
 
   const results: (ToolResult | null)[] = new Array(toolCalls.length).fill(null)
 
-  // Phase 1: Execute reads + subagents in parallel
-  const parallelTasks = [...reads, ...subagents]
+  // Phase 1: Execute reads in parallel
+  const parallelTasks = [...reads]
   if (parallelTasks.length > 0) {
     const parallelResults = await Promise.all(
       parallelTasks.map(({ index, call }) => {
@@ -1665,77 +1560,13 @@ async function executeTool(
       }
     }
 
-    // ── spawn_subagent ──────────────────────────────────────────
-    case 'spawn_subagent': {
-      const task = String(toolCall.input.task ?? '')
-      const context = toolCall.input.context
-        ? String(toolCall.input.context)
-        : undefined
-
-      if (!task.trim()) {
-        return {
-          content: formatStructuredError({
-            code: 'EMPTY_TASK',
-            message: 'Subagent task must not be empty.',
-            suggestion: 'Provide a specific task like "Audit all components for accessibility issues" or "Find unused CSS variables".',
-            retryable: true,
-          }), isError: true,
-        }
+    // ── set_title ────────────────────────────────────────────────
+    case 'set_title': {
+      const titleValue = typeof toolCall.input.title === 'string' ? toolCall.input.title.trim() : ''
+      if (titleValue) {
+        onProgress?.({ type: 'title', text: titleValue })
       }
-
-      onProgress?.({ type: 'status', message: `Subagent analyzing: ${task.slice(0, 100)}` })
-
-      try {
-        const result = await runSubagent({
-          task,
-          context,
-          files: currentFiles,
-          providerId: provider.key.provider_id,
-          baseUrl: provider.baseUrl,
-          apiKey: provider.key.api_key,
-          modelId: provider.model.id,
-          signal,
-          onProgress,
-        })
-
-        onProgress?.({ type: 'subagent', subagentResult: result })
-
-        // Format subagent results for the main agent
-        // Note: first ~120 chars appear as the tool detail in the UI timeline,
-        // so front-load the key takeaway.
-        const filesList = result.filesExamined.join(', ') || 'none'
-        const summary = result.findings.split('\n')[0]?.slice(0, 100) || 'Analysis complete.'
-
-        const output = [
-          `### Subagent: ${task.slice(0, 80)}${task.length > 80 ? '…' : ''}`,
-          ``,
-          `> ${summary}`,
-          ``,
-          `**Files examined:** ${filesList}  •  **Turns:** ${result.turns}`,
-          ``,
-          `#### Full Analysis`,
-          result.findings,
-        ]
-
-        if (result.recommendations.length > 0) {
-          output.push(
-            ``,
-            `#### Actionable Recommendations`,
-            ...result.recommendations.map((r, i) => `  ${i + 1}. ${r}`),
-          )
-        }
-
-        return { content: output.join('\n'), isError: false }
-      } catch (err) {
-        return {
-          content: formatStructuredError({
-            code: 'SUBAGENT_FAILED',
-            message: err instanceof Error ? err.message : String(err),
-            suggestion: 'Try a more focused task description, or handle the research yourself.',
-            retryable: true,
-          }), isError: true,
-        }
-      }
+      return { content: JSON.stringify({ ok: true, title: titleValue }), isError: false }
     }
 
     // ── done ────────────────────────────────────────────────────
