@@ -5,7 +5,7 @@ import remarkGfm from 'remark-gfm'
 import JSZip from 'jszip'
 import { useAuth } from '../lib/AuthContext'
 import { supabase } from '../lib/supabase'
-import { bundleProject, deployToStorage } from '../lib/deploy'
+import { deployToStorage } from '../lib/deploy'
 import { pushFiles, createRepo, getGitHubUser } from '../lib/github'
 import { buildPreview, escapeHtml } from '../lib/preview-bundle'
 import { runBloomAgent, type AgentCodeFile, type SelectedAgentModel } from '../lib/agent'
@@ -933,7 +933,18 @@ export default function ProjectBuilderPage() {
     if (!user || !projectId || previewStatus !== 'ready' || !previewHtml || isViewOnly) return
 
     const savePreview = async () => {
-      const html = bundleProject(projectFiles, title)
+      // Use the esbuild-based bundler (same as live preview) — produces
+      // self-contained HTML with import maps, no Vite dev server references.
+      const result = await buildPreview(
+        projectFiles.map((f) => ({ path: f.path, content: f.code })),
+      )
+
+      if (result.errors.length > 0) {
+        console.error('Preview build failed:', result.errors)
+        return
+      }
+
+      const html = result.html
       const blob = new Blob([html], { type: 'text/html; charset=utf-8' })
 
       const { error: uploadError } = await supabase.storage
@@ -975,8 +986,16 @@ export default function ProjectBuilderPage() {
     setDeployModalOpen(true)
 
     try {
-      const html = bundleProject(projectFiles, title)
-      const url = await deployToStorage(projectId!, html)
+      // Use esbuild-based bundler — reliable, self-contained HTML
+      const result = await buildPreview(
+        projectFiles.map((f) => ({ path: f.path, content: f.code })),
+      )
+
+      if (result.errors.length > 0) {
+        throw new Error(`Build failed: ${result.errors[0]}`)
+      }
+
+      const url = await deployToStorage(projectId!, result.html)
       setDeployUrl(url)
       setDeployState('deployed')
     } catch (err) {
