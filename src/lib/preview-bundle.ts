@@ -142,6 +142,7 @@ export async function buildPreview(
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <base href="about:blank">
   <script type="importmap">${importMap}</script>
   ${cssBlock}
   <style>
