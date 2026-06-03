@@ -137,7 +137,7 @@ export async function buildPreview(
 })();
 </script>`
 
-  const html = `<!DOCTYPE html>
+  const html = sanitizePreviewHtml(`<!DOCTYPE html>
 <html lang="en">
 <head>
   <meta charset="UTF-8">
@@ -156,9 +156,29 @@ export async function buildPreview(
 ${safeJs}
   </script>
 </body>
-</html>`
+</html>`)
 
   return { html, errors: [] }
+}
+
+/**
+ * Strip any Vite dev-server references from the preview HTML.
+ * These can leak in if the agent somehow references the dev server.
+ * This is a defensive safety net — the bundled output should never
+ * contain these, but if it does, we sanitize them out.
+ */
+function sanitizePreviewHtml(html: string): string {
+  // Remove any scripts that reference localhost or Vite dev artifacts
+  return html
+    // Strip <script> tags referencing localhost or Vite internals
+    .replace(/<script[^>]*src=["']https?:\/\/localhost[^"']*["'][^>]*><\/script>/gi, '')
+    .replace(/<script[^>]*src=["']https?:\/\/127\.0\.0\.1[^"']*["'][^>]*><\/script>/gi, '')
+    // Strip any inline scripts that reference Vite-specific globals
+    .replace(/<script[^>]*>[^<]*\/@vite\/client[^<]*<\/script>/gi, '')
+    .replace(/<script[^>]*>[^<]*@react-refresh[^<]*<\/script>/gi, '')
+    // Strip importmap entries pointing to localhost
+    .replace(/"https?:\/\/localhost[^"]*"/gi, '""')
+    .replace(/"https?:\/\/127\.0\.0\.1[^"]*"/gi, '""')
 }
 
 /**

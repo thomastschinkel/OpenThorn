@@ -92,7 +92,7 @@ export async function deployToStorage(projectId: string, html: string): Promise<
     .upload(`${projectId}/index.html`, blob, {
       contentType: 'text/html',
       upsert: true,
-      cacheControl: '3600',
+      cacheControl: 'no-store',
     })
 
   if (error) {
@@ -103,5 +103,8 @@ export async function deployToStorage(projectId: string, html: string): Promise<
     .from('deployments')
     .getPublicUrl(`${projectId}/index.html`)
 
-  return data.publicUrl
+  // Append cache-buster to force browser to fetch fresh content
+  const url = data.publicUrl
+  const sep = url.includes('?') ? '&' : '?'
+  return `${url}${sep}t=${Date.now()}`
 }

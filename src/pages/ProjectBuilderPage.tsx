@@ -952,7 +952,7 @@ export default function ProjectBuilderPage() {
         .upload(`previews/${projectId}/index.html`, blob, {
           contentType: 'text/html',
           upsert: true,
-          cacheControl: '3600',
+          cacheControl: 'no-store',
         })
 
       if (uploadError) {
@@ -965,9 +965,13 @@ export default function ProjectBuilderPage() {
         .getPublicUrl(`previews/${projectId}/index.html`)
 
       if (urlData?.publicUrl) {
+        const url = urlData.publicUrl
+        const sep = url.includes('?') ? '&' : '?'
+        const cacheBustedUrl = `${url}${sep}t=${Date.now()}`
+
         const { error: updateError } = await supabase
           .from('projects')
-          .update({ preview_url: urlData.publicUrl })
+          .update({ preview_url: cacheBustedUrl })
           .eq('id', projectId)
           .eq('user_id', user.id)
 
