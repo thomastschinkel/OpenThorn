@@ -418,6 +418,9 @@ function executeSubagentTool(
               if (ctxStart < match.lineNum) {
                 lineStr = `  ${String(ctxStart).padStart(4, ' ')}  ${fileLines[ctxStart - 1]}\n${lineStr}`
               }
+              if (ctxEnd > match.lineNum) {
+                lineStr = `${lineStr}\n  ${String(ctxEnd).padStart(4, ' ')}  ${fileLines[ctxEnd - 1]}`
+              }
             }
             results.push(lineStr)
           }
@@ -546,7 +549,7 @@ function parseReportOutput(
 
   // Text fallback: use the raw report content as findings
   return {
-    findings: reportContent,
+    findings: reportContent || fallbackText,
     recommendations: [],
     filesExamined: files.map((f) => f.path),
   }
@@ -662,6 +665,7 @@ async function callModelForSubagent({
   const combinedSignal = signal
     ? anyAbort(signal, controller.signal)
     : controller.signal
+  void providerId
 
   try {
     const response = await fetch(url, {

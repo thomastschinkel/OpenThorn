@@ -1,55 +1,66 @@
 import { beforeEach, describe, expect, it, vi } from 'vitest'
 
-const uploadMock = vi.fn()
-const getPublicUrlMock = vi.fn()
-const fromMock = vi.fn(() => ({
-  upload: uploadMock,
-  getPublicUrl: getPublicUrlMock,
-}))
+const fetchMock = vi.fn()
 
-vi.mock('../supabase', () => ({
-  supabase: {
-    storage: {
-      from: fromMock,
-    },
-  },
-}))
+vi.stubGlobal('fetch', fetchMock)
 
-describe('deployToStorage', () => {
+describe('deployToNetlify', () => {
   beforeEach(() => {
-    vi.useFakeTimers()
-    vi.setSystemTime(new Date('2026-06-03T12:34:56.789Z'))
-    uploadMock.mockReset()
-    getPublicUrlMock.mockReset()
-    fromMock.mockClear()
+    vi.resetModules()
+    fetchMock.mockReset()
   })
 
-  it('uploads each deploy to a fresh HTML object path', async () => {
-    uploadMock.mockResolvedValue({ error: null })
-    getPublicUrlMock.mockReturnValue({
-      data: {
-        publicUrl:
-          'https://example.supabase.co/storage/v1/object/public/deployments/project-1/1780490096789/index.html',
-      },
+  it('posts deploy requests to the same-origin deploy endpoint', async () => {
+    fetchMock.mockResolvedValueOnce({
+      ok: true,
+      json: async () => ({
+        siteId: 'site-123',
+        url: 'https://bloom-project.netlify.app',
+      }),
     })
 
-    const { deployToStorage } = await import('../deploy')
+    const { deployToNetlify } = await import('../deploy')
+    const result = await deployToNetlify('project-12345678', '<!doctype html><html>Bloom</html>')
 
-    const url = await deployToStorage('project-1', '<!DOCTYPE html><html></html>')
+    expect(result).toEqual({
+      siteId: 'site-123',
+      url: 'https://bloom-project.netlify.app',
+    })
+    expect(fetchMock).toHaveBeenCalledWith('/.netlify/functions/deploy-netlify', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({
+        projectId: 'project-12345678',
+        html: '<!doctype html><html>Bloom</html>',
+      }),
+    })
+  })
 
-    expect(fromMock).toHaveBeenCalledWith('deployments')
-    expect(uploadMock).toHaveBeenCalledWith(
-      'project-1/1780490096789/index.html',
-      expect.any(Blob),
-      {
-        contentType: 'text/html; charset=utf-8',
-        upsert: false,
-        cacheControl: 'no-store',
-      },
-    )
-    expect(getPublicUrlMock).toHaveBeenCalledWith('project-1/1780490096789/index.html')
-    expect(url).toBe(
-      'https://example.supabase.co/storage/v1/object/public/deployments/project-1/1780490096789/index.html',
-    )
+  it('reuses an existing Netlify site when one is saved', async () => {
+    fetchMock.mockResolvedValueOnce({
+      ok: true,
+      json: async () => ({
+        siteId: 'site-existing',
+        url: 'https://existing.netlify.app',
+      }),
+    })
+
+    const { deployToNetlify } = await import('../deploy')
+    const result = await deployToNetlify('project-1', '<html></html>', 'site-existing')
+
+    expect(result).toEqual({
+      siteId: 'site-existing',
+      url: 'https://existing.netlify.app',
+    })
+    expect(fetchMock).toHaveBeenCalledTimes(1)
+    expect(fetchMock).toHaveBeenCalledWith('/.netlify/functions/deploy-netlify', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({
+        projectId: 'project-1',
+        html: '<html></html>',
+        existingSiteId: 'site-existing',
+      }),
+    })
   })
 })
