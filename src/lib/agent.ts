@@ -3,13 +3,30 @@ import {
   AGENT_TOOLS,
   TOOL_CATEGORIES,
   COMPACTION_PROMPT,
+  SPEC_PHASE_PROMPT,
+  VERIFY_PHASE_PROMPT,
+  RALPH_PROMPT,
   resolveActiveSkills,
+  getThinkingBudget,
   type ToolDefinition,
 } from './agent-prompt'
 import { buildPreview } from './preview-bundle'
 import { supabase } from './supabase'
 import { runSubagent } from './subagent'
 import type { SubagentResult } from './subagent'
+import {
+  type LessonEntry,
+  type ChangelogEntry,
+  formatLessons,
+  parseLessons,
+  addLesson,
+  lessonsToSystemReminder,
+  formatChangelog,
+  parseChangelog,
+  changelogToSystemReminder,
+  createChangelogEntry,
+  generateSessionId,
+} from './agent-memory'
 
 // ─── Types ──────────────────────────────────────────────────────────────────
 
@@ -488,6 +505,8 @@ function generateProgressSummary(
 // ─── Main Agent Loop ────────────────────────────────────────────────────────
 
 export async function runBloomAgent(input: AgentRunInput): Promise<AgentRunResult> {
+  const sessionId = generateSessionId()
+
   // ── Resolve provider with fallback ────────────────────────────
   const provider = await resolveProviderWithFallback(
     input.userId,
@@ -505,6 +524,12 @@ export async function runBloomAgent(input: AgentRunInput): Promise<AgentRunResul
     message: `Connected to ${providerName} / ${modelName}`,
   })
 
+  // ── Load memory (lessons + changelog) ─────────────────────────
+  const memoryContext = await loadMemoryContext(input.userId, input.files)
+  if (memoryContext) {
+    input.onProgress?.({ type: 'status', message: 'Loaded agent memory.' })
+  }
+
   // ── Resolve active skills from prompt ────────────────────────
   const activeSkills = resolveActiveSkills(input.prompt)
   if (activeSkills.length > 0) {
@@ -516,22 +541,34 @@ export async function runBloomAgent(input: AgentRunInput): Promise<AgentRunResul
 
   const isNewProject =
     input.files.length === 0 || input.files[0].path === 'No files yet'
+  const mode = input.mode ?? 'create'
 
-  // Build initial messages — inject active skill bodies first
+  // ── Build initial messages ────────────────────────────────────
   const messages: LlmMessage[] = []
 
-  // Inject skill blocks before the main prompt (preserves cache)
+  // Inject skill blocks (preserves cache)
   for (const skillBody of activeSkills) {
     messages.push({ role: 'user', content: skillBody })
   }
 
+  // Inject memory context (lessons + failed approaches)
+  if (memoryContext) {
+    messages.push({ role: 'user', content: memoryContext })
+  }
+
+  // SPEC PHASE: for new projects, inject spec guidance
+  if (isNewProject || mode === 'create') {
+    messages.push({ role: 'user', content: SPEC_PHASE_PROMPT })
+  }
+
+  // Main user prompt
   messages.push({
     role: 'user',
     content: buildUserPrompt(
       input.prompt,
       input.title,
       input.files,
-      input.mode ?? 'create',
+      mode,
       isNewProject,
     ),
   })
@@ -539,6 +576,12 @@ export async function runBloomAgent(input: AgentRunInput): Promise<AgentRunResul
   let currentFiles = normalizeFiles(input.files)
   let turnCount = 0
   let lastSummaryTurn = 0
+  let ralphCheckCount = 0
+  const MAX_RALPH_CHECKS = 2
+
+  // Track session details for changelog
+  const sessionFilesCreated: string[] = []
+  const sessionFilesEdited: string[] = []
 
   // Tool execution loop
   while (turnCount < (input.maxTurns ?? MAX_TOOL_TURNS)) {
@@ -556,6 +599,9 @@ export async function runBloomAgent(input: AgentRunInput): Promise<AgentRunResul
       input.onProgress?.({ type: 'compaction', message: 'Context compacted to save tokens.' })
     }
 
+    // ── Adaptive thinking budget ────────────────────────────────
+    const thinkingBudget = getThinkingBudget({ mode, turnCount })
+
     // ── Call the model ──────────────────────────────────────────
     const { text, toolCalls } = await callModelWithTools({
       providerId: provider.key.provider_id,
@@ -569,6 +615,7 @@ export async function runBloomAgent(input: AgentRunInput): Promise<AgentRunResul
       onText: (chunk) => {
         input.onProgress?.({ type: 'text', text: chunk })
       },
+      thinkingBudget,
     })
 
     // ── Build assistant message ─────────────────────────────────
@@ -598,29 +645,114 @@ export async function runBloomAgent(input: AgentRunInput): Promise<AgentRunResul
       provider,
     )
 
+    // Track file operations for changelog
+    for (const tc of toolCalls) {
+      if (tc.name === 'write_file' && tc.input?.path) {
+        const path = String(tc.input.path)
+        if (!sessionFilesCreated.includes(path)) sessionFilesCreated.push(path)
+      }
+      if (tc.name === 'edit_file' && tc.input?.path) {
+        const path = String(tc.input.path)
+        if (!sessionFilesEdited.includes(path)) sessionFilesEdited.push(path)
+      }
+    }
+
     // ── Push tool results ───────────────────────────────────────
     let hasDone = false
+    let doneResult: ToolResult | null = null
     for (let i = 0; i < toolResults.length; i++) {
       const tc = toolCalls[i]
       const result = toolResults[i]
       if (result.files) currentFiles = result.files
 
+      // ── Ralph Loop: intercept done calls ─────────────────────
+      if (tc.name === 'done') {
+        if (ralphCheckCount < MAX_RALPH_CHECKS) {
+          // Run self-verification subagent
+          const verified = await runRalphCheck(
+            tc, result, input, currentFiles, provider, messages,
+          )
+
+          if (!verified.passed) {
+            // Verification failed — inject feedback and continue
+            ralphCheckCount++
+            input.onProgress?.({
+              type: 'status',
+              message: `Ralph check ${ralphCheckCount}/${MAX_RALPH_CHECKS}: ${verified.feedback.slice(0, 120)}`,
+            })
+
+            // Push the done tool result as error (so the agent knows done was rejected)
+            messages.push({
+              role: 'user',
+              content: [
+                {
+                  type: 'tool_result',
+                  tool_use_id: tc.id,
+                  content: RALPH_PROMPT + '\n\n' + verified.feedback,
+                  is_error: true,
+                },
+              ],
+            })
+
+            // Inject verify phase prompt if this is the second check
+            if (ralphCheckCount >= MAX_RALPH_CHECKS - 1) {
+              messages.push({ role: 'user', content: VERIFY_PHASE_PROMPT })
+            }
+
+            // Skip done handling — loop continues
+            continue
+          } else {
+            // Verification passed
+            hasDone = true
+            doneResult = result
+          }
+        } else {
+          // Max ralph checks reached — accept done
+          hasDone = true
+          doneResult = result
+        }
+      }
+
+      // Push normal tool result
+      if (!hasDone || tc.name !== 'done') {
+        messages.push({
+          role: 'user',
+          content: [
+            {
+              type: 'tool_result',
+              tool_use_id: tc.id,
+              content: tc.name === 'done' && hasDone ? result.content : result.content,
+              is_error: result.isError,
+            },
+          ],
+        })
+      }
+    }
+
+    if (hasDone && doneResult) {
+      // Push the final done result
       messages.push({
         role: 'user',
         content: [
           {
             type: 'tool_result',
-            tool_use_id: tc.id,
-            content: result.content,
-            is_error: result.isError,
+            tool_use_id: toolCalls.find((tc) => tc.name === 'done')?.id ?? 'done',
+            content: doneResult.content,
+            is_error: false,
           },
         ],
       })
 
-      if (tc.name === 'done') hasDone = true
-    }
+      // ── Write changelog entry ──────────────────────────────────
+      await saveSessionChangelog(input.userId, input.files, {
+        sessionId,
+        prompt: input.prompt,
+        filesCreated: sessionFilesCreated,
+        filesEdited: sessionFilesEdited,
+        approaches: [],
+        lessons: [],
+      })
 
-    if (hasDone) {
       // Record success on the circuit breaker
       circuitBreaker.recordSuccess(provider.key.provider_id)
       input.onProgress?.({ type: 'done', files: currentFiles })
@@ -628,9 +760,177 @@ export async function runBloomAgent(input: AgentRunInput): Promise<AgentRunResul
     }
   }
 
+  // ── Max turns reached — write changelog anyway ─────────────────
+  await saveSessionChangelog(input.userId, input.files, {
+    sessionId,
+    prompt: input.prompt,
+    filesCreated: sessionFilesCreated,
+    filesEdited: sessionFilesEdited,
+    approaches: [],
+    lessons: [],
+  })
+
   circuitBreaker.recordSuccess(provider.key.provider_id)
   input.onProgress?.({ type: 'done', files: currentFiles })
   return { files: currentFiles, turns: turnCount, providerName, modelName }
+}
+
+// ─── Ralph Check (Self-Verification) ────────────────────────────────────────
+
+interface RalphCheckResult {
+  passed: boolean
+  feedback: string
+}
+
+async function runRalphCheck(
+  _toolCall: ToolCall,
+  _result: ToolResult,
+  input: AgentRunInput,
+  currentFiles: AgentCodeFile[],
+  provider: ResolvedProvider,
+  _messages: LlmMessage[],
+): Promise<RalphCheckResult> {
+  input.onProgress?.({ type: 'status', message: 'Running self-verification...' })
+
+  try {
+    const subResult = await runSubagent({
+      task: `Verify that the project satisfies ALL of the user's requirements. Be critical — catch every missing feature, bug, or oversight.`,
+      context: `Original user request: "${input.prompt}"\n\nProject title: ${input.title}\n\nCheck EVERY requirement:\n1. Are all requested features implemented?\n2. Is the design responsive (390px, 768px, 1200px+)?\n3. Is HTML semantic with proper landmarks?\n4. Are there any visible focus states?\n5. Do all interactive elements work?\n6. Are all internal links valid (no dead links)?\n7. Did compile pass with zero errors?\n8. Is the color system consistent?\n9. Are there any TODOs or placeholders?`,
+      files: currentFiles,
+      providerId: provider.key.provider_id,
+      baseUrl: provider.baseUrl,
+      apiKey: provider.key.api_key,
+      modelId: provider.model.id,
+      signal: input.signal,
+      onProgress: input.onProgress,
+    })
+
+    // If the subagent found issues, report them
+    const hasIssues = subResult.recommendations.length > 0 ||
+      subResult.findings.toLowerCase().includes('missing') ||
+      subResult.findings.toLowerCase().includes('issue') ||
+      subResult.findings.toLowerCase().includes('should') ||
+      subResult.findings.toLowerCase().includes('not implemented')
+
+    if (hasIssues) {
+      const issues = subResult.recommendations.length > 0
+        ? subResult.recommendations.map((r, i) => `${i + 1}. ${r}`).join('\n')
+        : subResult.findings
+
+      return {
+        passed: false,
+        feedback: `## Verification Failed\n\nThe project does NOT fully satisfy the requirements:\n\n${issues}\n\nFix these issues and try calling done again.`,
+      }
+    }
+
+    return {
+      passed: true,
+      feedback: 'All requirements satisfied.',
+    }
+  } catch {
+    // If the subagent fails, let the main agent proceed
+    return { passed: true, feedback: 'Verification skipped (subagent failed).' }
+  }
+}
+
+// ─── Memory Management ──────────────────────────────────────────────────────
+
+/**
+ * Load lessons and changelog from the virtual project files.
+ * Returns a combined <system-reminder> string or empty string.
+ */
+async function loadMemoryContext(
+  userId: string,
+  files: AgentCodeFile[],
+): Promise<string> {
+  const parts: string[] = []
+
+  // Load lessons
+  const lessonsFile = files.find((f) => f.path === 'src/lib/lessons.md')
+  if (lessonsFile) {
+    const entries = parseLessons(lessonsFile.code)
+    const reminder = lessonsToSystemReminder(entries)
+    if (reminder) parts.push(reminder)
+  }
+
+  // Load changelog (failed approaches only)
+  const changelogFile = files.find((f) => f.path === 'src/lib/CHANGELOG.md')
+  if (changelogFile) {
+    const entries = parseChangelog(changelogFile.code)
+    const reminder = changelogToSystemReminder(entries)
+    if (reminder) parts.push(reminder)
+  }
+
+  void userId // Keep for future use (per-user memory storage)
+
+  return parts.join('\n\n')
+}
+
+/**
+ * Save a session changelog entry to the virtual project.
+ */
+async function saveSessionChangelog(
+  _userId: string,
+  files: AgentCodeFile[],
+  params: {
+    sessionId: string
+    prompt: string
+    filesCreated: string[]
+    filesEdited: string[]
+    approaches: ChangelogEntry['approaches']
+    lessons: string[]
+  },
+): Promise<void> {
+  // Load existing changelog
+  const changelogFile = files.find((f) => f.path === 'src/lib/CHANGELOG.md')
+  const existing = changelogFile
+    ? parseChangelog(changelogFile.code)
+    : []
+
+  const entry = createChangelogEntry(params)
+  existing.push(entry)
+
+  // Keep only last 20 entries to prevent bloat
+  const trimmed = existing.slice(-20)
+  const formatted = formatChangelog(trimmed)
+
+  // Update or create the changelog file
+  if (changelogFile) {
+    changelogFile.code = formatted
+  } else {
+    files.push({
+      path: 'src/lib/CHANGELOG.md',
+      language: 'md',
+      code: formatted,
+    })
+  }
+}
+
+// ─── Public Memory API (called from UI after user corrections) ──────────────
+
+/**
+ * Record a lesson learned. Call this after the user corrects the agent.
+ */
+export function recordLesson(
+  files: AgentCodeFile[],
+  type: LessonEntry['type'],
+  content: string,
+): AgentCodeFile[] {
+  const lessonsFile = files.find((f) => f.path === 'src/lib/lessons.md')
+  const existing = lessonsFile ? parseLessons(lessonsFile.code) : []
+  const updated = addLesson(existing, type, content)
+  const formatted = formatLessons(updated)
+
+  if (lessonsFile) {
+    return files.map((f) =>
+      f.path === 'src/lib/lessons.md' ? { ...f, code: formatted } : f,
+    )
+  }
+
+  return [
+    ...files,
+    { path: 'src/lib/lessons.md', language: 'md', code: formatted },
+  ]
 }
 
 // ─── Parallel Tool Execution ────────────────────────────────────────────────
@@ -1189,14 +1489,15 @@ interface ModelCallResult {
 }
 
 async function callModelWithTools({
-  providerId, baseUrl, apiKey, modelId, system, tools, messages, signal, onText,
+  providerId, baseUrl, apiKey, modelId, system, tools, messages, signal, onText, thinkingBudget,
 }: {
   providerId: string; baseUrl: string; apiKey: string; modelId: string
   system: string; tools: ToolDefinition[]; messages: LlmMessage[]
   signal?: AbortSignal; onText: (chunk: string) => void
+  thinkingBudget?: number
 }): Promise<ModelCallResult> {
   if (providerId === 'anthropic') {
-    return callAnthropicWithTools({ baseUrl, apiKey, modelId, system, tools, messages, signal, onText })
+    return callAnthropicWithTools({ baseUrl, apiKey, modelId, system, tools, messages, signal, onText, thinkingBudget })
   }
   if (providerId === 'google') {
     return callGeminiWithTools({ baseUrl, apiKey, modelId, system, tools, messages, signal, onText })
@@ -1369,11 +1670,12 @@ async function parseOpenAIToolStream(response: Response, onText: (chunk: string)
 // ─── Anthropic (with caching + thinking) ────────────────────────────────────
 
 async function callAnthropicWithTools({
-  baseUrl, apiKey, modelId, system, tools, messages, signal, onText,
+  baseUrl, apiKey, modelId, system, tools, messages, signal, onText, thinkingBudget,
 }: {
   baseUrl: string; apiKey: string; modelId: string; system: string
   tools: ToolDefinition[]; messages: LlmMessage[]
   signal?: AbortSignal; onText: (chunk: string) => void
+  thinkingBudget?: number
 }): Promise<ModelCallResult> {
   const anthropicMessages = messages.map(convertToAnthropicMessage)
 
@@ -1383,8 +1685,9 @@ async function callAnthropicWithTools({
     system: [{ type: 'text', text: system, cache_control: { type: 'ephemeral' } }],
   }
 
-  if (ANTHROPIC_THINKING_BUDGET > 0) {
-    body.thinking = { type: 'enabled', budget_tokens: ANTHROPIC_THINKING_BUDGET }
+  const budget = thinkingBudget ?? ANTHROPIC_THINKING_BUDGET
+  if (budget > 0) {
+    body.thinking = { type: 'enabled', budget_tokens: budget }
   }
 
   const controller = new AbortController()

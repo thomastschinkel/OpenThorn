@@ -300,15 +300,30 @@ Assistant:
 
 </examples>
 
+<spec-first>
+BEFORE writing code, take 1-2 turns to plan:
+1. **think** about the architecture — components, routes, data flow, color system
+2. List the files you will create and their responsibilities
+3. THEN start building, one file at a time
+This spec phase keeps you focused and prevents architectural drift.
+</spec-first>
+
 <workflow>
-1. **think** — reason about design before writing code
-2. **list_files** — see what exists
+**Spec Phase (1-2 turns):**
+1. **think** — reason about architecture, component tree, design system
+2. Outline the file plan — what files will exist and what each does
+
+**Build Phase (main loop):**
 3. **write_file** — create files one at a time (theme.css → App.tsx → pages → components)
 4. **compile** — after every few files to catch errors early
 5. **edit_file** — for small targeted fixes (never rewrite whole files)
 6. **search_files** — find patterns, imports, references across files
 7. **spawn_subagent** — offload research or audits to a read-only subagent
-8. **done** — when the project compiles and all features are complete
+
+**Verify Phase (before done):**
+8. **spawn_subagent** — self-verify: "Does the output satisfy ALL user requirements? Check every feature."
+9. If the verifier finds gaps → fix them (max 2 verify→fix loops)
+10. **done** — ONLY when the verifier confirms all requirements are met
 </workflow>
 
 <rules>
@@ -319,11 +334,101 @@ Assistant:
 - Use valid TypeScript. Avoid \`any\`.
 - All files under src/. No path traversal.
 - When compile returns errors: read the file, understand the problem, edit precisely.
+- Always self-verify before calling done. Ask: "Does this really fulfill every part of the user's request?"
 </rules>
+
+<ralph-loop>
+When you are about to call done, pause and ask yourself:
+- "Have I built EVERY feature the user asked for?"
+- "Does every component actually work?"
+- "Did I compile and fix all errors?"
+- "Would I ship this to a real user?"
+
+If any answer is NO → fix the issue first. Do not call done prematurely.
+</ralph-loop>
 
 <routing-hint>
 If the user asks for multiple pages, use react-router-dom. See the routing skill for details — it loads automatically when needed.
 </routing-hint>`
+
+// ─── Spec / Verify / Ralph Phase Prompts ──────────────────────────────────
+
+/** Injected before the first build turn. Guides the spec phase. */
+export const SPEC_PHASE_PROMPT = `<system-reminder>
+## Spec Phase — Plan Before Building
+
+Before writing any code, spend 1-2 turns planning:
+
+1. Use **think** to reason about:
+   - What components/pages are needed?
+   - What's the color system? (2-3 brand colors + neutrals)
+   - What's the component tree? (App → Layout → Pages → Components)
+   - Any routing needed? (multi-page vs single-page scroll)
+   - What's the mobile-first responsive strategy?
+
+2. Use **think** to outline the file plan:
+   - List each file you'll create and what it contains
+   - Order matters: theme.css first, then App.tsx, then pages, then components
+
+After planning, start building. Create files one at a time. Compile often.
+</system-reminder>`
+
+/** Injected after done is called. Guides the self-verification phase. */
+export const VERIFY_PHASE_PROMPT = `<system-reminder>
+## Self-Verification — Check Your Work
+
+Before finishing, spawn a subagent to verify the output:
+
+**Verification checklist:**
+1. Does the project fulfill EVERY part of the user's request?
+2. Do all interactive elements work? (buttons, links, forms, toggles)
+3. Is the design responsive? (390px phone, 768px tablet, 1200px+ desktop)
+4. Is the HTML semantic? (header, nav, main, section, footer)
+5. Are there any visible focus states on interactive elements?
+6. Do all internal links go somewhere (no dead links)?
+7. Did compile pass with zero errors?
+
+If the verifier finds gaps → fix them and verify again.
+After 2 verify→fix loops → call done regardless (avoid infinite loops).
+</system-reminder>`
+
+/** Injected when the agent tries to call done too early. */
+export const RALPH_PROMPT = `<system-reminder>
+## Ralph Check — Are You REALLY Done?
+
+You just tried to call done. Before I accept that, verify:
+
+- "Have I built EVERY feature the user asked for?"
+- "Does every component actually work?"
+- "Did I compile and fix ALL errors?"
+- "Would I ship this to a real user?"
+
+If ANY answer is NO → do NOT call done. Fix the issues first.
+
+If ALL answers are YES → call done with a detailed summary of what was built.
+</system-reminder>`
+
+// ─── Adaptive Thinking Config ──────────────────────────────────────────────
+
+/**
+ * Returns the thinking budget based on task phase.
+ * - Spec phase (early turns, create mode): deep thinking for architecture
+ * - Build phase (mid turns): standard thinking
+ * - Fix/verify phase (refine mode, late turns): light thinking
+ * - Subagent: minimal thinking (focused task)
+ */
+export function getThinkingBudget(params: {
+  mode: 'create' | 'refine' | 'fix' | 'subagent'
+  turnCount: number
+}): number {
+  if (params.mode === 'subagent') return 2000
+  if (params.mode === 'create' && params.turnCount <= 2) return 8000 // Spec phase
+  if (params.mode === 'create' && params.turnCount <= 5) return 5000 // Early build
+  if (params.mode === 'create') return 4000 // Late build
+  if (params.mode === 'refine') return 2000 // Targeted edits
+  if (params.mode === 'fix') return 1000 // Quick fixes
+  return 3000
+}
 
 // ─── Skill Blocks (Progressive Disclosure) ─────────────────────────────────
 
