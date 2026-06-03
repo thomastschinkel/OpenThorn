@@ -11,6 +11,7 @@ import { buildPreview, escapeHtml } from '../lib/preview-bundle'
 import { capturePreviewThumbnail } from '../lib/preview-screenshot'
 import { runFlorviaAgent, type AgentCodeFile, type SelectedAgentModel } from '../lib/agent'
 import PromptInput from '../components/PromptInput/PromptInput'
+import { useCollaboration } from '../lib/useCollaboration'
 import styles from './ProjectBuilderPage.module.css'
 
 interface ProjectRouteState {
@@ -849,6 +850,24 @@ export default function ProjectBuilderPage() {
 
     return () => { cancelled = true }
   }, [projectId, user])
+
+  const userName = user?.user_metadata?.full_name ?? user?.email?.split('@')[0] ?? 'Unknown'
+
+  const { onlineCollaborators } = useCollaboration({
+    projectId,
+    userId: user?.id,
+    userName,
+    onFilesUpdate: (files) => {
+      if (!agentRunning) setProjectFiles(files as AgentCodeFile[])
+    },
+    onChatUpdate: (chat) => {
+      if (!agentRunning) setMessages(chat as ChatMessage[])
+    },
+    onGeneratingChange: (generating, generatingBy) => {
+      setRemoteGenerating(generating)
+      setRemoteGeneratingBy(generatingBy)
+    },
+  })
 
   useEffect(() => {
     if (!user) return
