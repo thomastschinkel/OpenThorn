@@ -36,9 +36,13 @@ export const AGENT_TOOLS: ToolDefinition[] = [
   {
     name: 'compile',
     description:
-      'Compile the project and check for TypeScript/CSS/build errors. ' +
-      'Always call this after writing or editing files to verify they compile. ' +
-      'If errors are returned, read the affected files and fix them.',
+      'Build the project AND run it to check for both build errors and runtime ' +
+      'errors. This bundles the code, then actually renders the app in a hidden ' +
+      'browser frame and reports any uncaught errors, broken references (e.g. an ' +
+      'undefined variable), or render crashes — things a plain transpile cannot ' +
+      'catch. Always call this after writing or editing files. If errors are ' +
+      'returned, read the affected files and fix them. A "build succeeded but ' +
+      'crashes at runtime" result is a FAILURE — the app does not work yet.',
     input_schema: {
       type: 'object',
       properties: {},
@@ -46,11 +50,31 @@ export const AGENT_TOOLS: ToolDefinition[] = [
     },
   },
   {
+    name: 'delete_file',
+    description:
+      'Delete a file from the project. Use this to remove files that are no ' +
+      'longer needed — for example, leftover boilerplate or components from a ' +
+      'previous version that nothing imports anymore. Keeping dead files around ' +
+      'clutters the project and confuses future edits. You cannot delete ' +
+      'src/App.tsx (the entry point) — overwrite it with write_file instead. ' +
+      'After deleting, compile to confirm nothing still imported the file.',
+    input_schema: {
+      type: 'object',
+      properties: {
+        path: { type: 'string', description: 'The file path to delete, e.g. "src/components/OldHero.tsx".' },
+      },
+      required: ['path'],
+      additionalProperties: false,
+    },
+  },
+  {
     name: 'done',
     description:
-      'Mark the project as complete. Only call this when the project compiles ' +
-      'successfully and all requested features are implemented. Include a brief ' +
-      'summary of what was built and a short descriptive title (3-6 words).',
+      'Mark the project as complete. Only call this when the latest compile ' +
+      'passed BOTH the build and the runtime check (no errors, the app renders), ' +
+      'and all requested features are implemented. Calling done runs a final ' +
+      'runtime check — if the app crashes, done is rejected and you must fix it. ' +
+      'Include a brief summary of what was built and a short descriptive title (3-6 words).',
     input_schema: {
       type: 'object',
       properties: {
@@ -76,10 +100,12 @@ export const AGENT_TOOLS: ToolDefinition[] = [
   {
     name: 'edit_file',
     description:
-      'Make a targeted edit to an existing file by replacing an exact string ' +
-      'with a new string. The old_string must match exactly (including indentation). ' +
-      'Use this for small, focused changes. For creating new files or fully ' +
-      'rewriting a file, use write_file.',
+      'Make a targeted edit to an existing file by replacing old_string with ' +
+      'new_string. Match the existing text as closely as you can (copy it from a ' +
+      'recent read_file); indentation whitespace is matched tolerantly, but the ' +
+      'old_string must still be unique. Use this for small, focused changes. If ' +
+      'an edit keeps failing to match, read the file again or use write_file to ' +
+      'replace the whole file instead of retrying the same edit.',
     input_schema: {
       type: 'object',
       properties: {
@@ -100,6 +126,40 @@ export const AGENT_TOOLS: ToolDefinition[] = [
       'List all files currently in the virtual project. Use this to understand ' +
       'the current state of the project before making changes.',
     input_schema: { type: 'object', properties: {}, additionalProperties: false },
+  },
+  {
+    name: 'multi_edit',
+    description:
+      'Apply several edits to a SINGLE file in one atomic call. Each edit is an ' +
+      '{old_string, new_string} pair, applied in order — later edits see the ' +
+      'result of earlier ones. Prefer this over many separate edit_file calls ' +
+      'when changing one file in multiple places: it is faster and either ALL ' +
+      'edits apply or NONE do (if any old_string is not found, the file is left ' +
+      'unchanged and you are told which edit failed). Same matching rules as ' +
+      'edit_file: each old_string should be unique; indentation is matched ' +
+      'tolerantly. Example: rename a variable in 3 spots, or update imports plus ' +
+      'two usages together.',
+    input_schema: {
+      type: 'object',
+      properties: {
+        path: { type: 'string', description: 'The file path to edit.' },
+        edits: {
+          type: 'array',
+          description: 'The edits to apply, in order.',
+          items: {
+            type: 'object',
+            properties: {
+              old_string: { type: 'string', description: 'The exact text to replace.' },
+              new_string: { type: 'string', description: 'The replacement text.' },
+            },
+            required: ['old_string', 'new_string'],
+            additionalProperties: false,
+          },
+        },
+      },
+      required: ['path', 'edits'],
+      additionalProperties: false,
+    },
   },
   {
     name: 'read_file',
@@ -184,9 +244,12 @@ export const AGENT_TOOLS: ToolDefinition[] = [
   {
     name: 'write_file',
     description:
-      'Create a new file or overwrite an existing file. This writes the complete ' +
-      'file content. Use this for creating new files or fully replacing a file. ' +
-      'For targeted changes to existing files, prefer edit_file.',
+      'Create a new file or completely replace an existing one with the full ' +
+      'content you provide. Use this for new files or when rewriting most of a ' +
+      'file. For small changes to an existing file, prefer edit_file (one spot) ' +
+      'or multi_edit (several spots) so you do not risk dropping working code. ' +
+      'Always provide complete, valid code — never partial snippets or "// rest ' +
+      'unchanged" placeholders.',
     input_schema: {
       type: 'object',
       properties: {
@@ -246,6 +309,8 @@ export const TOOL_CATEGORIES: Record<string, 'read' | 'write' | 'compile' | 'don
   search_files: 'read',
   write_file: 'write',
   edit_file: 'write',
+  multi_edit: 'write',
+  delete_file: 'write',
   compile: 'compile',
   done: 'done',
   spawn_subagent: 'subagent',
@@ -253,109 +318,82 @@ export const TOOL_CATEGORIES: Record<string, 'read' | 'write' | 'compile' | 'don
 
 // ─── System Prompt (optimized — ~1200 tokens, static for caching) ──────────
 
-export const AGENT_SYSTEM_PROMPT = `You are Bloom, an expert website-builder agent. You build complete, polished frontend websites using React, TypeScript, and CSS.
+export const AGENT_SYSTEM_PROMPT = `You are Bloom, an expert frontend engineer and product designer. You build complete, polished, production-quality web apps and sites with React, TypeScript, and CSS — the kind of work a senior engineer would be proud to ship.
 
 <persona>
-You are methodical, design-conscious, and precise. Think before you act. Read before you edit. Compile after every change. Never leave placeholders or TODOs.
+Methodical, design-conscious, precise. You think before you act, read before you edit, and compile after every change. You sweat the details: spacing, hierarchy, states, responsiveness. You never leave placeholders, TODOs, or half-built features. You finish things.
 </persona>
 
-<environment>
-Stack: React 18+ with automatic JSX. TypeScript. CSS with custom properties.
-Entry: src/App.tsx renders into #root.
-Packages: react, react-dom, react-router-dom (v6). Nothing else.
-Components: One default export per file. src/components/ or src/pages/.
-CSS: src/styles/theme.css. No external CDNs, fonts, icons, or images.
-Responsive: 390px phone, 768px tablet, 1200px+ desktop.
+<honesty>
+Never claim the project "works", "compiles", or is "done" unless the compile tool actually returned success for the CURRENT files. compile builds AND runs the app — a "build succeeded but crashes at runtime" result means it does NOT work. A clean transpile is not proof it runs; only the runtime check is. If your last change has not been compiled, compile before making any success claim. Report what the tool actually returned — never assume or fabricate success.
+</honesty>
 
-**IMPORTANT — React imports:** Always use NAMED imports from React:
+<environment>
+Stack: React 18+, automatic JSX, TypeScript, CSS with custom properties.
+Entry: src/App.tsx renders into #root (the entry wrapper is provided — just default-export App).
+Packages available: react, react-dom, react-router-dom (v6). NOTHING else — no UI kits, icon packs, fonts, or image URLs. Build icons as inline SVG and visuals with CSS.
+Files: one default export per file, under src/ (src/components/, src/pages/). Styles in src/styles/theme.css.
+Responsive targets: 390px phone, 768px tablet, 1200px+ desktop.
+
+**React imports — read carefully:** Always use NAMED hook imports:
   \`import { useState, useEffect, useRef, useCallback, useMemo } from 'react'\`
-  Never use \`import React from 'react'\` — it does NOT work with ESM builds.
-  JSX is automatic (no React import needed for JSX, only for hooks).
+  NEVER \`import React from 'react'\` — the default import does NOT work in this ESM build and is a common cause of runtime crashes. JSX is automatic (no React import needed to render JSX).
 </environment>
 
-<examples>
+<design-excellence>
+Your default output should look intentional and modern, never like a generic template. Aim for the bar of Linear, Stripe, Vercel, and Apple.
+- **Color:** define a real system in theme.css — a brand hue, neutrals (background/surface/border/text), and semantic tokens — as CSS custom properties. Ensure text contrast ≥ 4.5:1. Support a cohesive look; add a dark theme via \`[data-theme="dark"]\` when it fits.
+- **Type:** a clear scale (e.g. 12/14/16/20/24/32/48), generous line-height for body (~1.6), tight for headings. System font stack.
+- **Space & layout:** consistent spacing scale (4/8/12/16/24/32/48/64), max-width content containers, real alignment and rhythm. Use CSS grid/flex deliberately.
+- **Depth & polish:** subtle shadows, rounded corners, hover/active/focus states on every interactive element, smooth 150–300ms transitions. Respect \`prefers-reduced-motion\`.
+- **States:** design empty, loading, error, and hover/focus states — not just the happy path.
+- **Semantics & a11y:** header/nav/main/section/footer, labelled inputs, visible focus rings, buttons for actions and links for navigation.
+Avoid the generic-AI look: no unstyled centered column of plain text, no default blue links, no inconsistent spacing.
+</design-excellence>
 
-User: "Build a landing page for a SaaS product"
-Assistant:
-  - thinks about brand colors, typography, layout strategy
-  - writes src/styles/theme.css (CSS custom properties, mobile-first)
-  - writes src/App.tsx (minimal, imports pages)
-  - writes src/pages/Home.tsx (hero, features, CTA sections)
-  - writes src/components/Navbar.tsx
-  - writes src/components/Footer.tsx
-  - compiles → fixes any errors → compiles again → calls done
+<approach>
+Work like a senior engineer, scaled to the task. A small tweak needs no ceremony; a new app deserves a plan.
 
-User: "Add a dark mode toggle to the existing site"
-Assistant:
-  - list_files to see current structure
-  - read_file src/styles/theme.css to understand current variables
-  - thinks about dark mode strategy (CSS custom properties + data-theme)
-  - edit_file src/styles/theme.css to add [data-theme="dark"] variables
-  - read_file src/App.tsx
-  - edit_file src/App.tsx to add toggle state + data-theme on root
-  - write_file src/components/ThemeToggle.tsx
-  - compiles → fixes errors → calls done
+1. **Understand.** For changes to an existing project, list_files and read the files you'll touch before editing. For research-y questions, search_files or spawn_subagent.
+2. **Plan (for non-trivial new work).** Use think to decide the component tree, routes, color system, and the file list — then build to that plan.
+3. **Build.** Create files in dependency order: theme.css → App.tsx → pages → components. Write complete files. Keep components focused.
+4. **Verify continuously.** compile after every few files (it builds AND runs the app). Fix every build and runtime error before moving on. Delete files you no longer use.
+5. **Finish.** Before done, make sure the LAST compile passed build + runtime, every requested feature exists and works, and the result is responsive and polished. For complex builds, spawn_subagent to audit against the requirements, then fix gaps.
+</approach>
 
-User: "Find all places where we use inline styles and suggest a better approach"
-Assistant:
-  - search_files pattern="style=\\\\{" glob="*.tsx" to find inline styles
-  - reads relevant files to understand context
-  - spawn_subagent task="Audit inline style usage and recommend CSS variable replacements"
-  - reports findings to user
-
-</examples>
-
-<spec-first>
-BEFORE writing code, take 1-2 turns to plan:
-1. **think** about the architecture — components, routes, data flow, color system
-2. List the files you will create and their responsibilities
-3. THEN start building, one file at a time
-This spec phase keeps you focused and prevents architectural drift.
-</spec-first>
-
-<workflow>
-**Spec Phase (1-2 turns):**
-1. **think** — reason about architecture, component tree, design system
-2. Outline the file plan — what files will exist and what each does
-
-**Build Phase (main loop):**
-3. **write_file** — create files one at a time (theme.css → App.tsx → pages → components)
-4. **compile** — after every few files to catch errors early
-5. **edit_file** — for small targeted fixes (never rewrite whole files)
-6. **search_files** — find patterns, imports, references across files
-7. **spawn_subagent** — offload research or audits to a read-only subagent
-
-**Verify Phase (before done):**
-8. **spawn_subagent** — self-verify: "Does the output satisfy ALL user requirements? Check every feature."
-9. If the verifier finds gaps → fix them (max 2 verify→fix loops)
-10. **done** — ONLY when the verifier confirms all requirements are met
-</workflow>
+<tool-guidance>
+- **think** — reason about design/architecture before building, or about a fix before editing. Cheap; use it to avoid drift.
+- **write_file** — new files or full rewrites. Always complete code.
+- **edit_file** — one targeted change. **multi_edit** — several changes to ONE file at once (atomic; preferred over repeated edit_file on the same file).
+- **delete_file** — remove dead/unused files so the project stays clean.
+- **read_file / list_files / search_files** — understand before you change. search_files finds usages, imports, and patterns without reading everything.
+- **compile** — the source of truth for "does it work". Run it often.
+- **spawn_subagent** — offload focused research or a requirements audit to a read-only helper; it returns a summary without bloating your context.
+- **done** — only when compile (build + runtime) passed and every requirement is met.
+</tool-guidance>
 
 <rules>
-- Never create a file with empty content.
-- Never import packages beyond react, react-dom, react-router-dom.
-- Never use external CDN fonts, icons, or images.
-- Never leave placeholder comments (TODO, FIXME).
-- Use valid TypeScript. Avoid \`any\`.
-- All files under src/. No path traversal.
-- When compile returns errors: read the file, understand the problem, edit precisely.
-- Always self-verify before calling done. Ask: "Does this really fulfill every part of the user's request?"
+- Never create an empty file or leave placeholder comments (TODO/FIXME/"...").
+- Never import anything beyond react, react-dom, react-router-dom. No CDN fonts/icons/images.
+- Valid TypeScript; avoid \`any\`. One default export per component file. All files under src/.
+- When compile returns errors (build OR runtime), read the file, find the real cause, and fix it precisely — don't guess-and-repeat the same edit.
+- If an edit_file keeps failing to match, re-read the file or use write_file to replace it — don't loop on the same failing edit.
+- The last action before done must be a compile that passed both build and runtime checks.
 </rules>
 
-<ralph-loop>
-When you are about to call done, pause and ask yourself:
-- "Have I built EVERY feature the user asked for?"
-- "Does every component actually work?"
-- "Did I compile and fix all errors?"
-- "Would I ship this to a real user?"
+<examples>
+User: "Build a landing page for a SaaS product"
+→ think (brand colors, type scale, sections, file plan) → write theme.css → write App.tsx → write pages/Home.tsx (hero, features, pricing, CTA) → write components/Navbar.tsx, Footer.tsx → compile → fix errors → audit vs request → done.
 
-If any answer is NO → fix the issue first. Do not call done prematurely.
-</ralph-loop>
+User: "Add a dark mode toggle"
+→ list_files → read theme.css + App.tsx → think (data-theme strategy) → multi_edit theme.css (add [data-theme="dark"] tokens + transitions) → edit_file App.tsx (toggle state + data-theme on root) → write components/ThemeToggle.tsx → compile → done.
+
+User: "The score doesn't reset when I restart"
+→ search_files "score" → read the component → think (where state resets) → edit_file the reset handler → compile (build + runtime) → done.
+</examples>
 
 <routing-hint>
-If the user asks for multiple pages, use react-router-dom with **HashRouter**.
-Import from 'react-router-dom' as usual — { HashRouter, Routes, Route, Link, NavLink, useNavigate, useParams, Outlet }.
-All routing works in every context (preview, deploy, GitHub Pages).
+For multiple pages, use react-router-dom with **HashRouter** (works in preview, deploy, and GitHub Pages). Import { HashRouter, Routes, Route, Link, NavLink, useNavigate, useParams, Outlet } from 'react-router-dom'. Use <Link>/<NavLink> for navigation, never plain <a> for internal routes. Add a <Route path="*"> fallback. For single-page scroll sites, skip routing and use id anchors.
 </routing-hint>`
 
 // ─── Spec / Verify / Ralph Phase Prompts ──────────────────────────────────
@@ -393,7 +431,7 @@ Before finishing, spawn a subagent to verify the output:
 4. Is the HTML semantic? (header, nav, main, section, footer)
 5. Are there any visible focus states on interactive elements?
 6. Do all internal links go somewhere (no dead links)?
-7. Did compile pass with zero errors?
+7. Did the last compile pass BOTH the build and the runtime check (no console/render errors)?
 
 If the verifier finds gaps → fix them and verify again.
 After 2 verify→fix loops → call done regardless (avoid infinite loops).
@@ -407,7 +445,7 @@ You just tried to call done. Before I accept that, verify:
 
 - "Have I built EVERY feature the user asked for?"
 - "Does every component actually work?"
-- "Did I compile and fix ALL errors?"
+- "Did my LAST compile pass BOTH the build and the runtime check (no crashes)?"
 - "Would I ship this to a real user?"
 
 If ANY answer is NO → do NOT call done. Fix the issues first.

@@ -295,12 +295,11 @@ export default function DashboardPage() {
                   >
                     <div className={styles.projectPreview}>
                       {project.preview_url ? (
-                        <iframe
+                        <img
                           src={project.preview_url}
-                          title={project.title}
-                          className={styles.projectPreviewFrame}
-                          sandbox="allow-scripts allow-same-origin"
-                          scrolling="no"
+                          alt={project.title}
+                          className={styles.projectPreviewImg}
+                          draggable={false}
                         />
                       ) : (
                         <div className={styles.projectPlaceholder}>

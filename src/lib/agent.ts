@@ -11,6 +11,7 @@ import {
   type ToolDefinition,
 } from './agent-prompt'
 import { buildPreview } from './preview-bundle'
+import { runtimeSmokeTest, formatRuntimeReport } from './preview-runtime-check'
 import { supabase } from './supabase'
 import { runSubagent } from './subagent'
 import type { SubagentResult } from './subagent'
@@ -175,7 +176,8 @@ const ALLOWED_PROVIDER_HOSTS = new Set([
 ])
 
 const MAX_OUTPUT_TOKENS = 8192
-const MAX_TOOL_TURNS = 20
+// Headroom for build → fix → runtime-fix → verify loops on complex apps.
+const MAX_TOOL_TURNS = 30
 
 // ─── Compaction Settings ────────────────────────────────────────────────────
 
@@ -392,6 +394,124 @@ function matchesGlob(filePath: string, globPattern: string): boolean {
   try { return new RegExp(regexStr).test(filePath) } catch { return false }
 }
 
+// ─── Line-Trimmed Fuzzy Matching (edit_file fallback) ───────────────────────
+
+/**
+ * Find a block of lines in `code` that matches `target` ignoring leading and
+ * trailing whitespace on each line. This rescues edits from weaker models that
+ * can't reproduce exact indentation — the #1 cause of wasted edit_file turns.
+ *
+ * Returns the matching line range [start, end] (inclusive, 0-based) when there
+ * is EXACTLY one match. Returns null when there are zero or multiple matches
+ * (ambiguous edits must stay strict).
+ */
+export function findLineTrimmedMatch(
+  code: string,
+  target: string,
+): { start: number; end: number } | null {
+  const codeLines = code.split('\n')
+  let targetLines = target.split('\n')
+  // Drop a single trailing empty line (old_string often ends with "\n").
+  if (targetLines.length > 1 && targetLines[targetLines.length - 1] === '') {
+    targetLines = targetLines.slice(0, -1)
+  }
+  if (targetLines.length === 0) return null
+
+  const trimmedTarget = targetLines.map((l) => l.trim())
+  // Refuse to fuzzy-match an all-whitespace block — it would match anywhere.
+  if (trimmedTarget.every((l) => l === '')) return null
+
+  const matches: { start: number; end: number }[] = []
+  for (let i = 0; i + trimmedTarget.length <= codeLines.length; i++) {
+    let ok = true
+    for (let j = 0; j < trimmedTarget.length; j++) {
+      if (codeLines[i + j].trim() !== trimmedTarget[j]) {
+        ok = false
+        break
+      }
+    }
+    if (ok) {
+      matches.push({ start: i, end: i + trimmedTarget.length - 1 })
+      if (matches.length > 1) return null // ambiguous
+    }
+  }
+
+  return matches.length === 1 ? matches[0] : null
+}
+
+type EditFailure =
+  | 'EMPTY_OLD_STRING'
+  | 'IDENTICAL_STRINGS'
+  | 'MULTIPLE_MATCHES'
+  | 'STRING_NOT_FOUND'
+
+type EditOutcome =
+  | { ok: true; code: string; fuzzy: boolean }
+  | { ok: false; reason: EditFailure; count?: number }
+
+/**
+ * Apply a single exact-or-fuzzy string replacement to `code`. Shared by
+ * edit_file and multi_edit so both behave identically.
+ */
+export function applySingleEdit(code: string, oldStr: string, newStr: string): EditOutcome {
+  if (!oldStr) return { ok: false, reason: 'EMPTY_OLD_STRING' }
+  if (oldStr === newStr) return { ok: false, reason: 'IDENTICAL_STRINGS' }
+
+  const count = code.split(oldStr).length - 1
+  if (count > 1) return { ok: false, reason: 'MULTIPLE_MATCHES', count }
+  if (count === 1) return { ok: true, code: code.replace(oldStr, newStr), fuzzy: false }
+
+  // Exact match failed — try whitespace-tolerant line matching.
+  const range = findLineTrimmedMatch(code, oldStr)
+  if (!range) return { ok: false, reason: 'STRING_NOT_FOUND' }
+  const lines = code.split('\n')
+  const rebuilt = [
+    ...lines.slice(0, range.start),
+    ...newStr.split('\n'),
+    ...lines.slice(range.end + 1),
+  ]
+  return { ok: true, code: rebuilt.join('\n'), fuzzy: true }
+}
+
+/** Turn an edit failure into a structured, actionable error string. */
+function describeEditFailure(
+  reason: EditFailure,
+  path: string,
+  code: string,
+  count?: number,
+): string {
+  switch (reason) {
+    case 'EMPTY_OLD_STRING':
+      return formatStructuredError({
+        code: 'EMPTY_OLD_STRING', message: 'old_string must not be empty.',
+        suggestion: 'Provide the exact text to replace, copied from the file.',
+        retryable: true,
+      })
+    case 'IDENTICAL_STRINGS':
+      return formatStructuredError({
+        code: 'IDENTICAL_STRINGS', message: 'old_string and new_string are identical.',
+        suggestion: 'The replacement must differ from the original.',
+        retryable: true,
+      })
+    case 'MULTIPLE_MATCHES':
+      return formatStructuredError({
+        code: 'MULTIPLE_MATCHES',
+        message: `old_string appears ${count ?? 'multiple'} times in ${path}. It must be unique.`,
+        suggestion: 'Include more surrounding context lines to make it unique.',
+        retryable: true,
+      })
+    case 'STRING_NOT_FOUND': {
+      const firstLines = code.split('\n').slice(0, 5).join('\n')
+      return formatStructuredError({
+        code: 'STRING_NOT_FOUND',
+        message: `old_string not found in ${path} (tried exact and whitespace-tolerant matching).`,
+        suggestion: `Read the file again to copy the current text exactly. The file starts with:\n${firstLines}\n\nIf the section is large, use write_file to replace the whole file instead.`,
+        retryable: true,
+      })
+    }
+  }
+}
+
 // ─── Structured Error Formatting ────────────────────────────────────────────
 
 function formatStructuredError(err: StructuredError): string {
@@ -578,6 +698,8 @@ export async function runBloomAgent(input: AgentRunInput): Promise<AgentRunResul
   let lastSummaryTurn = 0
   let ralphCheckCount = 0
   const MAX_RALPH_CHECKS = 2
+  let runtimeRejectCount = 0
+  const MAX_RUNTIME_REJECTS = 3
 
   // Track session details for changelog
   const sessionFilesCreated: string[] = []
@@ -667,6 +789,33 @@ export async function runBloomAgent(input: AgentRunInput): Promise<AgentRunResul
 
       // ── Ralph Loop: intercept done calls ─────────────────────
       if (tc.name === 'done') {
+        // Deterministic runtime gate — actually run the app before accepting
+        // done. This catches the exact failure class the LLM self-check and
+        // esbuild both miss (e.g. "isJumping is not defined" at render time).
+        if (runtimeRejectCount < MAX_RUNTIME_REJECTS) {
+          const gate = await runDoneRuntimeGate(currentFiles, input.onProgress)
+          if (!gate.ok) {
+            runtimeRejectCount++
+            input.onProgress?.({
+              type: 'status',
+              message: `Runtime gate ${runtimeRejectCount}/${MAX_RUNTIME_REJECTS}: app crashes at runtime — not done yet.`,
+            })
+            messages.push({
+              role: 'user',
+              content: [
+                {
+                  type: 'tool_result',
+                  tool_use_id: tc.id,
+                  content: gate.feedback,
+                  is_error: true,
+                },
+              ],
+            })
+            // Reject done — keep building.
+            continue
+          }
+        }
+
         if (ralphCheckCount < MAX_RALPH_CHECKS) {
           // Run self-verification subagent
           const verified = await runRalphCheck(
@@ -775,6 +924,56 @@ export async function runBloomAgent(input: AgentRunInput): Promise<AgentRunResul
   return { files: currentFiles, turns: turnCount, providerName, modelName }
 }
 
+// ─── Runtime Gate (Deterministic Self-Verification) ─────────────────────────
+
+interface RuntimeGateResult {
+  ok: boolean
+  feedback: string
+}
+
+/**
+ * Build and actually run the project before accepting `done`. Unlike the LLM
+ * Ralph check, this is deterministic: it executes the bundle and catches
+ * runtime crashes that esbuild and the model both miss. Inconclusive runs
+ * (no DOM, external module stalled) pass so we never block on flakiness.
+ */
+async function runDoneRuntimeGate(
+  currentFiles: AgentCodeFile[],
+  onProgress?: (event: AgentProgressEvent) => void,
+): Promise<RuntimeGateResult> {
+  try {
+    onProgress?.({ type: 'status', message: 'Running the app to verify it works...' })
+    const preview = await buildPreview(
+      currentFiles.map((f) => ({ path: f.path, content: f.code })),
+    )
+    if (preview.errors.length > 0) {
+      const unique = [...new Set(preview.errors)].slice(0, COMPILE_MAX_ERRORS)
+      return {
+        ok: false,
+        feedback:
+          `Cannot finish — the project does not compile (${preview.errors.length} error(s)):\n` +
+          unique.map((e, i) => `  ${i + 1}. ${e}`).join('\n') +
+          `\n\nFix these with edit_file, compile to confirm, then call done again.`,
+      }
+    }
+
+    const runtime = await runtimeSmokeTest(preview.html)
+    if (runtime.ok) return { ok: true, feedback: '' }
+
+    const report = formatRuntimeReport(runtime) ?? 'The app crashed at runtime.'
+    return {
+      ok: false,
+      feedback:
+        `## Not done yet — the app crashes when it runs\n\n${report}\n\n` +
+        `You cannot call done while the app throws at runtime. Fix the error above, ` +
+        `then compile (which now runs the app) to confirm it works before finishing.`,
+    }
+  } catch {
+    // Never block completion on an infrastructure failure.
+    return { ok: true, feedback: '' }
+  }
+}
+
 // ─── Ralph Check (Self-Verification) ────────────────────────────────────────
 
 interface RalphCheckResult {
@@ -795,7 +994,7 @@ async function runRalphCheck(
   try {
     const subResult = await runSubagent({
       task: `Verify that the project satisfies ALL of the user's requirements. Be critical — catch every missing feature, bug, or oversight.`,
-      context: `Original user request: "${input.prompt}"\n\nProject title: ${input.title}\n\nCheck EVERY requirement:\n1. Are all requested features implemented?\n2. Is the design responsive (390px, 768px, 1200px+)?\n3. Is HTML semantic with proper landmarks?\n4. Are there any visible focus states?\n5. Do all interactive elements work?\n6. Are all internal links valid (no dead links)?\n7. Did compile pass with zero errors?\n8. Is the color system consistent?\n9. Are there any TODOs or placeholders?`,
+      context: `Original user request: "${input.prompt}"\n\nProject title: ${input.title}\n\nCheck EVERY requirement:\n1. Are all requested features implemented?\n2. Is the design responsive (390px, 768px, 1200px+)?\n3. Is HTML semantic with proper landmarks?\n4. Are there any visible focus states?\n5. Do all interactive elements work?\n6. Are all internal links valid (no dead links)?\n7. Did the last compile pass BOTH build and runtime checks (no crashes)?\n8. Is the color system consistent?\n9. Are there any TODOs or placeholders?`,
       files: currentFiles,
       providerId: provider.key.provider_id,
       baseUrl: provider.baseUrl,
@@ -1298,54 +1497,111 @@ async function executeTool(
           }), isError: true,
         }
       }
-      if (!oldStr) {
+      const outcome = applySingleEdit(file.code, oldStr, newStr)
+      if (!outcome.ok) {
         return {
-          content: formatStructuredError({
-            code: 'EMPTY_OLD_STRING', message: 'old_string must not be empty.',
-            suggestion: 'Provide the exact text to replace, including indentation. Copy it directly from the file.',
-            retryable: true,
-          }), isError: true,
-        }
-      }
-      if (oldStr === newStr) {
-        return {
-          content: formatStructuredError({
-            code: 'IDENTICAL_STRINGS', message: 'old_string and new_string are identical.',
-            suggestion: 'The replacement text must differ from the original.',
-            retryable: true,
-          }), isError: true,
+          content: describeEditFailure(outcome.reason, path, file.code, outcome.count),
+          isError: true,
         }
       }
 
-      const count = file.code.split(oldStr).length - 1
-      if (count === 0) {
-        const firstLines = file.code.split('\n').slice(0, 5).join('\n')
-        return {
-          content: formatStructuredError({
-            code: 'STRING_NOT_FOUND',
-            message: `old_string not found in ${path}. Must match exactly including indentation.`,
-            suggestion: `Read the file first. It starts with:\n${firstLines}\n\nCopy the exact indentation (tabs/spaces).`,
-            retryable: true,
-          }), isError: true,
-        }
-      }
-      if (count > 1) {
-        return {
-          content: formatStructuredError({
-            code: 'MULTIPLE_MATCHES',
-            message: `old_string appears ${count} times in ${path}. It must be unique.`,
-            suggestion: 'Include more surrounding context lines to make it unique.',
-            retryable: true,
-          }), isError: true,
-        }
-      }
-
-      const newCode = file.code.replace(oldStr, newStr)
       const newFiles = currentFiles.map((f) =>
-        f.path === path ? { ...f, code: newCode } : f,
+        f.path === path ? { ...f, code: outcome.code } : f,
       )
       return {
-        content: `Edited ${path}: replaced ${oldStr.length} chars with ${newStr.length} chars.\nPreview: ${newStr.slice(0, 200)}${newStr.length > 200 ? '...' : ''}`,
+        content: `Edited ${path}: replaced ${oldStr.length} chars with ${newStr.length} chars${outcome.fuzzy ? ' (matched ignoring whitespace)' : ''}.\nPreview: ${newStr.slice(0, 200)}${newStr.length > 200 ? '...' : ''}`,
+        isError: false,
+        files: newFiles,
+      }
+    }
+
+    // ── multi_edit ──────────────────────────────────────────────
+    case 'multi_edit': {
+      const path = normalizePath(String(toolCall.input.path ?? ''))
+      const rawEdits = Array.isArray(toolCall.input.edits) ? toolCall.input.edits : []
+      const file = currentFiles.find((f) => f.path === path)
+
+      if (!file) {
+        const similar = findSimilarFiles(path, currentFiles)
+        return {
+          content: formatStructuredError({
+            code: 'FILE_NOT_FOUND', message: `File not found: ${path}`,
+            suggestion: 'Use list_files to see what exists. Check the path spelling.',
+            retryable: true,
+            similarPaths: similar.length > 0 ? similar : undefined,
+          }), isError: true,
+        }
+      }
+      if (rawEdits.length === 0) {
+        return {
+          content: formatStructuredError({
+            code: 'NO_EDITS', message: 'multi_edit requires a non-empty edits array.',
+            suggestion: 'Provide at least one {old_string, new_string} edit, or use edit_file.',
+            retryable: true,
+          }), isError: true,
+        }
+      }
+
+      // Apply edits sequentially to a working copy — all-or-nothing.
+      let working = file.code
+      let fuzzyCount = 0
+      for (let e = 0; e < rawEdits.length; e++) {
+        const edit = rawEdits[e] as Record<string, unknown>
+        const oldStr = String(edit?.old_string ?? '')
+        const newStr = String(edit?.new_string ?? '')
+        const outcome = applySingleEdit(working, oldStr, newStr)
+        if (!outcome.ok) {
+          return {
+            content:
+              `multi_edit failed on edit ${e + 1} of ${rawEdits.length} — no changes were applied to ${path}.\n` +
+              describeEditFailure(outcome.reason, path, working, outcome.count),
+            isError: true,
+          }
+        }
+        working = outcome.code
+        if (outcome.fuzzy) fuzzyCount++
+      }
+
+      const newFiles = currentFiles.map((f) =>
+        f.path === path ? { ...f, code: working } : f,
+      )
+      return {
+        content: `Applied ${rawEdits.length} edit(s) to ${path}${fuzzyCount > 0 ? ` (${fuzzyCount} matched ignoring whitespace)` : ''}. File is now ${working.split('\n').length} lines.`,
+        isError: false,
+        files: newFiles,
+      }
+    }
+
+    // ── delete_file ─────────────────────────────────────────────
+    case 'delete_file': {
+      const path = normalizePath(String(toolCall.input.path ?? ''))
+      const file = currentFiles.find((f) => f.path === path)
+
+      if (!file) {
+        const similar = findSimilarFiles(path, currentFiles)
+        return {
+          content: formatStructuredError({
+            code: 'FILE_NOT_FOUND', message: `File not found: ${path}`,
+            suggestion: 'Use list_files to see what exists. It may already be deleted.',
+            retryable: false,
+            similarPaths: similar.length > 0 ? similar : undefined,
+          }), isError: true,
+        }
+      }
+      if (path === 'src/App.tsx') {
+        return {
+          content: formatStructuredError({
+            code: 'PROTECTED_FILE',
+            message: 'src/App.tsx is the entry point and cannot be deleted.',
+            suggestion: 'Overwrite it with write_file instead if you need to change it.',
+            retryable: false,
+          }), isError: true,
+        }
+      }
+
+      const newFiles = currentFiles.filter((f) => f.path !== path)
+      return {
+        content: `Deleted ${path}. ${newFiles.length} file(s) remain. Compile to confirm nothing still imports it.`,
         isError: false,
         files: newFiles,
       }
@@ -1362,7 +1618,28 @@ async function executeTool(
           currentFiles.map((f) => ({ path: f.path, content: f.code })),
         )
         if (preview.errors.length === 0) {
-          return { content: 'Compilation successful. No errors.', isError: false }
+          // esbuild only transpiles — it never runs the code. Actually execute
+          // the bundle in a hidden iframe to catch runtime errors (undefined
+          // variables, broken hooks, render crashes) that "compile" would miss.
+          const runtime = await runtimeSmokeTest(preview.html)
+          const report = formatRuntimeReport(runtime)
+          if (!runtime.ok) {
+            return {
+              content: `Build succeeded, but the app crashes at runtime.\n\n${report}`,
+              isError: true,
+            }
+          }
+          if (report) {
+            // Non-fatal console warnings — surface but don't block.
+            return {
+              content: `Compilation + runtime check passed (with warnings).\n\n${report}`,
+              isError: false,
+            }
+          }
+          return {
+            content: 'Compilation + runtime check passed. The app builds and renders with no errors.',
+            isError: false,
+          }
         }
 
         const uniqueErrors = [...new Set(preview.errors)]
@@ -1464,11 +1741,12 @@ async function executeTool(
     // ── done ────────────────────────────────────────────────────
     case 'done': {
       const summary = String(toolCall.input.summary ?? 'Project complete.')
+      const title = typeof toolCall.input.title === 'string' ? toolCall.input.title.trim() : ''
       const nextSuggestions = Array.isArray(toolCall.input.nextSuggestions)
         ? toolCall.input.nextSuggestions.filter((s: unknown) => typeof s === 'string')
         : []
       return {
-        content: JSON.stringify({ summary, nextSuggestions }),
+        content: JSON.stringify({ summary, title, nextSuggestions }),
         isError: false,
         files: currentFiles,
       }
@@ -1939,14 +2217,19 @@ function buildUserPrompt(
   prompt: string, title: string, files: AgentCodeFile[],
   mode: 'create' | 'refine', isNew: boolean,
 ): string {
-  if (isNew || mode === 'create') {
-    return `Create a website for: ${prompt}\n\nProject title: ${title}\n\nThis is a new project. Start by thinking about the design, then create files one at a time. Begin with the theme.css, then App.tsx, then components. Compile after every few files to catch errors early.`
-  }
-  const fileList = files
+  const leftoverFiles = files
     .filter((f) => f.path !== 'No files yet')
-    .map((f) => `- ${f.path} (${f.language}, ${f.code.split('\n').length} lines)`)
+    .map((f) => `- ${f.path}`)
     .join('\n')
-  return `Update the existing project based on this request: ${prompt}\n\nProject title: ${title}\n\nCurrent files:\n${fileList || '(none)'}\n\nRead files before editing them. Use search_files to find patterns across files. Make minimal, focused changes. Compile after edits to verify.`
+
+  if (isNew || mode === 'create') {
+    let p = `Create a web app for: ${prompt}\n\nProject title: ${title}\n\nThis is a new build. Think about the design and file plan first, then create files in order: theme.css → App.tsx → pages → components. Write complete files and compile after every few to catch build AND runtime errors early.`
+    if (leftoverFiles) {
+      p += `\n\nNOTE: the workspace still contains files from a previous, unrelated project:\n${leftoverFiles}\nThese do not belong to what the user asked for. Overwrite the ones you reuse (App.tsx, theme.css) and delete_file the rest so the project only contains files for THIS app.`
+    }
+    return p
+  }
+  return `Update the existing project based on this request: ${prompt}\n\nProject title: ${title}\n\nCurrent files:\n${leftoverFiles || '(none)'}\n\nRead files before editing them. Use search_files to find patterns, multi_edit for several changes to one file, and delete_file to remove anything this change makes obsolete. Make focused changes and compile (build + runtime) after edits to verify.`
 }
 
 // ─── Provider Resolution with Fallback ──────────────────────────────────────

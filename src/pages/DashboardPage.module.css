@@ -146,13 +146,11 @@
   object-fit: cover;
 }
 
-.projectPreviewFrame {
-  width: 300%;
-  height: 300%;
-  border: none;
-  pointer-events: none;
-  transform: scale(0.3333);
-  transform-origin: 0 0;
+.projectPreviewImg {
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+  display: block;
 }
 
 .projectPlaceholder {

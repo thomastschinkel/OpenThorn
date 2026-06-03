@@ -8,6 +8,7 @@ import { supabase } from '../lib/supabase'
 import { deployToStorage } from '../lib/deploy'
 import { pushFiles, createRepo, getGitHubUser } from '../lib/github'
 import { buildPreview, escapeHtml } from '../lib/preview-bundle'
+import { capturePreviewThumbnail } from '../lib/preview-screenshot'
 import { runBloomAgent, type AgentCodeFile, type SelectedAgentModel } from '../lib/agent'
 import PromptInput from '../components/PromptInput/PromptInput'
 import styles from './ProjectBuilderPage.module.css'
@@ -569,6 +570,10 @@ function formatToolLabel(name: string, input?: Record<string, unknown>): string 
       return `Write ${input?.path || 'file'}`
     case 'edit_file':
       return `Edit ${input?.path || 'file'}`
+    case 'multi_edit':
+      return `Edit ${input?.path || 'file'}`
+    case 'delete_file':
+      return `Delete ${input?.path || 'file'}`
     case 'compile':
       return 'Compile'
     case 'done':
@@ -591,8 +596,12 @@ function formatToolDetail(name: string, input?: Record<string, unknown>): string
       return `${input?.language || 'tsx'} • ${String(input?.code ?? '').length} chars`
     case 'edit_file':
       return `replace ${String(input?.old_string ?? '').length} → ${String(input?.new_string ?? '').length} chars`
+    case 'multi_edit':
+      return `${Array.isArray(input?.edits) ? input.edits.length : 0} edit(s)`
+    case 'delete_file':
+      return 'Removing unused file'
     case 'compile':
-      return 'Checking for errors...'
+      return 'Building and running...'
     case 'done':
       return String(input?.summary ?? '').slice(0, 100)
     case 'spawn_subagent': {
@@ -942,8 +951,6 @@ export default function ProjectBuilderPage() {
     if (!user || !projectId || previewStatus !== 'ready' || !previewHtml || isViewOnly) return
 
     const savePreview = async () => {
-      // Use the esbuild-based bundler (same as live preview) — produces
-      // self-contained HTML with import maps, no Vite dev server references.
       const result = await buildPreview(
         projectFiles.map((f) => ({ path: f.path, content: f.code })),
       )
@@ -953,31 +960,30 @@ export default function ProjectBuilderPage() {
         return
       }
 
-      const html = result.html
-      const contentType = 'text/html; charset=utf-8'
-      const blob = new Blob([html], { type: contentType })
-      const file =
-        typeof File === 'undefined'
-          ? blob
-          : new File([blob], 'index.html', { type: contentType })
-      const previewObjectPath = `previews/${projectId}/${Date.now()}/index.html`
+      const jpegBlob = await capturePreviewThumbnail(result.html)
+      if (!jpegBlob) {
+        console.warn('Preview screenshot capture failed, skipping thumbnail')
+        return
+      }
+
+      const thumbnailPath = `previews/${projectId}/${Date.now()}/thumbnail.png`
 
       const { error: uploadError } = await supabase.storage
         .from('deployments')
-        .upload(previewObjectPath, file, {
-          contentType,
+        .upload(thumbnailPath, jpegBlob, {
+          contentType: 'image/png',
           upsert: false,
-          cacheControl: 'no-store',
+          cacheControl: '3600',
         })
 
       if (uploadError) {
-        console.error('Failed to save preview:', uploadError.message)
+        console.error('Failed to save preview thumbnail:', uploadError.message)
         return
       }
 
       const { data: urlData } = supabase.storage
         .from('deployments')
-        .getPublicUrl(previewObjectPath)
+        .getPublicUrl(thumbnailPath)
 
       if (urlData?.publicUrl) {
         const { error: updateError } = await supabase
