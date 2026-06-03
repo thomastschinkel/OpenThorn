@@ -1406,7 +1406,7 @@ async function executeTool(
         }
       }
 
-      onProgress?.({ type: 'status', message: `Subagent: ${task.slice(0, 100)}...` })
+      onProgress?.({ type: 'status', message: `Subagent analyzing: ${task.slice(0, 100)}` })
 
       try {
         const result = await runSubagent({
@@ -1424,21 +1424,26 @@ async function executeTool(
         onProgress?.({ type: 'subagent', subagentResult: result })
 
         // Format subagent results for the main agent
+        // Note: first ~120 chars appear as the tool detail in the UI timeline,
+        // so front-load the key takeaway.
+        const filesList = result.filesExamined.join(', ') || 'none'
+        const summary = result.findings.split('\n')[0]?.slice(0, 100) || 'Analysis complete.'
+
         const output = [
-          `## Subagent Report`,
+          `### Subagent: ${task.slice(0, 80)}${task.length > 80 ? '…' : ''}`,
           ``,
-          `**Task:** ${task}`,
-          `**Files examined:** ${result.filesExamined.join(', ') || 'none'}`,
-          `**Turns taken:** ${result.turns}`,
+          `> ${summary}`,
           ``,
-          `### Findings`,
+          `**Files examined:** ${filesList}  •  **Turns:** ${result.turns}`,
+          ``,
+          `#### Full Analysis`,
           result.findings,
         ]
 
         if (result.recommendations.length > 0) {
           output.push(
             ``,
-            `### Recommendations`,
+            `#### Actionable Recommendations`,
             ...result.recommendations.map((r, i) => `  ${i + 1}. ${r}`),
           )
         }

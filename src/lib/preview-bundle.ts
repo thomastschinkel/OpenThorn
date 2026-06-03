@@ -143,6 +143,86 @@ export async function buildPreview(
 })();
 </script>`
 
+  // Keep generated preview navigation inside the srcdoc iframe. Without this,
+  // plain anchors such as href="#cta" or href="/play" resolve against the
+  // embedding project URL and navigate the sandboxed iframe to the Vite app.
+  const previewNavigationGuard = `<script>
+(function(){
+  if (typeof window === 'undefined' || typeof document === 'undefined') return;
+
+  function isModifiedClick(event) {
+    return event.metaKey || event.ctrlKey || event.shiftKey || event.altKey || event.button !== 0;
+  }
+
+  function isSpecialHref(href) {
+    return /^(javascript:|mailto:|tel:|data:|blob:)/i.test(href);
+  }
+
+  function scrollToFragment(hash) {
+    var id = decodeURIComponent(hash.slice(1));
+    if (!id) {
+      window.scrollTo({ top: 0, behavior: 'smooth' });
+      return;
+    }
+    var target = document.getElementById(id) || document.getElementsByName(id)[0];
+    if (target && typeof target.scrollIntoView === 'function') {
+      target.scrollIntoView({ behavior: 'smooth', block: 'start' });
+    }
+  }
+
+  function toPreviewRoute(pathname, search, hash) {
+    var path = pathname || '/';
+    if (!path.startsWith('/')) path = '/' + path;
+    return '#' + path + (search || '') + (hash || '');
+  }
+
+  document.addEventListener('click', function(event) {
+    if (event.defaultPrevented || isModifiedClick(event)) return;
+
+    var anchor = event.target && event.target.closest ? event.target.closest('a[href]') : null;
+    if (!anchor) return;
+
+    var rawHref = (anchor.getAttribute('href') || '').trim();
+    if (!rawHref || rawHref === '#' || isSpecialHref(rawHref)) return;
+
+    var target = (anchor.getAttribute('target') || '').toLowerCase();
+    if (target && target !== '_self') return;
+
+    var hasProtocol = /^[a-zA-Z][a-zA-Z\\d+\\-.]*:/.test(rawHref);
+    var isRelative = !hasProtocol && !rawHref.startsWith('//');
+    var isPreviewHashRoute = rawHref.startsWith('#/');
+    var isPageFragment = rawHref.startsWith('#') && !isPreviewHashRoute;
+
+    if (isPageFragment) {
+      event.preventDefault();
+      scrollToFragment(rawHref);
+      return;
+    }
+
+    if (isPreviewHashRoute) {
+      event.preventDefault();
+      window.location.hash = rawHref.slice(1);
+      return;
+    }
+
+    var url;
+    try {
+      url = new URL(rawHref, isRelative ? 'http://preview.local/' : window.location.href);
+    } catch (error) {
+      return;
+    }
+
+    var currentOrigin = new URL(window.location.href).origin;
+    var isSameOrigin = url.origin === currentOrigin;
+    var isLocalhost = url.hostname === 'localhost' || url.hostname === '127.0.0.1' || url.hostname === '[::1]';
+    if (!isRelative && !isSameOrigin && !isLocalhost) return;
+
+    event.preventDefault();
+    window.location.hash = toPreviewRoute(url.pathname, url.search, url.hash).slice(1);
+  }, true);
+})();
+</script>`
+
   const html = sanitizePreviewHtml(`<!DOCTYPE html>
 <html lang="en">
 <head>
@@ -155,6 +235,7 @@ export async function buildPreview(
     body { font-family: system-ui, -apple-system, sans-serif; }
   </style>
   ${storagePolyfill}
+  ${previewNavigationGuard}
 </head>
 <body>
   <div id="root"></div>

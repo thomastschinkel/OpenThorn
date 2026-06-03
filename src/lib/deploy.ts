@@ -84,14 +84,27 @@ if (rootComponent) {
 </html>`
 }
 
+const HTML_CONTENT_TYPE = 'text/html; charset=utf-8'
+
+function createHtmlFile(html: string): File | Blob {
+  const blob = new Blob([html], { type: HTML_CONTENT_TYPE })
+
+  if (typeof File === 'undefined') {
+    return blob
+  }
+
+  return new File([blob], 'index.html', { type: HTML_CONTENT_TYPE })
+}
+
 export async function deployToStorage(projectId: string, html: string): Promise<string> {
-  const blob = new Blob([html], { type: 'text/html; charset=utf-8' })
+  const file = createHtmlFile(html)
+  const objectPath = `${projectId}/${Date.now()}/index.html`
 
   const { error } = await supabase.storage
     .from('deployments')
-    .upload(`${projectId}/index.html`, blob, {
-      contentType: 'text/html',
-      upsert: true,
+    .upload(objectPath, file, {
+      contentType: HTML_CONTENT_TYPE,
+      upsert: false,
       cacheControl: 'no-store',
     })
 
@@ -101,10 +114,7 @@ export async function deployToStorage(projectId: string, html: string): Promise<
 
   const { data } = supabase.storage
     .from('deployments')
-    .getPublicUrl(`${projectId}/index.html`)
+    .getPublicUrl(objectPath)
 
-  // Append cache-buster to force browser to fetch fresh content
-  const url = data.publicUrl
-  const sep = url.includes('?') ? '&' : '?'
-  return `${url}${sep}t=${Date.now()}`
+  return data.publicUrl
 }

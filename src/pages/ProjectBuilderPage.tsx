@@ -573,6 +573,11 @@ function formatToolLabel(name: string, input?: Record<string, unknown>): string 
       return 'Compile'
     case 'done':
       return 'Complete'
+    case 'spawn_subagent': {
+      const task = input?.task ? String(input.task) : ''
+      const label = task.slice(0, 60)
+      return `Spawn subagent: ${label}${task.length > 60 ? '…' : ''}`
+    }
     default:
       return name.replace(/_/g, ' ')
   }
@@ -590,6 +595,10 @@ function formatToolDetail(name: string, input?: Record<string, unknown>): string
       return 'Checking for errors...'
     case 'done':
       return String(input?.summary ?? '').slice(0, 100)
+    case 'spawn_subagent': {
+      const ctx = input?.context ? ` — ${String(input.context).slice(0, 80)}` : ''
+      return `Dispatching read-only analysis agent…${ctx}`
+    }
     default:
       return ''
   }
@@ -945,13 +954,19 @@ export default function ProjectBuilderPage() {
       }
 
       const html = result.html
-      const blob = new Blob([html], { type: 'text/html; charset=utf-8' })
+      const contentType = 'text/html; charset=utf-8'
+      const blob = new Blob([html], { type: contentType })
+      const file =
+        typeof File === 'undefined'
+          ? blob
+          : new File([blob], 'index.html', { type: contentType })
+      const previewObjectPath = `previews/${projectId}/${Date.now()}/index.html`
 
       const { error: uploadError } = await supabase.storage
         .from('deployments')
-        .upload(`previews/${projectId}/index.html`, blob, {
-          contentType: 'text/html',
-          upsert: true,
+        .upload(previewObjectPath, file, {
+          contentType,
+          upsert: false,
           cacheControl: 'no-store',
         })
 
@@ -962,16 +977,12 @@ export default function ProjectBuilderPage() {
 
       const { data: urlData } = supabase.storage
         .from('deployments')
-        .getPublicUrl(`previews/${projectId}/index.html`)
+        .getPublicUrl(previewObjectPath)
 
       if (urlData?.publicUrl) {
-        const url = urlData.publicUrl
-        const sep = url.includes('?') ? '&' : '?'
-        const cacheBustedUrl = `${url}${sep}t=${Date.now()}`
-
         const { error: updateError } = await supabase
           .from('projects')
-          .update({ preview_url: cacheBustedUrl })
+          .update({ preview_url: urlData.publicUrl })
           .eq('id', projectId)
           .eq('user_id', user.id)
 

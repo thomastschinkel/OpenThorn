@@ -185,6 +185,28 @@ describe('buildPreview', () => {
     expect(importMap.imports['react/jsx-runtime']).toContain('esm.sh/react')
   })
 
+  it('injects a navigation guard for srcdoc hash anchors', async () => {
+    const result = await runBuild([
+      { path: '/src/App.tsx', content: `export default function App() { return <a href="#cta">Go</a> }` },
+    ])
+
+    expect(result.errors).toHaveLength(0)
+    expect(result.html).toContain('scrollToFragment')
+    expect(result.html).toContain('isPageFragment')
+    expect(result.html).toContain("event.target.closest('a[href]')")
+  })
+
+  it('injects a navigation guard for internal preview routes', async () => {
+    const result = await runBuild([
+      { path: '/src/App.tsx', content: `export default function App() { return <a href="/play">Play</a> }` },
+    ])
+
+    expect(result.errors).toHaveLength(0)
+    expect(result.html).toContain('toPreviewRoute')
+    expect(result.html).toContain("window.location.hash = toPreviewRoute(url.pathname, url.search, url.hash).slice(1)")
+    expect(result.html).toContain("url.hostname === 'localhost'")
+  })
+
   it('builds a multi-file project with components and CSS', async () => {
     const result = await runBuild([
       { path: '/src/App.tsx', content: `import Hero from './components/Hero'\nimport Features from './components/Features'\nimport './styles/theme.css'\n\nexport default function App() {\n  return (\n    <div>\n      <Hero />\n      <Features />\n    </div>\n  )\n}` },

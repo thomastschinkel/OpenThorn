@@ -178,7 +178,7 @@ export async function runSubagent(
 ): Promise<SubagentResult> {
   input.onProgress?.({
     type: 'status',
-    message: `Subagent analyzing: ${input.task.slice(0, 80)}...`,
+    message: `Dispatching read-only subagent to analyze: ${input.task.slice(0, 100)}`,
   })
 
   const userPrompt = buildSubagentPrompt(input.task, input.context, input.files)
