@@ -103,6 +103,32 @@ export async function buildPreview(
 
   const importMap = JSON.stringify({ imports: getImportMap() }, null, 2)
 
+  // In-memory storage polyfill — sandboxed iframes block localStorage/sessionStorage
+  // when allow-same-origin is absent, so we provide noop fallbacks that keep
+  // user code (React useState, custom hooks, etc.) from throwing.
+  const storagePolyfill = `<script>
+(function(){
+  if (typeof window === 'undefined') return;
+  function makeStorage() {
+    var s = {};
+    return {
+      getItem: function(k){ return k in s ? s[k] : null; },
+      setItem: function(k,v){ s[k] = String(v); },
+      removeItem: function(k){ delete s[k]; },
+      clear: function(){ s = {}; },
+      get length(){ return Object.keys(s).length; },
+      key: function(i){ var ks = Object.keys(s); return ks[i] || null; }
+    };
+  }
+  try { localStorage.getItem('__sbx_test__'); } catch(e) {
+    Object.defineProperty(window, 'localStorage', { value: makeStorage(), configurable: true });
+  }
+  try { sessionStorage.getItem('__sbx_test__'); } catch(e) {
+    Object.defineProperty(window, 'sessionStorage', { value: makeStorage(), configurable: true });
+  }
+})();
+</script>`
+
   const html = `<!DOCTYPE html>
 <html lang="en">
 <head>
@@ -114,6 +140,7 @@ export async function buildPreview(
     *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
     body { font-family: system-ui, -apple-system, sans-serif; }
   </style>
+  ${storagePolyfill}
 </head>
 <body>
   <div id="root"></div>

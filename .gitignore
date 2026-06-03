@@ -4,3 +4,5 @@ dist
 *.local
 .env
 .env.local
+dev.out.log
+dev.err.log

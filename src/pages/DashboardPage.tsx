@@ -262,7 +262,7 @@ export default function DashboardPage() {
                           src={project.preview_url}
                           title={project.title}
                           className={styles.projectPreviewFrame}
-                          sandbox="allow-scripts"
+                          sandbox="allow-scripts allow-same-origin"
                           scrolling="no"
                         />
                       ) : (
