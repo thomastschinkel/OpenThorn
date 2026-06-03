@@ -1,6 +1,9 @@
 import * as esbuildWasm from 'esbuild-wasm'
 import { initCompiler } from './compiler'
 import { createVirtualFsPlugin, type VirtualFile } from './virtualFsPlugin'
+// Import the custom hash router source — injected into previews to replace
+// react-router-dom which doesn't work in srcdoc/sandboxed iframes.
+import bloomRouterSource from '../../public/bloom-router.js?raw'
 
 export type { VirtualFile } from './virtualFsPlugin'
 
@@ -30,13 +33,14 @@ export function buildFilesMap(files: VirtualFile[]): Record<string, string> {
 }
 
 function getImportMap(): Record<string, string> {
-  // Pin exact versions with esm.sh for reliable ESM builds.
-  // Using ?external ensures all packages share a single React instance
-  // via the import map rather than each bundling their own copy.
-  // This prevents "Cannot read properties of null (reading 'useRef')"
-  // which happens when react-router-dom gets a different (or null) React.
   const reactUrl = 'https://esm.sh/react@18.2.0'
   const reactDomUrl = 'https://esm.sh/react-dom@18.2.0'
+
+  // Encode the custom hash router as a data URL so it works in srcdoc
+  // contexts where relative URLs have no base. The router replaces
+  // react-router-dom entirely — no history library, no URL constructor,
+  // just window.location.hash + hashchange events.
+  const routerDataUrl = 'data:text/javascript;base64,' + toBase64(bloomRouterSource)
 
   return {
     'react': reactUrl,
@@ -44,7 +48,7 @@ function getImportMap(): Record<string, string> {
     'react-dom/client': `${reactDomUrl}/client`,
     'react/jsx-runtime': `${reactUrl}/jsx-runtime`,
     'react/jsx-dev-runtime': `${reactUrl}/jsx-dev-runtime`,
-    'react-router-dom': `https://esm.sh/react-router-dom@6.28.0?external=react,react-dom`,
+    'react-router-dom': routerDataUrl,
   }
 }
 
@@ -118,21 +122,6 @@ export async function buildPreview(
 (function(){
   if (typeof window === 'undefined') return;
 
-  // ── URL constructor fix for srcdoc iframes ──────────────────
-  // react-router-dom's internal history library calls
-  //   new URL(path, window.location.href)
-  // but window.location.href is "about:srcdoc" in sandboxed iframes,
-  // which is an invalid URL base. Monkey-patch to substitute a
-  // valid fallback base so HashRouter / BrowserRouter don't crash.
-  var _OriginalURL = window.URL;
-  window.URL = function(url, base) {
-    if (base === 'about:srcdoc' || base === 'about:blank' || (typeof base === 'string' && base.startsWith('about:'))) {
-      base = 'http://localhost/';
-    }
-    return new _OriginalURL(url, base);
-  };
-  window.URL.prototype = _OriginalURL.prototype;
-
   // ── Storage polyfill ────────────────────────────────────────
   function makeStorage() {
     var s = {};
@@ -176,6 +165,23 @@ ${safeJs}
 </html>`)
 
   return { html, errors: [] }
+}
+
+/** Cross-platform base64 encoder (works in Node and browsers). */
+function toBase64(str: string): string {
+  const chars = 'ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789+/'
+  const bytes = new TextEncoder().encode(str)
+  let result = ''
+  for (let i = 0; i < bytes.length; i += 3) {
+    const b1 = bytes[i]
+    const b2 = i + 1 < bytes.length ? bytes[i + 1] : 0
+    const b3 = i + 2 < bytes.length ? bytes[i + 2] : 0
+    result += chars[b1 >> 2]
+    result += chars[((b1 & 3) << 4) | (b2 >> 4)]
+    result += i + 1 < bytes.length ? chars[((b2 & 15) << 2) | (b3 >> 6)] : '='
+    result += i + 2 < bytes.length ? chars[b3 & 63] : '='
+  }
+  return result
 }
 
 /**

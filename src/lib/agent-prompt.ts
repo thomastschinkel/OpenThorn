@@ -353,9 +353,9 @@ If any answer is NO → fix the issue first. Do not call done prematurely.
 </ralph-loop>
 
 <routing-hint>
-If the user asks for multiple pages, use react-router-dom with **HashRouter** (not BrowserRouter).
-HashRouter works in preview iframes and static deployments. BrowserRouter breaks in sandboxed contexts.
-See the routing skill for details — it loads automatically when needed.
+If the user asks for multiple pages, use react-router-dom with **HashRouter**.
+Import from 'react-router-dom' as usual — { HashRouter, Routes, Route, Link, NavLink, useNavigate, useParams, Outlet }.
+All routing works in every context (preview, deploy, GitHub Pages).
 </routing-hint>`
 
 // ─── Spec / Verify / Ralph Phase Prompts ──────────────────────────────────
@@ -479,31 +479,23 @@ export const SKILL_BLOCKS: SkillBlock[] = [
 The "routing" skill has been activated because this project involves multi-page navigation.
 
 <routing-skill>
-Use react-router-dom v6 for multi-page apps:
+Use react-router-dom for multi-page apps. Import from 'react-router-dom':
 
-- Wrap your app in \`<HashRouter>\` at the top level (in App.tsx).
-  **Always use HashRouter** — BrowserRouter does NOT work in sandboxed preview iframes
-  because it relies on the server to handle URL paths. HashRouter uses URL hashes (#/page)
-  which works everywhere: preview iframes, static file deployments, and GitHub Pages.
-- Define routes with \`<Routes>\` and \`<Route path="..." element={...} />\`
-- Use \`<Link>\` or \`<NavLink>\` for navigation — never plain \`<a href>\` for internal links
-- Create page components in \`src/pages/\` (e.g. Home.tsx, About.tsx)
-- Use \`<Outlet />\` for shared layouts with nested routes
-- Always include \`<Route path="*" element={<NotFound />} />\` as the last route
-- The Navbar lives in src/components/ and uses Link/NavLink
-
-Important imports:
   \`import { HashRouter, Routes, Route, Link, NavLink, useNavigate, useParams, Outlet } from 'react-router-dom'\`
 
-Example route structure:
-  src/App.tsx       → HashRouter + Routes + shared Layout
+- Wrap your app in \`<HashRouter>\` (in App.tsx)
+- Define routes with \`<Routes>\` and \`<Route path="..." element={...} />\`
+- Use \`<Link to="/page">\` or \`<NavLink>\` for navigation (never plain \`<a href>\`)
+- Create page components in \`src/pages/\`
+- Include \`<Route path="*" element={<NotFound />} />\` as the last route
+- For single-page scroll sites, skip routing entirely — use id anchors
+
+Example:
+  src/App.tsx       → HashRouter + Routes
   src/pages/Home.tsx
-  src/pages/About.tsx
+  src/pages/Game.tsx
   src/pages/NotFound.tsx
   src/components/Navbar.tsx
-  src/components/Footer.tsx
-
-For single-page scroll sites, skip react-router-dom entirely — use id anchors and scrollIntoView instead.
 </routing-skill>
 </system-reminder>`,
   },
