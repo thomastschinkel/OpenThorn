@@ -1,6 +1,15 @@
-import { AGENT_SYSTEM_PROMPT, AGENT_TOOLS, type ToolDefinition } from './agent-prompt'
+import {
+  AGENT_SYSTEM_PROMPT,
+  AGENT_TOOLS,
+  TOOL_CATEGORIES,
+  COMPACTION_PROMPT,
+  resolveActiveSkills,
+  type ToolDefinition,
+} from './agent-prompt'
 import { buildPreview } from './preview-bundle'
 import { supabase } from './supabase'
+import { runSubagent } from './subagent'
+import type { SubagentResult } from './subagent'
 
 // ─── Types ──────────────────────────────────────────────────────────────────
 
@@ -18,7 +27,15 @@ export interface SelectedAgentModel {
 }
 
 export interface AgentProgressEvent {
-  type: 'text' | 'tool_start' | 'tool_result' | 'files' | 'done' | 'status'
+  type:
+    | 'text'
+    | 'tool_start'
+    | 'tool_result'
+    | 'files'
+    | 'done'
+    | 'status'
+    | 'compaction'
+    | 'subagent'
   text?: string
   toolName?: string
   toolInput?: Record<string, unknown>
@@ -26,6 +43,7 @@ export interface AgentProgressEvent {
   toolError?: boolean
   files?: AgentCodeFile[]
   message?: string
+  subagentResult?: SubagentResult
 }
 
 export interface AgentRunInput {
@@ -93,6 +111,20 @@ interface ToolCall {
   input: Record<string, unknown>
 }
 
+interface StructuredError {
+  code: string
+  message: string
+  suggestion: string
+  retryable: boolean
+  similarPaths?: string[]
+}
+
+interface ToolResult {
+  content: string
+  isError: boolean
+  files?: AgentCodeFile[]
+}
+
 // ─── Constants ──────────────────────────────────────────────────────────────
 
 const DEFAULT_BASE_URLS: Record<string, string> = {
@@ -105,7 +137,6 @@ const DEFAULT_BASE_URLS: Record<string, string> = {
   together: 'https://api.together.xyz/v1',
 }
 
-/** Allowed provider hostnames — prevents SSRF via user-controlled base URLs. */
 const ALLOWED_PROVIDER_HOSTS = new Set([
   'api.openai.com',
   'api.anthropic.com',
@@ -126,948 +157,129 @@ const ALLOWED_PROVIDER_HOSTS = new Set([
   'integrate.api.nvidia.com',
 ])
 
-/** Validate that a URL points to an allowed provider host. */
-function validateProviderUrl(raw: string): string {
-  const clean = raw.replace(/\/+$/, '')
-  let hostname: string
-  try {
-    hostname = new URL(clean).hostname.toLowerCase()
-  } catch {
-    throw new Error(`Invalid base URL: ${clean.slice(0, 100)}`)
-  }
-  if (!ALLOWED_PROVIDER_HOSTS.has(hostname)) {
-    throw new Error(
-      `Provider URL host "${hostname}" is not in the allowed list. ` +
-      `Use one of: ${[...ALLOWED_PROVIDER_HOSTS].sort().join(', ')}`,
-    )
-  }
-  return clean
-}
-
 const MAX_OUTPUT_TOKENS = 8192
 const MAX_TOOL_TURNS = 20
 
-// ─── Main Agent Loop ────────────────────────────────────────────────────────
+// ─── Compaction Settings ────────────────────────────────────────────────────
 
-export async function runBloomAgent(input: AgentRunInput): Promise<AgentRunResult> {
-  const provider = await resolveProvider(input.userId, input.selectedModel ?? null)
-  const providerName = provider.key.provider_name || input.selectedModel?.provider_name || provider.key.provider_id
-  const modelName = input.selectedModel?.model_name || provider.model.name || provider.model.id
+const COMPACTION_THRESHOLD = 5
+const KEEP_RECENT_TURNS = 3
+const SUMMARY_INTERVAL = 6
+const READ_TRUNCATE_LINES = 500
+const OBSERVATION_TOOLS = new Set([
+  'list_files',
+  'read_file',
+  'search_files',
+  'compile',
+])
 
-  input.onProgress?.({ type: 'status', message: `Connected to ${providerName} / ${modelName}` })
+// ─── Result Truncation Limits ──────────────────────────────────────────────
 
-  const isNewProject = input.files.length === 0 || input.files[0].path === 'No files yet'
+/** Max lines to show from list_files result. */
+const LIST_FILES_MAX = 40
+/** Max matches to show from search_files (content mode). */
+const SEARCH_MAX_MATCHES = 30
+/** Max errors to show from compile. */
+const COMPILE_MAX_ERRORS = 8
 
-  // Build initial messages
-  const messages: LlmMessage[] = [
-    {
-      role: 'user',
-      content: buildUserPrompt(input.prompt, input.title, input.files, input.mode ?? 'create', isNewProject),
-    },
-  ]
+// ─── Circuit Breaker Settings ──────────────────────────────────────────────
 
-  let currentFiles = normalizeFiles(input.files)
-  let turnCount = 0
+/** Consecutive failures before the circuit opens. */
+const CB_FAILURE_THRESHOLD = 3
+/** How long the circuit stays open (ms). */
+const CB_COOLDOWN_MS = 30_000
+/** Base delay for exponential backoff (ms). */
+const BACKOFF_BASE_MS = 1000
+/** Maximum backoff delay (ms). */
+const BACKOFF_MAX_MS = 30_000
 
-  // Tool execution loop
-  while (turnCount < MAX_TOOL_TURNS) {
-    throwIfAborted(input.signal)
-    turnCount++
+// ─── Anthropic Settings ─────────────────────────────────────────────────────
 
-    // Call the model with tools
-    const { text, toolCalls, rawContent } = await callModelWithTools({
-      providerId: provider.key.provider_id,
-      baseUrl: provider.baseUrl,
-      apiKey: provider.key.api_key,
-      modelId: provider.model.id,
-      system: AGENT_SYSTEM_PROMPT,
-      tools: AGENT_TOOLS,
-      messages,
-      signal: input.signal,
-      onText: (chunk) => {
-        input.onProgress?.({ type: 'text', text: chunk })
-      },
-    })
+const ANTHROPIC_THINKING_BUDGET = 4000
 
-    // Build assistant message blocks
-    const assistantBlocks: LlmContentBlock[] = []
+// ─── Circuit Breaker ────────────────────────────────────────────────────────
 
-    if (text) {
-      assistantBlocks.push({ type: 'text', text })
+class CircuitBreaker {
+  private state = new Map<
+    string,
+    { failures: number; lastFail: number; openUntil: number }
+  >()
+
+  /** Check if the circuit is open (requests should be blocked). */
+  isOpen(providerId: string): boolean {
+    const entry = this.state.get(providerId)
+    if (!entry) return false
+    if (entry.openUntil > Date.now()) return true
+    // Cooldown expired — allow a trial request (half-open state)
+    if (entry.failures >= CB_FAILURE_THRESHOLD) {
+      this.state.delete(providerId)
     }
-
-    // Collect tool_use blocks for the assistant message
-    for (const tc of toolCalls) {
-      assistantBlocks.push({ type: 'tool_use', id: tc.id, name: tc.name, input: tc.input })
-    }
-
-    // Push assistant message FIRST (before tool results)
-    if (assistantBlocks.length > 0) {
-      messages.push({ role: 'assistant', content: assistantBlocks })
-    } else if (!text && toolCalls.length === 0) {
-      break
-    }
-
-    // Now execute tools and push tool results AFTER the assistant message
-    for (const tc of toolCalls) {
-      input.onProgress?.({ type: 'tool_start', toolName: tc.name, toolInput: tc.input })
-
-      const result = await executeTool(tc, currentFiles, input.signal)
-
-      input.onProgress?.({
-        type: 'tool_result',
-        toolName: tc.name,
-        toolResult: result.content,
-        toolError: result.isError,
-        files: result.files,
-      })
-
-      if (result.files) {
-        currentFiles = result.files
-      }
-
-      // Push tool result — must come AFTER the assistant message with tool_use
-      messages.push({
-        role: 'user',
-        content: [
-          {
-            type: 'tool_result',
-            tool_use_id: tc.id,
-            content: result.content,
-            is_error: result.isError,
-          },
-        ],
-      })
-
-      // If done tool was called, return
-      if (tc.name === 'done') {
-        input.onProgress?.({ type: 'done', files: currentFiles })
-        return {
-          files: currentFiles,
-          turns: turnCount,
-          providerName,
-          modelName,
-        }
-      }
-    }
+    return false
   }
 
-  input.onProgress?.({ type: 'done', files: currentFiles })
-  return {
-    files: currentFiles,
-    turns: turnCount,
-    providerName,
-    modelName,
+  /** Record a successful request — reset the circuit. */
+  recordSuccess(providerId: string): void {
+    this.state.delete(providerId)
+  }
+
+  /** Record a failure. Opens the circuit if threshold is reached. */
+  recordFailure(providerId: string): void {
+    const entry = this.state.get(providerId) || {
+      failures: 0,
+      lastFail: 0,
+      openUntil: 0,
+    }
+    entry.failures++
+    entry.lastFail = Date.now()
+
+    if (entry.failures >= CB_FAILURE_THRESHOLD) {
+      entry.openUntil = Date.now() + CB_COOLDOWN_MS
+    }
+
+    this.state.set(providerId, entry)
+  }
+
+  /** Get a human-readable status for debugging. */
+  getStatus(providerId: string): string {
+    const entry = this.state.get(providerId)
+    if (!entry) return 'healthy'
+    if (entry.openUntil > Date.now()) return 'open'
+    return entry.failures > 0 ? 'degraded' : 'healthy'
   }
 }
 
-// ─── Tool Execution ─────────────────────────────────────────────────────────
+// Global circuit breaker instance (lives for the session)
+const circuitBreaker = new CircuitBreaker()
 
-interface ToolResult {
-  content: string
-  isError: boolean
-  files?: AgentCodeFile[]
+// ─── Exponential Backoff ────────────────────────────────────────────────────
+
+/**
+ * Compute delay with exponential backoff and jitter.
+ * Formula: min(max, base * 2^attempt) ± jitter
+ */
+function backoffDelay(attempt: number): number {
+  const exponential = BACKOFF_BASE_MS * Math.pow(2, attempt)
+  const capped = Math.min(exponential, BACKOFF_MAX_MS)
+  // Jitter: ±20%
+  const jitter = capped * 0.2 * (Math.random() * 2 - 1)
+  return Math.round(capped + jitter)
 }
 
-async function executeTool(
-  toolCall: ToolCall,
-  currentFiles: AgentCodeFile[],
-  signal?: AbortSignal,
-): Promise<ToolResult> {
-  throwIfAborted(signal)
-
-  switch (toolCall.name) {
-    case 'think': {
-      const thought = String(toolCall.input.thought ?? '')
-      return { content: thought, isError: false }
-    }
-
-    case 'list_files': {
-      if (currentFiles.length === 0) {
-        return { content: 'No files in the project yet.', isError: false }
-      }
-      const listing = currentFiles
-        .map((f) => `  ${f.path}  (${f.language}, ${f.code.split('\n').length} lines)`)
-        .join('\n')
-      return { content: `${currentFiles.length} files:\n${listing}`, isError: false }
-    }
-
-    case 'read_file': {
-      const path = normalizePath(String(toolCall.input.path ?? ''))
-      const file = currentFiles.find((f) => f.path === path)
-      if (!file) {
-        return { content: `File not found: ${path}`, isError: true }
-      }
-      const numbered = file.code
-        .split('\n')
-        .map((line, i) => `${String(i + 1).padStart(4, ' ')}  ${line}`)
-        .join('\n')
-      return { content: numbered, isError: false }
-    }
-
-    case 'write_file': {
-      const path = normalizePath(String(toolCall.input.path ?? ''))
-      const language = String(toolCall.input.language ?? 'tsx')
-      const code = String(toolCall.input.code ?? '')
-
-      if (!code.trim()) {
-        return { content: 'Error: file code must not be empty.', isError: true }
-      }
-      if (!path.startsWith('src/')) {
-        return { content: `Error: file path must be under src/. Got: ${path}`, isError: true }
-      }
-      if (path.includes('..')) {
-        return { content: `Error: path traversal not allowed: ${path}`, isError: true }
-      }
-
-      const newFiles = upsertFile(currentFiles, { path, language, code })
-      return {
-        content: `Wrote ${path} (${code.split('\n').length} lines, ${code.length} chars).`,
-        isError: false,
-        files: newFiles,
-      }
-    }
-
-    case 'edit_file': {
-      const path = normalizePath(String(toolCall.input.path ?? ''))
-      const oldStr = String(toolCall.input.old_string ?? '')
-      const newStr = String(toolCall.input.new_string ?? '')
-
-      const file = currentFiles.find((f) => f.path === path)
-      if (!file) {
-        return { content: `File not found: ${path}. Use list_files to see what exists.`, isError: true }
-      }
-      if (!oldStr) {
-        return { content: 'Error: old_string must not be empty.', isError: true }
-      }
-      if (oldStr === newStr) {
-        return { content: 'Error: old_string and new_string are identical.', isError: true }
-      }
-
-      const count = file.code.split(oldStr).length - 1
-      if (count === 0) {
-        return {
-          content: `Error: old_string not found in ${path}. The text must match exactly including indentation.`,
-          isError: true,
-        }
-      }
-      if (count > 1) {
-        return {
-          content: `Error: old_string appears ${count} times in ${path}. Make it more specific to be unique.`,
-          isError: true,
-        }
-      }
-
-      const newCode = file.code.replace(oldStr, newStr)
-      const newFiles = currentFiles.map((f) => (f.path === path ? { ...f, code: newCode } : f))
-      return {
-        content: `Edited ${path}: replaced ${oldStr.length} chars with ${newStr.length} chars.`,
-        isError: false,
-        files: newFiles,
-      }
-    }
-
-    case 'compile': {
-      if (currentFiles.length === 0) {
-        return { content: 'No files to compile.', isError: false }
-      }
-
-      try {
-        const preview = await buildPreview(currentFiles.map((f) => ({ path: f.path, content: f.code })))
-        if (preview.errors.length === 0) {
-          return { content: 'Compilation successful. No errors.', isError: false }
-        }
-        return {
-          content: `Compilation found ${preview.errors.length} error(s):\n${preview.errors.map((e, i) => `  ${i + 1}. ${e}`).join('\n')}`,
-          isError: true,
-        }
-      } catch (err) {
-        return {
-          content: `Compilation crashed: ${err instanceof Error ? err.message : String(err)}`,
-          isError: true,
-        }
-      }
-    }
-
-    case 'done': {
-      const summary = String(toolCall.input.summary ?? 'Project complete.')
-      const nextSuggestions = Array.isArray(toolCall.input.nextSuggestions)
-        ? toolCall.input.nextSuggestions.filter((s: unknown) => typeof s === 'string')
-        : []
-      return {
-        content: JSON.stringify({ summary, nextSuggestions }),
-        isError: false,
-        files: currentFiles,
-      }
-    }
-
-    default:
-      return { content: `Unknown tool: ${toolCall.name}`, isError: true }
-  }
+/** Sleep for a given duration in ms. */
+function sleep(ms: number): Promise<void> {
+  return new Promise((resolve) => setTimeout(resolve, ms))
 }
 
-// ─── Model Calling with Tools ───────────────────────────────────────────────
+// ─── Helpers ────────────────────────────────────────────────────────────────
 
-interface ModelCallResult {
-  text: string
-  toolCalls: ToolCall[]
-  rawContent: string
+function throwIfAborted(signal?: AbortSignal): void {
+  if (signal?.aborted) {
+    throw new DOMException('The agent run was cancelled.', 'AbortError')
+  }
 }
-
-async function callModelWithTools({
-  providerId,
-  baseUrl,
-  apiKey,
-  modelId,
-  system,
-  tools,
-  messages,
-  signal,
-  onText,
-}: {
-  providerId: string
-  baseUrl: string
-  apiKey: string
-  modelId: string
-  system: string
-  tools: ToolDefinition[]
-  messages: LlmMessage[]
-  signal?: AbortSignal
-  onText: (chunk: string) => void
-}): Promise<ModelCallResult> {
-  if (providerId === 'anthropic') {
-    return callAnthropicWithTools({ baseUrl, apiKey, modelId, system, tools, messages, signal, onText })
-  }
-  if (providerId === 'google') {
-    return callGeminiWithTools({ baseUrl, apiKey, modelId, system, tools, messages, signal, onText })
-  }
-  return callOpenAIWithTools({ baseUrl, apiKey, modelId, system, tools, messages, signal, onText })
-}
-
-// ─── OpenAI-compatible (function calling) ───────────────────────────────────
-
-function toolsToOpenAIFormat(tools: ToolDefinition[]) {
-  return tools.map((t) => ({
-    type: 'function' as const,
-    function: {
-      name: t.name,
-      description: t.description,
-      parameters: t.input_schema,
-    },
-  }))
-}
-
-function toolsToAnthropicFormat(tools: ToolDefinition[]) {
-  return tools.map((t) => ({
-    name: t.name,
-    description: t.description,
-    input_schema: t.input_schema,
-  }))
-}
-
-async function callOpenAIWithTools({
-  baseUrl,
-  apiKey,
-  modelId,
-  system,
-  tools,
-  messages,
-  signal,
-  onText,
-}: {
-  baseUrl: string
-  apiKey: string
-  modelId: string
-  system: string
-  tools: ToolDefinition[]
-  messages: LlmMessage[]
-  signal?: AbortSignal
-  onText: (chunk: string) => void
-}): Promise<ModelCallResult> {
-  const url = baseUrl.endsWith('/chat/completions') ? baseUrl : `${baseUrl}/chat/completions`
-
-  // Convert messages to OpenAI format
-  const openaiMessages = [
-    { role: 'system', content: system },
-    ...messages.map(convertToOpenAIMessage),
-  ]
-
-  const openaiTools = toolsToOpenAIFormat(tools)
-
-  // Try with function calling first, fall back without.
-  // Different providers support different parameter combinations.
-  const attempts: Array<Record<string, unknown>> = [
-    { tools: openaiTools, stream: true },
-    { tools: openaiTools, stream: true, tool_choice: 'auto' },
-    { tools: openaiTools, stream: false },
-    { stream: true },
-  ]
-
-  let lastError = ''
-  for (const attempt of attempts) {
-    try {
-      const response = await fetch(url, {
-        method: 'POST',
-        redirect: 'manual',
-        headers: {
-          'Content-Type': 'application/json',
-          Authorization: `Bearer ${apiKey}`,
-        },
-        body: JSON.stringify({
-          model: modelId,
-          messages: openaiMessages,
-          temperature: 0.22,
-          max_tokens: MAX_OUTPUT_TOKENS,
-          ...attempt,
-        }),
-        signal,
-      })
-
-      if (!response.ok) {
-        const errorText = await response.text().catch(() => '')
-        let errorPayload: unknown = ''
-        try { errorPayload = JSON.parse(errorText) } catch { errorPayload = errorText }
-        lastError = `${response.status}: ${typeof errorPayload === 'string' ? errorPayload.slice(0, 300) : JSON.stringify(errorPayload).slice(0, 300)}`
-        if (response.status !== 400 && response.status !== 422) break
-        continue
-      }
-
-      // Check if this is a streaming response
-      const isStream = attempt.stream === true
-      const result = isStream
-        ? await parseOpenAIToolStream(response, onText)
-        : await parseOpenAINonStream(response, onText)
-      if (result) return result
-    } catch (err) {
-      if (err instanceof DOMException && err.name === 'AbortError') throw err
-      lastError = err instanceof Error ? err.message : String(err)
-    }
-  }
-
-  throw new Error(lastError || 'Provider request failed.')
-}
-
-async function parseOpenAINonStream(
-  response: Response,
-  onText: (chunk: string) => void,
-): Promise<ModelCallResult | null> {
-  const payload = await response.json().catch(() => null)
-  if (!payload) return null
-
-  const choice = payload?.choices?.[0]
-  const message = choice?.message
-  if (!message) return null
-
-  const text = typeof message.content === 'string' ? message.content : ''
-  if (text) onText(text)
-
-  const toolCalls: ToolCall[] = []
-  if (Array.isArray(message.tool_calls)) {
-    for (const tc of message.tool_calls) {
-      if (tc.type === 'function' && tc.function) {
-        try {
-          toolCalls.push({
-            id: tc.id || `call_${toolCalls.length}`,
-            name: tc.function.name,
-            input: typeof tc.function.arguments === 'string'
-              ? JSON.parse(tc.function.arguments)
-              : (tc.function.arguments ?? {}),
-          })
-        } catch {
-          // Skip invalid tool calls
-        }
-      }
-    }
-  }
-
-  return { text, toolCalls, rawContent: text }
-}
-
-async function parseOpenAIToolStream(
-  response: Response,
-  onText: (chunk: string) => void,
-): Promise<ModelCallResult | null> {
-  const reader = response.body?.getReader()
-  if (!reader) return null
-
-  const decoder = new TextDecoder()
-  let buffer = ''
-  let fullText = ''
-  const toolCalls: Map<number, { id: string; name: string; arguments: string }> = new Map()
-
-  try {
-    while (true) {
-      const { done, value } = await reader.read()
-      if (done) break
-
-      buffer += decoder.decode(value, { stream: true })
-      const lines = buffer.split('\n')
-      buffer = lines.pop() || ''
-
-      for (const line of lines) {
-        const trimmed = line.trim()
-        if (!trimmed || !trimmed.startsWith('data:')) continue
-        const data = trimmed.slice(5).trim()
-        if (data === '[DONE]') continue
-
-        try {
-          const parsed = JSON.parse(data)
-          const choice = parsed?.choices?.[0]
-          const delta = choice?.delta
-
-          if (delta?.content) {
-            fullText += delta.content
-            onText(delta.content)
-          }
-
-          // Handle tool calls from streaming
-          if (delta?.tool_calls) {
-            for (const tc of delta.tool_calls) {
-              const idx = tc.index ?? 0
-              if (!toolCalls.has(idx)) {
-                toolCalls.set(idx, { id: tc.id ?? `call_${idx}`, name: tc.function?.name ?? '', arguments: '' })
-              }
-              const existing = toolCalls.get(idx)!
-              if (tc.id) existing.id = tc.id
-              if (tc.function?.name) existing.name = tc.function.name
-              if (tc.function?.arguments) existing.arguments += tc.function.arguments
-            }
-          }
-        } catch {
-          // Skip unparseable lines
-        }
-      }
-    }
-  } finally {
-    reader.releaseLock()
-  }
-
-  const parsedToolCalls: ToolCall[] = []
-  for (const tc of toolCalls.values()) {
-    if (tc.name) {
-      try {
-        parsedToolCalls.push({
-          id: tc.id,
-          name: tc.name,
-          input: JSON.parse(tc.arguments || '{}'),
-        })
-      } catch {
-        // Skip tool calls with invalid JSON arguments
-      }
-    }
-  }
-
-  return { text: fullText, toolCalls: parsedToolCalls, rawContent: fullText }
-}
-
-// ─── Anthropic (native tool_use) ────────────────────────────────────────────
-
-async function callAnthropicWithTools({
-  baseUrl,
-  apiKey,
-  modelId,
-  system,
-  tools,
-  messages,
-  signal,
-  onText,
-}: {
-  baseUrl: string
-  apiKey: string
-  modelId: string
-  system: string
-  tools: ToolDefinition[]
-  messages: LlmMessage[]
-  signal?: AbortSignal
-  onText: (chunk: string) => void
-}): Promise<ModelCallResult> {
-  const anthropicMessages = messages.map(convertToAnthropicMessage)
-
-  const response = await fetch(`${baseUrl}/messages`, {
-    method: 'POST',
-    redirect: 'manual',
-    headers: {
-      'Content-Type': 'application/json',
-      'x-api-key': apiKey,
-      'anthropic-version': '2023-06-01',
-      'anthropic-dangerous-direct-browser-access': 'true',
-    },
-    body: JSON.stringify({
-      model: modelId,
-      max_tokens: MAX_OUTPUT_TOKENS,
-      temperature: 0.22,
-      system,
-      tools: toolsToAnthropicFormat(tools),
-      messages: anthropicMessages,
-      stream: true,
-    }),
-    signal,
-  })
-
-  if (!response.ok) {
-    const errorText = await response.text().catch(() => '')
-    let errorPayload: unknown = ''
-    try { errorPayload = JSON.parse(errorText) } catch { errorPayload = errorText }
-    throw new Error(`Anthropic ${response.status}: ${typeof errorPayload === 'string' ? errorPayload.slice(0, 400) : JSON.stringify(errorPayload).slice(0, 400)}`)
-  }
-
-  return parseAnthropicToolStream(response, onText)
-}
-
-async function parseAnthropicToolStream(
-  response: Response,
-  onText: (chunk: string) => void,
-): Promise<ModelCallResult> {
-  const reader = response.body?.getReader()
-  if (!reader) throw new Error('Response body not readable')
-
-  const decoder = new TextDecoder()
-  let buffer = ''
-  let fullText = ''
-  const toolCalls: Map<number, { id: string; name: string; input: string }> = new Map()
-
-  try {
-    while (true) {
-      const { done, value } = await reader.read()
-      if (done) break
-
-      buffer += decoder.decode(value, { stream: true })
-      const lines = buffer.split('\n')
-      buffer = lines.pop() || ''
-
-      for (const line of lines) {
-        const trimmed = line.trim()
-        if (!trimmed || !trimmed.startsWith('data:')) continue
-        const data = trimmed.slice(5).trim()
-
-        try {
-          const parsed = JSON.parse(data)
-
-          if (parsed.type === 'content_block_delta' && parsed.delta?.type === 'text_delta') {
-            fullText += parsed.delta.text
-            onText(parsed.delta.text)
-          }
-
-          if (parsed.type === 'content_block_start' && parsed.content_block?.type === 'tool_use') {
-            const cb = parsed.content_block
-            toolCalls.set(parsed.index, { id: cb.id, name: cb.name, input: '' })
-          }
-
-          if (parsed.type === 'content_block_delta' && parsed.delta?.type === 'input_json_delta') {
-            const existing = toolCalls.get(parsed.index)
-            if (existing) {
-              existing.input += parsed.delta.partial_json
-            }
-          }
-        } catch {
-          // Skip unparseable
-        }
-      }
-    }
-  } finally {
-    reader.releaseLock()
-  }
-
-  const parsedToolCalls: ToolCall[] = []
-  for (const tc of toolCalls.values()) {
-    try {
-      parsedToolCalls.push({
-        id: tc.id,
-        name: tc.name,
-        input: tc.input ? JSON.parse(tc.input) : {},
-      })
-    } catch {
-      // Skip invalid
-    }
-  }
-
-  return { text: fullText, toolCalls: parsedToolCalls, rawContent: fullText }
-}
-
-// ─── Gemini (function calling) ──────────────────────────────────────────────
-
-async function callGeminiWithTools({
-  baseUrl,
-  apiKey,
-  modelId,
-  system,
-  tools,
-  messages,
-  signal,
-  onText,
-}: {
-  baseUrl: string
-  apiKey: string
-  modelId: string
-  system: string
-  tools: ToolDefinition[]
-  messages: LlmMessage[]
-  signal?: AbortSignal
-  onText: (chunk: string) => void
-}): Promise<ModelCallResult> {
-  const cleanModel = modelId.replace(/^models\//, '')
-  const url = `${baseUrl}/models/${encodeURIComponent(cleanModel)}:streamGenerateContent?alt=sse`
-
-  // Convert tools to Gemini format
-  const functionDeclarations = tools.map((t) => ({
-    name: t.name,
-    description: t.description,
-    parameters: t.input_schema,
-  }))
-
-  const systemParts = system ? [{ text: system }] : []
-
-  // Convert messages
-  const contents = messages.map((msg) => {
-    const role = msg.role === 'assistant' ? 'model' : 'user'
-    if (typeof msg.content === 'string') {
-      return { role, parts: [{ text: msg.content }] }
-    }
-    // Convert content blocks to Gemini parts
-    const parts: Array<Record<string, unknown>> = []
-    for (const block of msg.content) {
-      if (block.type === 'text' && block.text) {
-        parts.push({ text: block.text })
-      } else if (block.type === 'tool_use') {
-        parts.push({
-          functionCall: {
-            name: block.name,
-            args: block.input ?? {},
-          },
-        })
-      } else if (block.type === 'tool_result') {
-        parts.push({
-          functionResponse: {
-            name: 'tool_result', // Gemini requires a name
-            response: { content: block.content, is_error: block.is_error },
-          },
-        })
-      }
-    }
-    return { role, parts: parts.length > 0 ? parts : [{ text: '' }] }
-  })
-
-  const response = await fetch(url, {
-    method: 'POST',
-    redirect: 'manual',
-    headers: {
-      'Content-Type': 'application/json',
-      'x-goog-api-key': apiKey,
-    },
-    body: JSON.stringify({
-      systemInstruction: systemParts.length > 0 ? { parts: systemParts } : undefined,
-      contents,
-      tools: functionDeclarations.length > 0 ? [{ functionDeclarations }] : undefined,
-      generationConfig: {
-        temperature: 0.22,
-        maxOutputTokens: MAX_OUTPUT_TOKENS,
-      },
-    }),
-    signal,
-  })
-
-  if (!response.ok) {
-    const errorText = await response.text().catch(() => '')
-    throw new Error(`Gemini ${response.status}: ${errorText.slice(0, 400)}`)
-  }
-
-  return parseGeminiToolStream(response, onText)
-}
-
-async function parseGeminiToolStream(
-  response: Response,
-  onText: (chunk: string) => void,
-): Promise<ModelCallResult> {
-  const reader = response.body?.getReader()
-  if (!reader) throw new Error('Response body not readable')
-
-  const decoder = new TextDecoder()
-  let buffer = ''
-  let fullText = ''
-  const toolCalls: ToolCall[] = []
-  let toolIdCounter = 0
-
-  try {
-    while (true) {
-      const { done, value } = await reader.read()
-      if (done) break
-
-      buffer += decoder.decode(value, { stream: true })
-      const lines = buffer.split('\n')
-      buffer = lines.pop() || ''
-
-      for (const line of lines) {
-        const trimmed = line.trim()
-        if (!trimmed || !trimmed.startsWith('data:')) continue
-        const data = trimmed.slice(5).trim()
-
-        try {
-          const parsed = JSON.parse(data)
-          const parts = parsed?.candidates?.[0]?.content?.parts
-
-          if (parts) {
-            for (const part of parts) {
-              if (part.text) {
-                fullText += part.text
-                onText(part.text)
-              }
-              if (part.functionCall) {
-                toolIdCounter++
-                toolCalls.push({
-                  id: `call_${toolIdCounter}`,
-                  name: part.functionCall.name,
-                  input: part.functionCall.args ?? {},
-                })
-              }
-            }
-          }
-        } catch {
-          // Skip
-        }
-      }
-    }
-  } finally {
-    reader.releaseLock()
-  }
-
-  return { text: fullText, toolCalls, rawContent: fullText }
-}
-
-// ─── Message Conversion Helpers ─────────────────────────────────────────────
-
-function convertToOpenAIMessage(msg: LlmMessage): Record<string, unknown> {
-  if (typeof msg.content === 'string') {
-    return { role: msg.role, content: msg.content }
-  }
-
-  // Check if this is a tool result message
-  const toolResults = msg.content.filter((b) => b.type === 'tool_result')
-  if (toolResults.length > 0) {
-    // OpenAI expects ONE tool result per message with role: "tool" and tool_call_id
-    // We send the first one if there's only one, or return an array of tool messages
-    if (toolResults.length === 1) {
-      return {
-        role: 'tool',
-        tool_call_id: toolResults[0].tool_use_id,
-        content: toolResults[0].content ?? '',
-      }
-    }
-    // Multiple tool results — handled by the caller splitting them
-    return {
-      role: 'tool',
-      tool_call_id: toolResults[0].tool_use_id,
-      content: toolResults[0].content ?? '',
-    }
-  }
-
-  // Convert content blocks to OpenAI format for assistant messages
-  const openaiContent: Record<string, unknown>[] = []
-  const toolCalls: Record<string, unknown>[] = []
-
-  for (const block of msg.content) {
-    if (block.type === 'text' && block.text) {
-      openaiContent.push({ type: 'text', text: block.text })
-    } else if (block.type === 'tool_use') {
-      toolCalls.push({
-        id: block.id,
-        type: 'function',
-        function: {
-          name: block.name,
-          arguments: JSON.stringify(block.input ?? {}),
-        },
-      })
-    }
-  }
-
-  if (toolCalls.length > 0 && msg.role === 'assistant') {
-    return { role: 'assistant', content: openaiContent.length > 0 ? openaiContent : null, tool_calls: toolCalls }
-  }
-
-  if (msg.role === 'assistant' && openaiContent.length > 0) {
-    return { role: 'assistant', content: openaiContent }
-  }
-
-  return { role: msg.role, content: msg.content.map((b) => b.content ?? b.text ?? '').join('\n') }
-}
-
-function convertToAnthropicMessage(msg: LlmMessage): Record<string, unknown> {
-  if (typeof msg.content === 'string') {
-    return { role: msg.role, content: msg.content }
-  }
-
-  const content: Record<string, unknown>[] = []
-  for (const block of msg.content) {
-    if (block.type === 'text' && block.text) {
-      content.push({ type: 'text', text: block.text })
-    } else if (block.type === 'tool_use') {
-      content.push({
-        type: 'tool_use',
-        id: block.id,
-        name: block.name,
-        input: block.input ?? {},
-      })
-    } else if (block.type === 'tool_result') {
-      content.push({
-        type: 'tool_result',
-        tool_use_id: block.tool_use_id,
-        content: block.content,
-        is_error: block.is_error,
-      })
-    }
-  }
-
-  return { role: msg.role, content }
-}
-
-// ─── User Prompt Builder ────────────────────────────────────────────────────
-
-function buildUserPrompt(
-  prompt: string,
-  title: string,
-  files: AgentCodeFile[],
-  mode: 'create' | 'refine',
-  isNew: boolean,
-): string {
-  if (isNew || mode === 'create') {
-    return `Create a website for: ${prompt}\n\nProject title: ${title}\n\nThis is a new project. Start by thinking about the design, then create files one at a time. Begin with the theme.css, then App.tsx, then components. Compile after every few files to catch errors early.`
-  }
-
-  const fileList = files
-    .filter((f) => f.path !== 'No files yet')
-    .map((f) => `- ${f.path} (${f.language}, ${f.code.split('\n').length} lines)`)
-    .join('\n')
-
-  return `Update the existing project based on this request: ${prompt}\n\nProject title: ${title}\n\nCurrent files:\n${fileList || '(none)'}\n\nRead files before editing them. Make minimal, focused changes. Compile after edits to verify.`
-}
-
-// ─── Helpers ─────────────────────────────────────────────────────────────────
 
 function normalizePath(path: string): string {
   return path.trim().replace(/\\/g, '/').replace(/^\/+/, '')
-}
-
-function normalizeFiles(files: AgentCodeFile[]): AgentCodeFile[] {
-  const byPath = new Map<string, AgentCodeFile>()
-
-  for (const file of files) {
-    const path = normalizePath(file.path)
-    if (!path) continue
-
-    const language = normalizeLanguage(file.language, path)
-    byPath.set(path, {
-      path,
-      language,
-      code: file.code.replace(/\r\n/g, '\n'),
-    })
-  }
-
-  return [...byPath.values()].sort((a, b) => {
-    if (a.path === 'src/App.tsx') return -1
-    if (b.path === 'src/App.tsx') return 1
-    if (a.path === 'src/styles/theme.css') return 1
-    if (b.path === 'src/styles/theme.css') return -1
-    return a.path.localeCompare(b.path)
-  })
 }
 
 function normalizeLanguage(language: string, path: string): string {
@@ -1082,10 +294,26 @@ function normalizeLanguage(language: string, path: string): string {
   return 'tsx'
 }
 
+function normalizeFiles(files: AgentCodeFile[]): AgentCodeFile[] {
+  const byPath = new Map<string, AgentCodeFile>()
+  for (const file of files) {
+    const path = normalizePath(file.path)
+    if (!path) continue
+    const language = normalizeLanguage(file.language, path)
+    byPath.set(path, { path, language, code: file.code.replace(/\r\n/g, '\n') })
+  }
+  return [...byPath.values()].sort((a, b) => {
+    if (a.path === 'src/App.tsx') return -1
+    if (b.path === 'src/App.tsx') return 1
+    if (a.path === 'src/styles/theme.css') return 1
+    if (b.path === 'src/styles/theme.css') return -1
+    return a.path.localeCompare(b.path)
+  })
+}
+
 function upsertFile(files: AgentCodeFile[], file: AgentCodeFile): AgentCodeFile[] {
   const normalized = normalizeFiles([file])[0]
   if (!normalized) return files
-
   const existing = files.findIndex((f) => f.path === normalized.path)
   if (existing >= 0) {
     const updated = [...files]
@@ -1095,96 +323,1471 @@ function upsertFile(files: AgentCodeFile[], file: AgentCodeFile): AgentCodeFile[
   return [...files, normalized]
 }
 
-// ─── Provider Resolution ────────────────────────────────────────────────────
+// ─── Levenshtein Distance ──────────────────────────────────────────────────
+
+function levenshtein(a: string, b: string): number {
+  const m = a.length
+  const n = b.length
+  if (m === 0) return n
+  if (n === 0) return m
+  let prev = new Array<number>(n + 1)
+  let curr = new Array<number>(n + 1)
+  for (let j = 0; j <= n; j++) prev[j] = j
+  for (let i = 1; i <= m; i++) {
+    curr[0] = i
+    for (let j = 1; j <= n; j++) {
+      const cost = a[i - 1] === b[j - 1] ? 0 : 1
+      curr[j] = Math.min(curr[j - 1] + 1, prev[j] + 1, prev[j - 1] + cost)
+    }
+    const tmp = prev; prev = curr; curr = tmp
+  }
+  return prev[n]
+}
+
+function findSimilarFiles(targetPath: string, files: AgentCodeFile[], maxDistance = 3): string[] {
+  return files
+    .map((f) => ({ path: f.path, dist: levenshtein(targetPath, f.path) }))
+    .filter((e) => e.dist > 0 && e.dist <= maxDistance)
+    .sort((a, b) => a.dist - b.dist)
+    .slice(0, 3)
+    .map((e) => e.path)
+}
+
+// ─── Glob Matching ──────────────────────────────────────────────────────────
+
+function matchesGlob(filePath: string, globPattern: string): boolean {
+  let regexStr = '^'
+  let i = 0
+  while (i < globPattern.length) {
+    if (globPattern[i] === '*' && globPattern[i + 1] === '*') {
+      regexStr += '.*'; i += 2
+    } else if (globPattern[i] === '*') {
+      regexStr += '[^/]*'; i += 1
+    } else if (globPattern[i] === '?') {
+      regexStr += '[^/]'; i += 1
+    } else {
+      const ch = globPattern[i]
+      if ('.+^${}()|[]\\'.includes(ch)) { regexStr += '\\' + ch } else { regexStr += ch }
+      i += 1
+    }
+  }
+  regexStr += '$'
+  try { return new RegExp(regexStr).test(filePath) } catch { return false }
+}
+
+// ─── Structured Error Formatting ────────────────────────────────────────────
+
+function formatStructuredError(err: StructuredError): string {
+  const parts: string[] = [`Error [${err.code}]: ${err.message}`]
+  if (err.suggestion) parts.push(`Suggestion: ${err.suggestion}`)
+  if (err.similarPaths && err.similarPaths.length > 0) {
+    parts.push(`Similar files: ${err.similarPaths.join(', ')}`)
+  }
+  return parts.join('\n')
+}
+
+// ─── Context Compaction ─────────────────────────────────────────────────────
+
+function compactMessages(
+  messages: LlmMessage[],
+  turnCount: number,
+  _currentFiles: AgentCodeFile[],
+): { messages: LlmMessage[]; compacted: boolean } {
+  if (turnCount <= COMPACTION_THRESHOLD) {
+    return { messages, compacted: false }
+  }
+
+  const assistantIndices: number[] = []
+  for (let i = 0; i < messages.length; i++) {
+    if (messages[i].role === 'assistant') assistantIndices.push(i)
+  }
+
+  const totalTurns = assistantIndices.length
+  if (totalTurns <= KEEP_RECENT_TURNS + 1) {
+    return { messages, compacted: false }
+  }
+
+  const compactUpTo = totalTurns - KEEP_RECENT_TURNS
+  let compacted = false
+
+  for (let t = 0; t < compactUpTo; t++) {
+    const asstIdx = assistantIndices[t]
+    const toolResultIdx = asstIdx + 1
+
+    if (
+      toolResultIdx < messages.length &&
+      messages[toolResultIdx].role === 'user' &&
+      Array.isArray(messages[toolResultIdx].content)
+    ) {
+      const blocks = messages[toolResultIdx].content as LlmContentBlock[]
+      const newBlocks = blocks.map((block) => {
+        if (block.type !== 'tool_result') return block
+        let toolName = ''
+        if (Array.isArray(messages[asstIdx].content)) {
+          const matching = (messages[asstIdx].content as LlmContentBlock[]).find(
+            (b) => b.type === 'tool_use' && b.id === block.tool_use_id,
+          )
+          if (matching) toolName = matching.name ?? ''
+        }
+        if (OBSERVATION_TOOLS.has(toolName)) {
+          compacted = true
+          return {
+            ...block,
+            content: '[tool output truncated — current file state is tracked in the workspace]',
+          }
+        }
+        return block
+      })
+      messages[toolResultIdx] = { role: 'user', content: newBlocks }
+    }
+  }
+
+  return { messages, compacted }
+}
+
+function generateProgressSummary(
+  messages: LlmMessage[],
+  currentFiles: AgentCodeFile[],
+  turnCount: number,
+): string {
+  const fileCreations: string[] = []
+  const fileEdits: string[] = []
+
+  for (const msg of messages) {
+    if (msg.role === 'assistant' && Array.isArray(msg.content)) {
+      for (const block of msg.content) {
+        if (block.type === 'tool_use') {
+          if (block.name === 'write_file' && block.input?.path) {
+            fileCreations.push(String(block.input.path))
+          } else if (block.name === 'edit_file' && block.input?.path) {
+            fileEdits.push(String(block.input.path))
+          }
+        }
+      }
+    }
+  }
+
+  const dedupe = (arr: string[]) => [...new Set(arr)]
+  const parts: string[] = [
+    COMPACTION_PROMPT,
+    '',
+    '## Progress Summary',
+    `- **Turns executed:** ${turnCount}`,
+    `- **Files in project:** ${currentFiles.length}`,
+  ]
+
+  const created = dedupe(fileCreations)
+  if (created.length > 0) parts.push(`- **Files created:** ${created.join(', ')}`)
+  const edited = dedupe(fileEdits)
+  if (edited.length > 0) parts.push(`- **Files edited:** ${edited.join(', ')}`)
+
+  parts.push('', 'Continue from where you left off. Current file state is accurate.')
+  return parts.join('\n')
+}
+
+// ─── Main Agent Loop ────────────────────────────────────────────────────────
+
+export async function runBloomAgent(input: AgentRunInput): Promise<AgentRunResult> {
+  // ── Resolve provider with fallback ────────────────────────────
+  const provider = await resolveProviderWithFallback(
+    input.userId,
+    input.selectedModel ?? null,
+  )
+  const providerName =
+    provider.key.provider_name ||
+    input.selectedModel?.provider_name ||
+    provider.key.provider_id
+  const modelName =
+    input.selectedModel?.model_name || provider.model.name || provider.model.id
+
+  input.onProgress?.({
+    type: 'status',
+    message: `Connected to ${providerName} / ${modelName}`,
+  })
+
+  // ── Resolve active skills from prompt ────────────────────────
+  const activeSkills = resolveActiveSkills(input.prompt)
+  if (activeSkills.length > 0) {
+    input.onProgress?.({
+      type: 'status',
+      message: `Activated skills: ${activeSkills.length}`,
+    })
+  }
+
+  const isNewProject =
+    input.files.length === 0 || input.files[0].path === 'No files yet'
+
+  // Build initial messages — inject active skill bodies first
+  const messages: LlmMessage[] = []
+
+  // Inject skill blocks before the main prompt (preserves cache)
+  for (const skillBody of activeSkills) {
+    messages.push({ role: 'user', content: skillBody })
+  }
+
+  messages.push({
+    role: 'user',
+    content: buildUserPrompt(
+      input.prompt,
+      input.title,
+      input.files,
+      input.mode ?? 'create',
+      isNewProject,
+    ),
+  })
+
+  let currentFiles = normalizeFiles(input.files)
+  let turnCount = 0
+  let lastSummaryTurn = 0
+
+  // Tool execution loop
+  while (turnCount < (input.maxTurns ?? MAX_TOOL_TURNS)) {
+    throwIfAborted(input.signal)
+    turnCount++
+
+    // ── Compaction ──────────────────────────────────────────────
+    const compactResult = compactMessages(messages, turnCount, currentFiles)
+    if (compactResult.compacted) {
+      if (turnCount - lastSummaryTurn >= SUMMARY_INTERVAL) {
+        const summary = generateProgressSummary(messages, currentFiles, turnCount)
+        messages.push({ role: 'user', content: summary })
+        lastSummaryTurn = turnCount
+      }
+      input.onProgress?.({ type: 'compaction', message: 'Context compacted to save tokens.' })
+    }
+
+    // ── Call the model ──────────────────────────────────────────
+    const { text, toolCalls } = await callModelWithTools({
+      providerId: provider.key.provider_id,
+      baseUrl: provider.baseUrl,
+      apiKey: provider.key.api_key,
+      modelId: provider.model.id,
+      system: AGENT_SYSTEM_PROMPT,
+      tools: AGENT_TOOLS,
+      messages,
+      signal: input.signal,
+      onText: (chunk) => {
+        input.onProgress?.({ type: 'text', text: chunk })
+      },
+    })
+
+    // ── Build assistant message ─────────────────────────────────
+    const assistantBlocks: LlmContentBlock[] = []
+    if (text) assistantBlocks.push({ type: 'text', text })
+    for (const tc of toolCalls) {
+      assistantBlocks.push({
+        type: 'tool_use',
+        id: tc.id,
+        name: tc.name,
+        input: tc.input,
+      })
+    }
+
+    if (assistantBlocks.length > 0) {
+      messages.push({ role: 'assistant', content: assistantBlocks })
+    } else if (!text && toolCalls.length === 0) {
+      break
+    }
+
+    // ── Execute tools with parallelism ──────────────────────────
+    const toolResults = await executeToolsParallel(
+      toolCalls,
+      currentFiles,
+      input.signal,
+      input.onProgress,
+      provider,
+    )
+
+    // ── Push tool results ───────────────────────────────────────
+    let hasDone = false
+    for (let i = 0; i < toolResults.length; i++) {
+      const tc = toolCalls[i]
+      const result = toolResults[i]
+      if (result.files) currentFiles = result.files
+
+      messages.push({
+        role: 'user',
+        content: [
+          {
+            type: 'tool_result',
+            tool_use_id: tc.id,
+            content: result.content,
+            is_error: result.isError,
+          },
+        ],
+      })
+
+      if (tc.name === 'done') hasDone = true
+    }
+
+    if (hasDone) {
+      // Record success on the circuit breaker
+      circuitBreaker.recordSuccess(provider.key.provider_id)
+      input.onProgress?.({ type: 'done', files: currentFiles })
+      return { files: currentFiles, turns: turnCount, providerName, modelName }
+    }
+  }
+
+  circuitBreaker.recordSuccess(provider.key.provider_id)
+  input.onProgress?.({ type: 'done', files: currentFiles })
+  return { files: currentFiles, turns: turnCount, providerName, modelName }
+}
+
+// ─── Parallel Tool Execution ────────────────────────────────────────────────
+
+async function executeToolsParallel(
+  toolCalls: ToolCall[],
+  currentFiles: AgentCodeFile[],
+  signal: AbortSignal | undefined,
+  onProgress: ((event: AgentProgressEvent) => void) | undefined,
+  provider: ResolvedProvider,
+): Promise<ToolResult[]> {
+  if (toolCalls.length === 0) return []
+
+  const reads: { index: number; call: ToolCall }[] = []
+  const writes: { index: number; call: ToolCall }[] = []
+  const subagents: { index: number; call: ToolCall }[] = []
+  let compileCall: { index: number; call: ToolCall } | null = null
+  let doneCall: { index: number; call: ToolCall } | null = null
+
+  for (let i = 0; i < toolCalls.length; i++) {
+    const tc = toolCalls[i]
+    const category = TOOL_CATEGORIES[tc.name] ?? 'read'
+    switch (category) {
+      case 'read': reads.push({ index: i, call: tc }); break
+      case 'write': writes.push({ index: i, call: tc }); break
+      case 'subagent': subagents.push({ index: i, call: tc }); break
+      case 'compile': compileCall = { index: i, call: tc }; break
+      case 'done': doneCall = { index: i, call: tc }; break
+    }
+  }
+
+  const results: (ToolResult | null)[] = new Array(toolCalls.length).fill(null)
+
+  // Phase 1: Execute reads + subagents in parallel
+  const parallelTasks = [...reads, ...subagents]
+  if (parallelTasks.length > 0) {
+    const parallelResults = await Promise.all(
+      parallelTasks.map(({ index, call }) => {
+        onProgress?.({ type: 'tool_start', toolName: call.name, toolInput: call.input })
+        return executeTool(call, currentFiles, signal, provider, onProgress).then((result) => {
+          onProgress?.({ type: 'tool_result', toolName: call.name, toolResult: result.content, toolError: result.isError, files: result.files })
+          return { index, result }
+        })
+      }),
+    )
+    for (const { index, result } of parallelResults) {
+      results[index] = result
+      if (result.files) currentFiles = result.files
+    }
+  }
+
+  // Phase 2: Writes sequentially
+  for (const { index, call } of writes) {
+    onProgress?.({ type: 'tool_start', toolName: call.name, toolInput: call.input })
+    const result = await executeTool(call, currentFiles, signal, provider, onProgress)
+    onProgress?.({ type: 'tool_result', toolName: call.name, toolResult: result.content, toolError: result.isError, files: result.files })
+    results[index] = result
+    if (result.files) currentFiles = result.files
+  }
+
+  // Phase 3: Compile
+  if (compileCall) {
+    const { index, call } = compileCall
+    onProgress?.({ type: 'tool_start', toolName: call.name, toolInput: call.input })
+    const result = await executeTool(call, currentFiles, signal, provider, onProgress)
+    onProgress?.({ type: 'tool_result', toolName: call.name, toolResult: result.content, toolError: result.isError, files: result.files })
+    results[index] = result
+    if (result.files) currentFiles = result.files
+  }
+
+  // Phase 4: Done
+  if (doneCall) {
+    const { index, call } = doneCall
+    onProgress?.({ type: 'tool_start', toolName: call.name, toolInput: call.input })
+    const result = await executeTool(call, currentFiles, signal, provider, onProgress)
+    onProgress?.({ type: 'tool_result', toolName: call.name, toolResult: result.content, toolError: result.isError, files: result.files })
+    results[index] = result
+    if (result.files) currentFiles = result.files
+  }
+
+  return results.filter((r): r is ToolResult => r !== null)
+}
+
+// ─── Tool Execution ─────────────────────────────────────────────────────────
+
+async function executeTool(
+  toolCall: ToolCall,
+  currentFiles: AgentCodeFile[],
+  signal: AbortSignal | undefined,
+  provider: ResolvedProvider,
+  onProgress?: (event: AgentProgressEvent) => void,
+): Promise<ToolResult> {
+  throwIfAborted(signal)
+
+  switch (toolCall.name) {
+    // ── think ──────────────────────────────────────────────────
+    case 'think': {
+      return { content: String(toolCall.input.thought ?? ''), isError: false }
+    }
+
+    // ── list_files ──────────────────────────────────────────────
+    case 'list_files': {
+      if (currentFiles.length === 0) {
+        return { content: 'No files in the project yet.', isError: false }
+      }
+      const sorted = [...currentFiles].sort((a, b) => a.path.localeCompare(b.path))
+      const truncated = sorted.length > LIST_FILES_MAX
+      const shown = truncated ? sorted.slice(0, LIST_FILES_MAX) : sorted
+      const listing = shown
+        .map((f) => `  ${f.path}  (${f.language}, ${f.code.split('\n').length} lines)`)
+        .join('\n')
+      return {
+        content: `${currentFiles.length} files${truncated ? ` (showing first ${LIST_FILES_MAX})` : ''}:\n${listing}${truncated ? `\n... and ${currentFiles.length - LIST_FILES_MAX} more. Use search_files or read specific paths.` : ''}`,
+        isError: false,
+      }
+    }
+
+    // ── read_file ───────────────────────────────────────────────
+    case 'read_file': {
+      const path = normalizePath(String(toolCall.input.path ?? ''))
+      const offset = Math.max(1, Number(toolCall.input.offset) || 1)
+      const limit = Number(toolCall.input.limit) || READ_TRUNCATE_LINES
+      const file = currentFiles.find((f) => f.path === path)
+      if (!file) {
+        const similar = findSimilarFiles(path, currentFiles)
+        return {
+          content: formatStructuredError({
+            code: 'FILE_NOT_FOUND',
+            message: `File not found: ${path}`,
+            suggestion: 'Use list_files to see all project files. Check the path spelling.',
+            retryable: true,
+            similarPaths: similar.length > 0 ? similar : undefined,
+          }),
+          isError: true,
+        }
+      }
+      const allLines = file.code.split('\n')
+      const startIdx = offset - 1
+      const endIdx = Math.min(startIdx + limit, allLines.length)
+      const selected = allLines.slice(startIdx, endIdx)
+      const numbered = selected
+        .map((line, i) => `${String(startIdx + i + 1).padStart(4, ' ')}  ${line}`)
+        .join('\n')
+
+      let result = `File: ${path} (${allLines.length} lines total)`
+      if (startIdx > 0 || endIdx < allLines.length) {
+        result += `, showing lines ${startIdx + 1}-${endIdx}`
+      }
+      if (startIdx > 0) result += `\n[... ${startIdx} lines before ...]`
+      result += `\n${numbered}`
+      if (endIdx < allLines.length) {
+        result += `\n[... ${allLines.length - endIdx} lines after ...]`
+        result += `\n[Tip: Use offset=${endIdx + 1} to read the next ${limit} lines]`
+      }
+      return { content: result, isError: false }
+    }
+
+    // ── search_files ────────────────────────────────────────────
+    case 'search_files': {
+      const pattern = String(toolCall.input.pattern ?? '')
+      const glob = toolCall.input.glob ? String(toolCall.input.glob) : undefined
+      const outputMode = (toolCall.input.output_mode as string) || 'content'
+      const contextLines = Math.max(0, Number(toolCall.input.context_lines) || 0)
+
+      if (!pattern.trim()) {
+        return {
+          content: formatStructuredError({
+            code: 'INVALID_PATTERN',
+            message: 'Search pattern must not be empty.',
+            suggestion: 'Provide a regex pattern to search for, e.g. "import.*from"',
+            retryable: true,
+          }),
+          isError: true,
+        }
+      }
+
+      let regex: RegExp
+      try { regex = new RegExp(pattern, 'gi') } catch {
+        return {
+          content: formatStructuredError({
+            code: 'INVALID_REGEX',
+            message: `Invalid regex pattern: ${pattern}`,
+            suggestion: 'Check your regex syntax. Escape special characters like ( [ { . * + ? ^ $ | \\\\.',
+            retryable: true,
+          }),
+          isError: true,
+        }
+      }
+
+      const filesToSearch = glob
+        ? currentFiles.filter((f) => matchesGlob(f.path, glob))
+        : currentFiles
+
+      if (filesToSearch.length === 0) {
+        return {
+          content: glob
+            ? `No files matched the glob pattern "${glob}".`
+            : 'No files in the project.',
+          isError: false,
+        }
+      }
+
+      // Count mode
+      if (outputMode === 'count') {
+        const counts: string[] = []
+        let totalMatches = 0
+        for (const file of filesToSearch) {
+          let matchCount = 0
+          for (const line of file.code.split('\n')) {
+            const matches = line.match(regex)
+            if (matches) matchCount += matches.length
+          }
+          if (matchCount > 0) {
+            counts.push(`  ${file.path}: ${matchCount} match(es)`)
+            totalMatches += matchCount
+          }
+        }
+        return {
+          content: counts.length > 0
+            ? `${totalMatches} total match(es) across ${counts.length} file(s):\n${counts.join('\n')}`
+            : `No matches for "${pattern}" in ${filesToSearch.length} file(s).`,
+          isError: false,
+        }
+      }
+
+      // Files-with-matches mode
+      if (outputMode === 'files_with_matches') {
+        const matched: string[] = []
+        for (const file of filesToSearch) {
+          if (regex.test(file.code)) {
+            matched.push(`  ${file.path}`)
+            regex.lastIndex = 0
+          }
+        }
+        return {
+          content: matched.length > 0
+            ? `${matched.length} file(s) matched:\n${matched.join('\n')}`
+            : `No files matched "${pattern}" in ${filesToSearch.length} file(s).`,
+          isError: false,
+        }
+      }
+
+      // Content mode with truncation
+      const results: string[] = []
+      let totalMatches = 0
+
+      for (const file of filesToSearch) {
+        const fileLines = file.code.split('\n')
+        const fileMatches: { lineNum: number; line: string }[] = []
+
+        for (let i = 0; i < fileLines.length; i++) {
+          if (regex.test(fileLines[i])) {
+            fileMatches.push({ lineNum: i + 1, line: fileLines[i] })
+            regex.lastIndex = 0
+            totalMatches++
+            if (totalMatches >= SEARCH_MAX_MATCHES) break
+          }
+        }
+
+        if (fileMatches.length > 0) {
+          results.push(`── ${file.path} (${fileMatches.length} match(es)) ──`)
+          const shownContext = new Set<number>()
+
+          for (const match of fileMatches) {
+            const ctxStart = Math.max(1, match.lineNum - contextLines)
+            const ctxEnd = Math.min(fileLines.length, match.lineNum + contextLines)
+
+            if (contextLines > 0 && ctxStart < match.lineNum) {
+              for (let cl = ctxStart; cl < match.lineNum; cl++) {
+                if (!shownContext.has(cl)) {
+                  results.push(`  ${String(cl).padStart(4, ' ')}  ${fileLines[cl - 1]}`)
+                  shownContext.add(cl)
+                }
+              }
+            }
+
+            results.push(` ▶${String(match.lineNum).padStart(4, ' ')}  ${match.line}`)
+            shownContext.add(match.lineNum)
+
+            if (contextLines > 0 && ctxEnd > match.lineNum) {
+              for (let cl = match.lineNum + 1; cl <= ctxEnd; cl++) {
+                if (!shownContext.has(cl)) {
+                  results.push(`  ${String(cl).padStart(4, ' ')}  ${fileLines[cl - 1]}`)
+                  shownContext.add(cl)
+                }
+              }
+            }
+          }
+        }
+
+        if (totalMatches >= SEARCH_MAX_MATCHES) break
+      }
+
+      if (results.length === 0) {
+        return {
+          content: `No matches for "${pattern}" in ${filesToSearch.length} file(s).`,
+          isError: false,
+        }
+      }
+
+      let header = `Found ${totalMatches} match(es) for "${pattern}"`
+      if (totalMatches >= SEARCH_MAX_MATCHES)
+        header += ` (truncated at ${SEARCH_MAX_MATCHES} — narrow your pattern or use glob to filter)`
+      return { content: `${header}:\n\n${results.join('\n')}`, isError: false }
+    }
+
+    // ── write_file ──────────────────────────────────────────────
+    case 'write_file': {
+      const path = normalizePath(String(toolCall.input.path ?? ''))
+      const language = String(toolCall.input.language ?? 'tsx')
+      const code = String(toolCall.input.code ?? '')
+
+      if (!code.trim()) {
+        return {
+          content: formatStructuredError({
+            code: 'EMPTY_FILE', message: 'File code must not be empty.',
+            suggestion: 'Provide complete, valid code for the file. Use edit_file for small changes.',
+            retryable: true,
+          }), isError: true,
+        }
+      }
+      if (!path.startsWith('src/')) {
+        return {
+          content: formatStructuredError({
+            code: 'INVALID_PATH', message: `File path must be under src/. Got: ${path}`,
+            suggestion: 'All project files must be under the src/ directory.',
+            retryable: true,
+          }), isError: true,
+        }
+      }
+      if (path.includes('..')) {
+        return {
+          content: formatStructuredError({
+            code: 'PATH_TRAVERSAL', message: `Path traversal not allowed: ${path}`,
+            suggestion: 'Use a path under src/ without .. segments.',
+            retryable: false,
+          }), isError: true,
+        }
+      }
+
+      const isNew = !currentFiles.some((f) => f.path === path)
+      const newFiles = upsertFile(currentFiles, { path, language, code })
+      return {
+        content: `${isNew ? 'Created' : 'Overwrote'} ${path} (${code.split('\n').length} lines, ${code.length} chars).`,
+        isError: false,
+        files: newFiles,
+      }
+    }
+
+    // ── edit_file ───────────────────────────────────────────────
+    case 'edit_file': {
+      const path = normalizePath(String(toolCall.input.path ?? ''))
+      const oldStr = String(toolCall.input.old_string ?? '')
+      const newStr = String(toolCall.input.new_string ?? '')
+      const file = currentFiles.find((f) => f.path === path)
+
+      if (!file) {
+        const similar = findSimilarFiles(path, currentFiles)
+        return {
+          content: formatStructuredError({
+            code: 'FILE_NOT_FOUND', message: `File not found: ${path}`,
+            suggestion: 'Use list_files to see what exists. Check the path spelling.',
+            retryable: true,
+            similarPaths: similar.length > 0 ? similar : undefined,
+          }), isError: true,
+        }
+      }
+      if (!oldStr) {
+        return {
+          content: formatStructuredError({
+            code: 'EMPTY_OLD_STRING', message: 'old_string must not be empty.',
+            suggestion: 'Provide the exact text to replace, including indentation. Copy it directly from the file.',
+            retryable: true,
+          }), isError: true,
+        }
+      }
+      if (oldStr === newStr) {
+        return {
+          content: formatStructuredError({
+            code: 'IDENTICAL_STRINGS', message: 'old_string and new_string are identical.',
+            suggestion: 'The replacement text must differ from the original.',
+            retryable: true,
+          }), isError: true,
+        }
+      }
+
+      const count = file.code.split(oldStr).length - 1
+      if (count === 0) {
+        const firstLines = file.code.split('\n').slice(0, 5).join('\n')
+        return {
+          content: formatStructuredError({
+            code: 'STRING_NOT_FOUND',
+            message: `old_string not found in ${path}. Must match exactly including indentation.`,
+            suggestion: `Read the file first. It starts with:\n${firstLines}\n\nCopy the exact indentation (tabs/spaces).`,
+            retryable: true,
+          }), isError: true,
+        }
+      }
+      if (count > 1) {
+        return {
+          content: formatStructuredError({
+            code: 'MULTIPLE_MATCHES',
+            message: `old_string appears ${count} times in ${path}. It must be unique.`,
+            suggestion: 'Include more surrounding context lines to make it unique.',
+            retryable: true,
+          }), isError: true,
+        }
+      }
+
+      const newCode = file.code.replace(oldStr, newStr)
+      const newFiles = currentFiles.map((f) =>
+        f.path === path ? { ...f, code: newCode } : f,
+      )
+      return {
+        content: `Edited ${path}: replaced ${oldStr.length} chars with ${newStr.length} chars.\nPreview: ${newStr.slice(0, 200)}${newStr.length > 200 ? '...' : ''}`,
+        isError: false,
+        files: newFiles,
+      }
+    }
+
+    // ── compile ─────────────────────────────────────────────────
+    case 'compile': {
+      if (currentFiles.length === 0) {
+        return { content: 'No files to compile. Create some files first.', isError: false }
+      }
+
+      try {
+        const preview = await buildPreview(
+          currentFiles.map((f) => ({ path: f.path, content: f.code })),
+        )
+        if (preview.errors.length === 0) {
+          return { content: 'Compilation successful. No errors.', isError: false }
+        }
+
+        const uniqueErrors = [...new Set(preview.errors)]
+        const shown = uniqueErrors.slice(0, COMPILE_MAX_ERRORS)
+        const truncated =
+          uniqueErrors.length > COMPILE_MAX_ERRORS
+            ? `\n  ... and ${uniqueErrors.length - COMPILE_MAX_ERRORS} more error(s). Fix the first ones first.`
+            : ''
+
+        return {
+          content: `Compilation failed: ${uniqueErrors.length} error(s).\n${shown.map((e, i) => `  ${i + 1}. ${e}`).join('\n')}${truncated}\n\nRead the affected files and fix each error with edit_file. Recompile after fixing.`,
+          isError: true,
+        }
+      } catch (err) {
+        return {
+          content: formatStructuredError({
+            code: 'COMPILE_CRASH',
+            message: err instanceof Error ? err.message : String(err),
+            suggestion: 'This might be a config issue or syntax error. Check recent changes.',
+            retryable: true,
+          }), isError: true,
+        }
+      }
+    }
+
+    // ── spawn_subagent ──────────────────────────────────────────
+    case 'spawn_subagent': {
+      const task = String(toolCall.input.task ?? '')
+      const context = toolCall.input.context
+        ? String(toolCall.input.context)
+        : undefined
+
+      if (!task.trim()) {
+        return {
+          content: formatStructuredError({
+            code: 'EMPTY_TASK',
+            message: 'Subagent task must not be empty.',
+            suggestion: 'Provide a specific task like "Audit all components for accessibility issues" or "Find unused CSS variables".',
+            retryable: true,
+          }), isError: true,
+        }
+      }
+
+      onProgress?.({ type: 'status', message: `Subagent: ${task.slice(0, 100)}...` })
+
+      try {
+        const result = await runSubagent({
+          task,
+          context,
+          files: currentFiles,
+          providerId: provider.key.provider_id,
+          baseUrl: provider.baseUrl,
+          apiKey: provider.key.api_key,
+          modelId: provider.model.id,
+          signal,
+          onProgress,
+        })
+
+        onProgress?.({ type: 'subagent', subagentResult: result })
+
+        // Format subagent results for the main agent
+        const output = [
+          `## Subagent Report`,
+          ``,
+          `**Task:** ${task}`,
+          `**Files examined:** ${result.filesExamined.join(', ') || 'none'}`,
+          `**Turns taken:** ${result.turns}`,
+          ``,
+          `### Findings`,
+          result.findings,
+        ]
+
+        if (result.recommendations.length > 0) {
+          output.push(
+            ``,
+            `### Recommendations`,
+            ...result.recommendations.map((r, i) => `  ${i + 1}. ${r}`),
+          )
+        }
+
+        return { content: output.join('\n'), isError: false }
+      } catch (err) {
+        return {
+          content: formatStructuredError({
+            code: 'SUBAGENT_FAILED',
+            message: err instanceof Error ? err.message : String(err),
+            suggestion: 'Try a more focused task description, or handle the research yourself.',
+            retryable: true,
+          }), isError: true,
+        }
+      }
+    }
+
+    // ── done ────────────────────────────────────────────────────
+    case 'done': {
+      const summary = String(toolCall.input.summary ?? 'Project complete.')
+      const nextSuggestions = Array.isArray(toolCall.input.nextSuggestions)
+        ? toolCall.input.nextSuggestions.filter((s: unknown) => typeof s === 'string')
+        : []
+      return {
+        content: JSON.stringify({ summary, nextSuggestions }),
+        isError: false,
+        files: currentFiles,
+      }
+    }
+
+    default:
+      return {
+        content: formatStructuredError({
+          code: 'UNKNOWN_TOOL',
+          message: `Unknown tool: ${toolCall.name}`,
+          suggestion: `Available tools: ${AGENT_TOOLS.map((t) => t.name).join(', ')}`,
+          retryable: false,
+        }), isError: true,
+      }
+  }
+}
+
+// ─── Model Calling ──────────────────────────────────────────────────────────
+
+interface ModelCallResult {
+  text: string
+  toolCalls: ToolCall[]
+}
+
+async function callModelWithTools({
+  providerId, baseUrl, apiKey, modelId, system, tools, messages, signal, onText,
+}: {
+  providerId: string; baseUrl: string; apiKey: string; modelId: string
+  system: string; tools: ToolDefinition[]; messages: LlmMessage[]
+  signal?: AbortSignal; onText: (chunk: string) => void
+}): Promise<ModelCallResult> {
+  if (providerId === 'anthropic') {
+    return callAnthropicWithTools({ baseUrl, apiKey, modelId, system, tools, messages, signal, onText })
+  }
+  if (providerId === 'google') {
+    return callGeminiWithTools({ baseUrl, apiKey, modelId, system, tools, messages, signal, onText })
+  }
+  return callOpenAIWithTools({ baseUrl, apiKey, modelId, system, tools, messages, signal, onText })
+}
+
+// ─── OpenAI-compatible ──────────────────────────────────────────────────────
+
+function toolsToOpenAIFormat(tools: ToolDefinition[]) {
+  return tools.map((t) => ({ type: 'function' as const, function: { name: t.name, description: t.description, parameters: t.input_schema } }))
+}
+
+function toolsToAnthropicFormat(tools: ToolDefinition[]) {
+  return tools.map((t) => ({ name: t.name, description: t.description, input_schema: t.input_schema }))
+}
+
+async function callOpenAIWithTools({
+  baseUrl, apiKey, modelId, system, tools, messages, signal, onText,
+}: {
+  baseUrl: string; apiKey: string; modelId: string; system: string
+  tools: ToolDefinition[]; messages: LlmMessage[]
+  signal?: AbortSignal; onText: (chunk: string) => void
+}): Promise<ModelCallResult> {
+  const url = baseUrl.endsWith('/chat/completions') ? baseUrl : `${baseUrl}/chat/completions`
+
+  const openaiMessages = [
+    { role: 'system', content: system },
+    ...messages.flatMap(convertToOpenAIMessages),
+  ]
+  const openaiTools = toolsToOpenAIFormat(tools)
+
+  const attempts: Array<Record<string, unknown>> = [
+    { tools: openaiTools, stream: true },
+    { tools: openaiTools, stream: true, tool_choice: 'auto' },
+    { tools: openaiTools, stream: false },
+    { stream: true },
+  ]
+
+  let lastError = ''
+
+  for (let attemptIdx = 0; attemptIdx < attempts.length; attemptIdx++) {
+    const attempt = attempts[attemptIdx]
+    try {
+      const controller = new AbortController()
+      const timeoutId = setTimeout(() => controller.abort(), 60_000)
+      const combinedSignal = signal ? anyAbort(signal, controller.signal) : controller.signal
+
+      const response = await fetch(url, {
+        method: 'POST', redirect: 'manual',
+        headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${apiKey}` },
+        body: JSON.stringify({
+          model: modelId, messages: openaiMessages,
+          temperature: 0.22, max_tokens: MAX_OUTPUT_TOKENS, ...attempt,
+        }),
+        signal: combinedSignal,
+      })
+
+      clearTimeout(timeoutId)
+
+      if (!response.ok) {
+        const errorText = await response.text().catch(() => '')
+        let errorPayload: unknown = ''
+        try { errorPayload = JSON.parse(errorText) } catch { errorPayload = errorText }
+        lastError = `${response.status}: ${typeof errorPayload === 'string' ? errorPayload.slice(0, 300) : JSON.stringify(errorPayload).slice(0, 300)}`
+
+        if (response.status === 401 || response.status === 403) break
+        if (response.status === 429) {
+          await sleep(backoffDelay(attemptIdx))
+        }
+        if (response.status !== 400 && response.status !== 422) break
+        continue
+      }
+
+      const result = attempt.stream === true
+        ? await parseOpenAIToolStream(response, onText)
+        : await parseOpenAINonStream(response, onText)
+      if (result) return result
+    } catch (err) {
+      if (err instanceof DOMException && err.name === 'AbortError') throw err
+      lastError = err instanceof Error ? err.message : String(err)
+    }
+  }
+
+  throw new Error(lastError || 'Provider request failed.')
+}
+
+function anyAbort(a: AbortSignal, b: AbortSignal): AbortSignal {
+  const controller = new AbortController()
+  const onAbort = () => controller.abort()
+  a.addEventListener('abort', onAbort, { once: true })
+  b.addEventListener('abort', onAbort, { once: true })
+  if (a.aborted || b.aborted) controller.abort()
+  return controller.signal
+}
+
+async function parseOpenAINonStream(response: Response, onText: (chunk: string) => void): Promise<ModelCallResult | null> {
+  const payload = await response.json().catch(() => null)
+  if (!payload) return null
+  const choice = payload?.choices?.[0]
+  const message = choice?.message
+  if (!message) return null
+  const text = typeof message.content === 'string' ? message.content : ''
+  if (text) onText(text)
+  const toolCalls: ToolCall[] = []
+  if (Array.isArray(message.tool_calls)) {
+    for (const tc of message.tool_calls) {
+      if (tc.type === 'function' && tc.function) {
+        try {
+          toolCalls.push({
+            id: tc.id || `call_${toolCalls.length}`,
+            name: tc.function.name,
+            input: typeof tc.function.arguments === 'string' ? JSON.parse(tc.function.arguments) : (tc.function.arguments ?? {}),
+          })
+        } catch { /* skip invalid */ }
+      }
+    }
+  }
+  return { text, toolCalls }
+}
+
+async function parseOpenAIToolStream(response: Response, onText: (chunk: string) => void): Promise<ModelCallResult | null> {
+  const reader = response.body?.getReader()
+  if (!reader) return null
+  const decoder = new TextDecoder()
+  let buffer = '', fullText = ''
+  const toolCalls: Map<number, { id: string; name: string; arguments: string }> = new Map()
+
+  try {
+    while (true) {
+      const { done, value } = await reader.read()
+      if (done) break
+      buffer += decoder.decode(value, { stream: true })
+      const lines = buffer.split('\n')
+      buffer = lines.pop() || ''
+
+      for (const line of lines) {
+        const trimmed = line.trim()
+        if (!trimmed || !trimmed.startsWith('data:')) continue
+        const data = trimmed.slice(5).trim()
+        if (data === '[DONE]') continue
+        try {
+          const parsed = JSON.parse(data)
+          const delta = parsed?.choices?.[0]?.delta
+          if (delta?.content) { fullText += delta.content; onText(delta.content) }
+          if (delta?.tool_calls) {
+            for (const tc of delta.tool_calls) {
+              const idx = tc.index ?? 0
+              if (!toolCalls.has(idx)) toolCalls.set(idx, { id: tc.id ?? `call_${idx}`, name: tc.function?.name ?? '', arguments: '' })
+              const existing = toolCalls.get(idx)!
+              if (tc.id) existing.id = tc.id
+              if (tc.function?.name) existing.name = tc.function.name
+              if (tc.function?.arguments) existing.arguments += tc.function.arguments
+            }
+          }
+        } catch { /* skip */ }
+      }
+    }
+  } finally { reader.releaseLock() }
+
+  const parsedToolCalls: ToolCall[] = []
+  for (const tc of toolCalls.values()) {
+    if (tc.name) {
+      try { parsedToolCalls.push({ id: tc.id, name: tc.name, input: JSON.parse(tc.arguments || '{}') }) } catch { /* skip */ }
+    }
+  }
+  return { text: fullText, toolCalls: parsedToolCalls }
+}
+
+// ─── Anthropic (with caching + thinking) ────────────────────────────────────
+
+async function callAnthropicWithTools({
+  baseUrl, apiKey, modelId, system, tools, messages, signal, onText,
+}: {
+  baseUrl: string; apiKey: string; modelId: string; system: string
+  tools: ToolDefinition[]; messages: LlmMessage[]
+  signal?: AbortSignal; onText: (chunk: string) => void
+}): Promise<ModelCallResult> {
+  const anthropicMessages = messages.map(convertToAnthropicMessage)
+
+  const body: Record<string, unknown> = {
+    model: modelId, max_tokens: MAX_OUTPUT_TOKENS, temperature: 0.22,
+    tools: toolsToAnthropicFormat(tools), messages: anthropicMessages, stream: true,
+    system: [{ type: 'text', text: system, cache_control: { type: 'ephemeral' } }],
+  }
+
+  if (ANTHROPIC_THINKING_BUDGET > 0) {
+    body.thinking = { type: 'enabled', budget_tokens: ANTHROPIC_THINKING_BUDGET }
+  }
+
+  const controller = new AbortController()
+  const timeoutId = setTimeout(() => controller.abort(), 120_000)
+  const combinedSignal = signal ? anyAbort(signal, controller.signal) : controller.signal
+
+  try {
+    const response = await fetch(`${baseUrl}/messages`, {
+      method: 'POST', redirect: 'manual',
+      headers: {
+        'Content-Type': 'application/json', 'x-api-key': apiKey,
+        'anthropic-version': '2023-06-01',
+        'anthropic-dangerous-direct-browser-access': 'true',
+      },
+      body: JSON.stringify(body), signal: combinedSignal,
+    })
+    clearTimeout(timeoutId)
+
+    if (!response.ok) {
+      const errorText = await response.text().catch(() => '')
+      let ep: unknown = ''
+      try { ep = JSON.parse(errorText) } catch { ep = errorText }
+      throw new Error(`Anthropic ${response.status}: ${typeof ep === 'string' ? ep.slice(0, 400) : JSON.stringify(ep).slice(0, 400)}`)
+    }
+
+    return parseAnthropicToolStream(response, onText)
+  } catch (err) {
+    clearTimeout(timeoutId)
+    throw err
+  }
+}
+
+async function parseAnthropicToolStream(response: Response, onText: (chunk: string) => void): Promise<ModelCallResult> {
+  const reader = response.body?.getReader()
+  if (!reader) throw new Error('Response body not readable')
+  const decoder = new TextDecoder()
+  let buffer = '', fullText = ''
+  const toolCalls: Map<number, { id: string; name: string; input: string }> = new Map()
+
+  try {
+    while (true) {
+      const { done, value } = await reader.read()
+      if (done) break
+      buffer += decoder.decode(value, { stream: true })
+      const lines = buffer.split('\n')
+      buffer = lines.pop() || ''
+      for (const line of lines) {
+        const trimmed = line.trim()
+        if (!trimmed || !trimmed.startsWith('data:')) continue
+        try {
+          const parsed = JSON.parse(trimmed.slice(5).trim())
+          if (parsed.type === 'content_block_delta' && parsed.delta?.type === 'text_delta') {
+            fullText += parsed.delta.text; onText(parsed.delta.text)
+          }
+          if (parsed.type === 'content_block_start' && parsed.content_block?.type === 'tool_use') {
+            toolCalls.set(parsed.index, { id: parsed.content_block.id, name: parsed.content_block.name, input: '' })
+          }
+          if (parsed.type === 'content_block_delta' && parsed.delta?.type === 'input_json_delta') {
+            const existing = toolCalls.get(parsed.index)
+            if (existing) existing.input += parsed.delta.partial_json
+          }
+        } catch { /* skip */ }
+      }
+    }
+  } finally { reader.releaseLock() }
+
+  const parsedToolCalls: ToolCall[] = []
+  for (const tc of toolCalls.values()) {
+    try { parsedToolCalls.push({ id: tc.id, name: tc.name, input: tc.input ? JSON.parse(tc.input) : {} }) } catch { /* skip */ }
+  }
+  return { text: fullText, toolCalls: parsedToolCalls }
+}
+
+// ─── Gemini ─────────────────────────────────────────────────────────────────
+
+async function callGeminiWithTools({
+  baseUrl, apiKey, modelId, system, tools, messages, signal, onText,
+}: {
+  baseUrl: string; apiKey: string; modelId: string; system: string
+  tools: ToolDefinition[]; messages: LlmMessage[]
+  signal?: AbortSignal; onText: (chunk: string) => void
+}): Promise<ModelCallResult> {
+  const cleanModel = modelId.replace(/^models\//, '')
+  const url = `${baseUrl}/models/${encodeURIComponent(cleanModel)}:streamGenerateContent?alt=sse`
+
+  const functionDeclarations = tools.map((t) => ({ name: t.name, description: t.description, parameters: t.input_schema }))
+  const systemParts = system ? [{ text: system }] : []
+
+  const contents = messages.map((msg) => {
+    const role = msg.role === 'assistant' ? 'model' : 'user'
+    if (typeof msg.content === 'string') return { role, parts: [{ text: msg.content }] }
+    const parts: Array<Record<string, unknown>> = []
+    for (const block of msg.content) {
+      if (block.type === 'text' && block.text) {
+        parts.push({ text: block.text })
+      } else if (block.type === 'tool_use') {
+        parts.push({ functionCall: { name: block.name, args: block.input ?? {} } })
+      } else if (block.type === 'tool_result') {
+        const toolUseBlock = findMatchingToolUse(messages, block.tool_use_id)
+        parts.push({
+          functionResponse: {
+            name: toolUseBlock?.name ?? 'unknown',
+            response: { content: block.content, is_error: block.is_error },
+          },
+        })
+      }
+    }
+    return { role, parts: parts.length > 0 ? parts : [{ text: '' }] }
+  })
+
+  const controller = new AbortController()
+  const timeoutId = setTimeout(() => controller.abort(), 60_000)
+  const combinedSignal = signal ? anyAbort(signal, controller.signal) : controller.signal
+
+  try {
+    const response = await fetch(url, {
+      method: 'POST', redirect: 'manual',
+      headers: { 'Content-Type': 'application/json', 'x-goog-api-key': apiKey },
+      body: JSON.stringify({
+        systemInstruction: systemParts.length > 0 ? { parts: systemParts } : undefined,
+        contents,
+        tools: functionDeclarations.length > 0 ? [{ functionDeclarations }] : undefined,
+        generationConfig: { temperature: 0.22, maxOutputTokens: MAX_OUTPUT_TOKENS },
+      }),
+      signal: combinedSignal,
+    })
+    clearTimeout(timeoutId)
+
+    if (!response.ok) {
+      const errorText = await response.text().catch(() => '')
+      throw new Error(`Gemini ${response.status}: ${errorText.slice(0, 400)}`)
+    }
+
+    return parseGeminiToolStream(response, onText)
+  } catch (err) {
+    clearTimeout(timeoutId)
+    throw err
+  }
+}
+
+async function parseGeminiToolStream(response: Response, onText: (chunk: string) => void): Promise<ModelCallResult> {
+  const reader = response.body?.getReader()
+  if (!reader) throw new Error('Response body not readable')
+  const decoder = new TextDecoder()
+  let buffer = '', fullText = ''
+  const toolCalls: ToolCall[] = []
+  let toolIdCounter = 0
+
+  try {
+    while (true) {
+      const { done, value } = await reader.read()
+      if (done) break
+      buffer += decoder.decode(value, { stream: true })
+      const lines = buffer.split('\n')
+      buffer = lines.pop() || ''
+      for (const line of lines) {
+        const trimmed = line.trim()
+        if (!trimmed || !trimmed.startsWith('data:')) continue
+        try {
+          const parsed = JSON.parse(trimmed.slice(5).trim())
+          const parts = parsed?.candidates?.[0]?.content?.parts
+          if (parts) {
+            for (const part of parts) {
+              if (part.text) { fullText += part.text; onText(part.text) }
+              if (part.functionCall) {
+                toolIdCounter++
+                toolCalls.push({ id: `call_${toolIdCounter}`, name: part.functionCall.name, input: part.functionCall.args ?? {} })
+              }
+            }
+          }
+        } catch { /* skip */ }
+      }
+    }
+  } finally { reader.releaseLock() }
+
+  return { text: fullText, toolCalls }
+}
+
+// ─── Message Conversion ─────────────────────────────────────────────────────
+
+function convertToOpenAIMessages(msg: LlmMessage): Record<string, unknown>[] {
+  if (typeof msg.content === 'string') {
+    return [{ role: msg.role, content: msg.content }]
+  }
+
+  const toolResults = msg.content.filter((b) => b.type === 'tool_result')
+  if (toolResults.length > 0 && msg.role === 'user') {
+    return toolResults.map((tr) => ({
+      role: 'tool',
+      tool_call_id: tr.tool_use_id,
+      content: tr.content ?? '',
+    }))
+  }
+
+  const openaiContent: Record<string, unknown>[] = []
+  const toolCalls: Record<string, unknown>[] = []
+
+  for (const block of msg.content) {
+    if (block.type === 'text' && block.text) {
+      openaiContent.push({ type: 'text', text: block.text })
+    } else if (block.type === 'tool_use') {
+      toolCalls.push({
+        id: block.id, type: 'function',
+        function: { name: block.name, arguments: JSON.stringify(block.input ?? {}) },
+      })
+    }
+  }
+
+  if (toolCalls.length > 0 && msg.role === 'assistant') {
+    return [{ role: 'assistant', content: openaiContent.length > 0 ? openaiContent : null, tool_calls: toolCalls }]
+  }
+  if (msg.role === 'assistant' && openaiContent.length > 0) {
+    return [{ role: 'assistant', content: openaiContent }]
+  }
+  return [{ role: msg.role, content: msg.content.map((b) => b.content ?? b.text ?? '').join('\n') }]
+}
+
+function convertToAnthropicMessage(msg: LlmMessage): Record<string, unknown> {
+  if (typeof msg.content === 'string') return { role: msg.role, content: msg.content }
+  const content: Record<string, unknown>[] = []
+  for (const block of msg.content) {
+    if (block.type === 'text' && block.text) content.push({ type: 'text', text: block.text })
+    else if (block.type === 'tool_use') content.push({ type: 'tool_use', id: block.id, name: block.name, input: block.input ?? {} })
+    else if (block.type === 'tool_result') content.push({ type: 'tool_result', tool_use_id: block.tool_use_id, content: block.content, is_error: block.is_error })
+  }
+  return { role: msg.role, content }
+}
+
+function findMatchingToolUse(messages: LlmMessage[], toolUseId: string | undefined): LlmContentBlock | null {
+  if (!toolUseId) return null
+  for (const msg of messages) {
+    if (msg.role === 'assistant' && Array.isArray(msg.content)) {
+      for (const block of msg.content) {
+        if (block.type === 'tool_use' && block.id === toolUseId) return block
+      }
+    }
+  }
+  return null
+}
+
+// ─── User Prompt Builder ────────────────────────────────────────────────────
+
+function buildUserPrompt(
+  prompt: string, title: string, files: AgentCodeFile[],
+  mode: 'create' | 'refine', isNew: boolean,
+): string {
+  if (isNew || mode === 'create') {
+    return `Create a website for: ${prompt}\n\nProject title: ${title}\n\nThis is a new project. Start by thinking about the design, then create files one at a time. Begin with the theme.css, then App.tsx, then components. Compile after every few files to catch errors early.`
+  }
+  const fileList = files
+    .filter((f) => f.path !== 'No files yet')
+    .map((f) => `- ${f.path} (${f.language}, ${f.code.split('\n').length} lines)`)
+    .join('\n')
+  return `Update the existing project based on this request: ${prompt}\n\nProject title: ${title}\n\nCurrent files:\n${fileList || '(none)'}\n\nRead files before editing them. Use search_files to find patterns across files. Make minimal, focused changes. Compile after edits to verify.`
+}
+
+// ─── Provider Resolution with Fallback ──────────────────────────────────────
 
 function parseModels(raw: string | null | undefined): ModelInfo[] {
   return (raw ?? '')
     .split(',')
     .map((item) => {
-      const [name, id] = item.split('|').map((part) => part.trim())
+      const [name, id] = item.split('|').map((p) => p.trim())
       return { name: name || id || '', id: id || name || '' }
     })
-    .filter((model) => model.id.length > 0)
+    .filter((m) => m.id.length > 0)
 }
 
-async function resolveProvider(userId: string, selectedModel: SelectedAgentModel | null): Promise<ResolvedProvider> {
-  let key: ProviderKeyRow | null = null
-
-  if (selectedModel) {
-    const { data, error } = await supabase
-      .from('provider_keys')
-      .select('id, provider_id, provider_name, api_key, base_url, models, enabled, is_custom')
-      .eq('user_id', userId)
-      .eq('provider_id', selectedModel.provider_id)
-      .eq('enabled', true)
-      .maybeSingle()
-
-    if (error) throw new Error(`Could not load selected provider: ${error.message}`)
-    key = data as ProviderKeyRow | null
-  } else {
-    const { data, error } = await supabase
-      .from('provider_keys')
-      .select('id, provider_id, provider_name, api_key, base_url, models, enabled, is_custom')
-      .eq('user_id', userId)
-      .eq('enabled', true)
-      .order('created_at', { ascending: true })
-      .limit(1)
-
-    if (error) throw new Error(`Could not load provider: ${error.message}`)
-    key = (data?.[0] ?? null) as ProviderKeyRow | null
+function validateProviderUrl(raw: string): string {
+  const clean = raw.replace(/\/+$/, '')
+  let hostname: string
+  try { hostname = new URL(clean).hostname.toLowerCase() } catch {
+    throw new Error(`Invalid base URL: ${clean.slice(0, 100)}`)
   }
-
-  if (!key) {
-    throw new Error(selectedModel ? 'The selected provider is not enabled.' : 'No enabled provider found.')
+  if (!ALLOWED_PROVIDER_HOSTS.has(hostname)) {
+    throw new Error(
+      `Provider URL host "${hostname}" is not in the allowed list. ` +
+      `Use one of: ${[...ALLOWED_PROVIDER_HOSTS].sort().join(', ')}`,
+    )
   }
-
-  const { data: defaultRow } = await supabase
-    .from('default_models')
-    .select('provider_id, models')
-    .eq('provider_id', key.provider_id)
-    .maybeSingle()
-
-  const defaultModels = parseModels(getRecordString(defaultRow, 'models'))
-  const customModels = parseModels(key.models)
-  const merged = mergeModels(defaultModels, customModels)
-  const selected = selectedModel && selectedModel.provider_id === key.provider_id
-    ? { name: selectedModel.model_name, id: selectedModel.model_id }
-    : merged[0]
-
-  if (!selected?.id) {
-    throw new Error(`No model configured for ${key.provider_name || key.provider_id}.`)
-  }
-
-  const rawBaseUrl = (key.base_url?.trim() || DEFAULT_BASE_URLS[key.provider_id] || '').replace(/\/+$/, '')
-  if (!rawBaseUrl) {
-    throw new Error(`No base URL configured for ${key.provider_name || key.provider_id}.`)
-  }
-  const baseUrl = validateProviderUrl(rawBaseUrl)
-
-  return { key, baseUrl, model: selected }
+  return clean
 }
 
 function mergeModels(defaults: ModelInfo[], custom: ModelInfo[]): ModelInfo[] {
   const seen = new Set<string>()
   const merged: ModelInfo[] = []
-
   for (const model of [...defaults, ...custom]) {
     if (seen.has(model.id)) continue
     seen.add(model.id)
     merged.push(model)
   }
-
   return merged
 }
 
 function getRecordString(value: unknown, key: string): string {
-  const record = value !== null && typeof value === 'object' ? value as Record<string, unknown> : {}
+  const record = value !== null && typeof value === 'object' ? (value as Record<string, unknown>) : {}
   const result = record[key]
   return typeof result === 'string' ? result : ''
 }
 
-function throwIfAborted(signal?: AbortSignal): void {
-  if (signal?.aborted) {
-    throw new DOMException('The agent run was cancelled.', 'AbortError')
+/**
+ * Resolve a provider with fallback support.
+ *
+ * 1. Try the selected model's provider first.
+ * 2. If it fails (circuit open, auth error, etc.), try other enabled providers.
+ * 3. Uses circuit breaker to skip degraded providers.
+ */
+async function resolveProviderWithFallback(
+  userId: string,
+  selectedModel: SelectedAgentModel | null,
+): Promise<ResolvedProvider> {
+  // Load all enabled provider keys
+  const { data: allKeys, error } = await supabase
+    .from('provider_keys')
+    .select('id, provider_id, provider_name, api_key, base_url, models, enabled, is_custom')
+    .eq('user_id', userId)
+    .eq('enabled', true)
+    .order('created_at', { ascending: true })
+
+  if (error) throw new Error(`Could not load providers: ${error.message}`)
+  if (!allKeys || allKeys.length === 0) {
+    throw new Error('No enabled provider found. Add a provider key to get started.')
   }
+
+  const keys = allKeys as ProviderKeyRow[]
+
+  // Sort: preferred provider first, then by creation date
+  let sortedKeys = [...keys]
+  if (selectedModel) {
+    const prefIdx = sortedKeys.findIndex(
+      (k) => k.provider_id === selectedModel.provider_id,
+    )
+    if (prefIdx > 0) {
+      const [pref] = sortedKeys.splice(prefIdx, 1)
+      sortedKeys.unshift(pref)
+    }
+  }
+
+  // Filter out providers with open circuits
+  const healthyKeys = sortedKeys.filter(
+    (k) => !circuitBreaker.isOpen(k.provider_id),
+  )
+
+  if (healthyKeys.length === 0) {
+    throw new Error(
+      'All providers are temporarily unavailable (circuit breaker open). Please wait a moment and try again.',
+    )
+  }
+
+  // Try each healthy provider in order
+  const errors: string[] = []
+
+  for (let i = 0; i < healthyKeys.length; i++) {
+    const key = healthyKeys[i]
+
+    try {
+      const { data: defaultRow } = await supabase
+        .from('default_models')
+        .select('provider_id, models')
+        .eq('provider_id', key.provider_id)
+        .maybeSingle()
+
+      const defaultModels = parseModels(getRecordString(defaultRow, 'models'))
+      const customModels = parseModels(key.models)
+      const merged = mergeModels(defaultModels, customModels)
+
+      const selected =
+        selectedModel && selectedModel.provider_id === key.provider_id
+          ? { name: selectedModel.model_name, id: selectedModel.model_id }
+          : merged[0]
+
+      if (!selected?.id) {
+        errors.push(`${key.provider_name || key.provider_id}: No model configured`)
+        continue
+      }
+
+      const rawBaseUrl = (
+        key.base_url?.trim() || DEFAULT_BASE_URLS[key.provider_id] || ''
+      ).replace(/\/+$/, '')
+
+      if (!rawBaseUrl) {
+        errors.push(`${key.provider_name || key.provider_id}: No base URL configured`)
+        continue
+      }
+
+      const baseUrl = validateProviderUrl(rawBaseUrl)
+
+      return { key, baseUrl, model: selected }
+    } catch (err) {
+      const msg = err instanceof Error ? err.message : String(err)
+      errors.push(`${key.provider_name || key.provider_id}: ${msg}`)
+
+      // Record failure for circuit breaker
+      circuitBreaker.recordFailure(key.provider_id)
+
+      // If this was the preferred provider and there are fallbacks, try them
+      if (i < healthyKeys.length - 1) {
+        continue
+      }
+    }
+  }
+
+  throw new Error(
+    `Could not connect to any provider:\n${errors.map((e) => `  - ${e}`).join('\n')}`,
+  )
 }

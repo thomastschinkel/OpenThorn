@@ -1,9 +1,18 @@
 /**
- * Bloom Agent — System prompt and tool definitions.
+ * Bloom Agent — System prompt, tool definitions, and skill blocks.
  *
- * The agent uses Claude Code-style tool calls: it speaks in natural language
- * and uses tools to read, write, edit, and compile files. Files are created
- * one at a time across multiple turns — not dumped in one JSON response.
+ * ## Design Principles
+ *
+ * 1. **Prompt caching first** — the system prompt is byte-identical across calls.
+ *    Dynamic state goes in `<system-reminder>` user messages, never in the prompt.
+ *
+ * 2. **Progressive disclosure** — skill blocks load on demand when trigger keywords
+ *    match. This keeps the base prompt lean (~1200 tokens) while retaining deep
+ *    knowledge for specific domains (routing, accessibility, animations, etc.).
+ *
+ * 3. **Tools are API-native** — the system prompt references tool names but does
+ *    NOT duplicate their descriptions. The API's native tool schema is the
+ *    authoritative source for parameter details.
  */
 
 // ─── Tool Definitions ──────────────────────────────────────────────────────
@@ -19,108 +28,11 @@ export interface ToolDefinition {
   }
 }
 
+/**
+ * Tools sorted alphabetically so the JSON is byte-identical across calls.
+ * Non-deterministic ordering kills prompt-cache prefix matching.
+ */
 export const AGENT_TOOLS: ToolDefinition[] = [
-  {
-    name: 'think',
-    description:
-      'Think through a design decision, architecture choice, or implementation approach. ' +
-      'Use this before writing any code to reason about structure, colors, typography, ' +
-      'component boundaries, and responsive strategy. The thinking content is shown to ' +
-      'the user in a collapsible block — be thorough but concise.',
-    input_schema: {
-      type: 'object',
-      properties: {
-        thought: {
-          type: 'string',
-          description: 'Your reasoning about the design decision or approach.',
-        },
-      },
-      required: ['thought'],
-      additionalProperties: false,
-    },
-  },
-  {
-    name: 'list_files',
-    description:
-      'List all files currently in the virtual project. Use this to understand ' +
-      'the current state of the project before making changes.',
-    input_schema: {
-      type: 'object',
-      properties: {},
-      additionalProperties: false,
-    },
-  },
-  {
-    name: 'read_file',
-    description:
-      'Read the full content of a file in the virtual project. Use this before ' +
-      'editing a file or to understand the current implementation.',
-    input_schema: {
-      type: 'object',
-      properties: {
-        path: {
-          type: 'string',
-          description: 'The file path to read, e.g. "src/App.tsx" or "src/styles/theme.css".',
-        },
-      },
-      required: ['path'],
-      additionalProperties: false,
-    },
-  },
-  {
-    name: 'write_file',
-    description:
-      'Create a new file or overwrite an existing file. This writes the complete ' +
-      'file content. Use this for creating new files or fully replacing a file. ' +
-      'For targeted changes to existing files, prefer edit_file.',
-    input_schema: {
-      type: 'object',
-      properties: {
-        path: {
-          type: 'string',
-          description: 'The file path, e.g. "src/components/Hero.tsx". Must be under src/.',
-        },
-        language: {
-          type: 'string',
-          enum: ['tsx', 'ts', 'jsx', 'js', 'css', 'json'],
-          description: 'The file language/type.',
-        },
-        code: {
-          type: 'string',
-          description: 'The complete file content. Must be valid code, not empty.',
-        },
-      },
-      required: ['path', 'language', 'code'],
-      additionalProperties: false,
-    },
-  },
-  {
-    name: 'edit_file',
-    description:
-      'Make a targeted edit to an existing file by replacing an exact string ' +
-      'with a new string. The old_string must match exactly (including indentation). ' +
-      'Use this for small, focused changes. For creating new files or fully ' +
-      'rewriting a file, use write_file.',
-    input_schema: {
-      type: 'object',
-      properties: {
-        path: {
-          type: 'string',
-          description: 'The file path to edit.',
-        },
-        old_string: {
-          type: 'string',
-          description: 'The exact text to replace. Must be unique in the file.',
-        },
-        new_string: {
-          type: 'string',
-          description: 'The replacement text.',
-        },
-      },
-      required: ['path', 'old_string', 'new_string'],
-      additionalProperties: false,
-    },
-  },
   {
     name: 'compile',
     description:
@@ -148,7 +60,8 @@ export const AGENT_TOOLS: ToolDefinition[] = [
         },
         title: {
           type: 'string',
-          description: 'A short, descriptive title for the project (3-6 words). Make it specific to what was built — not generic like "Website" or "Project".',
+          description:
+            'A short, descriptive title for the project (3-6 words). Make it specific to what was built — not generic like "Website" or "Project".',
         },
         nextSuggestions: {
           type: 'array',
@@ -160,85 +73,461 @@ export const AGENT_TOOLS: ToolDefinition[] = [
       additionalProperties: false,
     },
   },
+  {
+    name: 'edit_file',
+    description:
+      'Make a targeted edit to an existing file by replacing an exact string ' +
+      'with a new string. The old_string must match exactly (including indentation). ' +
+      'Use this for small, focused changes. For creating new files or fully ' +
+      'rewriting a file, use write_file.',
+    input_schema: {
+      type: 'object',
+      properties: {
+        path: { type: 'string', description: 'The file path to edit.' },
+        old_string: {
+          type: 'string',
+          description: 'The exact text to replace. Must be unique in the file.',
+        },
+        new_string: { type: 'string', description: 'The replacement text.' },
+      },
+      required: ['path', 'old_string', 'new_string'],
+      additionalProperties: false,
+    },
+  },
+  {
+    name: 'list_files',
+    description:
+      'List all files currently in the virtual project. Use this to understand ' +
+      'the current state of the project before making changes.',
+    input_schema: { type: 'object', properties: {}, additionalProperties: false },
+  },
+  {
+    name: 'read_file',
+    description:
+      'Read the content of a file in the virtual project. Use this before ' +
+      'editing a file or to understand the current implementation. ' +
+      'For large files, specify offset and limit to read a range of lines.',
+    input_schema: {
+      type: 'object',
+      properties: {
+        path: {
+          type: 'string',
+          description:
+            'The file path to read, e.g. "src/App.tsx" or "src/styles/theme.css".',
+        },
+        offset: {
+          type: 'integer',
+          description:
+            'Line number to start reading from (1-based). Defaults to 1.',
+        },
+        limit: {
+          type: 'integer',
+          description:
+            'Maximum number of lines to read. Defaults to 500. If the file has more lines, the output is truncated with a note.',
+        },
+      },
+      required: ['path'],
+      additionalProperties: false,
+    },
+  },
+  {
+    name: 'search_files',
+    description:
+      'Search across all project files using a regex pattern. Returns matching ' +
+      'lines with file paths and line numbers. Use this to find references, ' +
+      'imports, function usages, or any pattern without reading every file individually.',
+    input_schema: {
+      type: 'object',
+      properties: {
+        pattern: {
+          type: 'string',
+          description: 'The regex pattern to search for.',
+        },
+        glob: {
+          type: 'string',
+          description:
+            'Optional glob pattern to filter files, e.g. "*.tsx", "src/components/**".',
+        },
+        output_mode: {
+          type: 'string',
+          enum: ['content', 'files_with_matches', 'count'],
+          description: 'Output mode (default: "content").',
+        },
+        context_lines: {
+          type: 'integer',
+          description:
+            'Number of context lines around each match (default: 0).',
+        },
+      },
+      required: ['pattern'],
+      additionalProperties: false,
+    },
+  },
+  {
+    name: 'think',
+    description:
+      'Think through a design decision, architecture choice, or implementation approach. ' +
+      'Use this before writing any code to reason about structure, colors, typography, ' +
+      'component boundaries, and responsive strategy.',
+    input_schema: {
+      type: 'object',
+      properties: {
+        thought: {
+          type: 'string',
+          description: 'Your reasoning about the design decision or approach.',
+        },
+      },
+      required: ['thought'],
+      additionalProperties: false,
+    },
+  },
+  {
+    name: 'write_file',
+    description:
+      'Create a new file or overwrite an existing file. This writes the complete ' +
+      'file content. Use this for creating new files or fully replacing a file. ' +
+      'For targeted changes to existing files, prefer edit_file.',
+    input_schema: {
+      type: 'object',
+      properties: {
+        path: {
+          type: 'string',
+          description:
+            'The file path, e.g. "src/components/Hero.tsx". Must be under src/.',
+        },
+        language: {
+          type: 'string',
+          enum: ['tsx', 'ts', 'jsx', 'js', 'css', 'json'],
+          description: 'The file language/type.',
+        },
+        code: {
+          type: 'string',
+          description:
+            'The complete file content. Must be valid code, not empty.',
+        },
+      },
+      required: ['path', 'language', 'code'],
+      additionalProperties: false,
+    },
+  },
+  {
+    name: 'spawn_subagent',
+    description:
+      'Spawn a read-only subagent to research, audit, or analyze code independently. ' +
+      'The subagent runs in an isolated context and returns a structured summary. ' +
+      'Use this for tasks like accessibility audits, design research, code review, ' +
+      'or finding patterns across many files. The subagent cannot modify files.',
+    input_schema: {
+      type: 'object',
+      properties: {
+        task: {
+          type: 'string',
+          description:
+            'A focused, specific task for the subagent. Be clear about what to find or analyze.',
+        },
+        context: {
+          type: 'string',
+          description:
+            'Additional context: which files to examine, what patterns to look for, or specific questions to answer.',
+        },
+      },
+      required: ['task'],
+      additionalProperties: false,
+    },
+  },
 ]
 
-// ─── System Prompt ─────────────────────────────────────────────────────────
+// ─── Tool category map (for parallel execution) ────────────────────────────
+
+export const TOOL_CATEGORIES: Record<string, 'read' | 'write' | 'compile' | 'done' | 'subagent'> = {
+  think: 'read',
+  list_files: 'read',
+  read_file: 'read',
+  search_files: 'read',
+  write_file: 'write',
+  edit_file: 'write',
+  compile: 'compile',
+  done: 'done',
+  spawn_subagent: 'subagent',
+}
+
+// ─── System Prompt (optimized — ~1200 tokens, static for caching) ──────────
 
 export const AGENT_SYSTEM_PROMPT = `You are Bloom, an expert website-builder agent. You build complete, polished frontend websites using React, TypeScript, and CSS.
 
-## Your Environment
+<persona>
+You are methodical, design-conscious, and precise. Think before you act. Read before you edit. Compile after every change. Never leave placeholders or TODOs.
+</persona>
 
-- **Stack:** React 18+, TypeScript, CSS
-- **Entry point:** src/App.tsx renders into #root
-- **JSX transform:** automatic — do not import React just for JSX
-- **Available packages:** react, react-dom, and react-router-dom (v6)
-- **Routing:** You can build multi-page apps with react-router-dom. Import from "react-router-dom" as usual.
-- **CSS:** One src/styles/theme.css file with CSS custom properties (create additional CSS files under src/styles/ if needed)
-- **Components:** One default-exported component per file under src/components/ or src/pages/
-- **Assets:** No external images, CDNs, or icon libraries. Use CSS gradients, inline SVG, semantic markup, and system typography.
-- **Responsive:** Always support 390px phone, 768px tablet, and 1200px+ desktop.
+<environment>
+Stack: React 18+ with automatic JSX. TypeScript. CSS with custom properties.
+Entry: src/App.tsx renders into #root.
+Packages: react, react-dom, react-router-dom (v6). Nothing else.
+Components: One default export per file. src/components/ or src/pages/.
+CSS: src/styles/theme.css. No external CDNs, fonts, icons, or images.
+Responsive: 390px phone, 768px tablet, 1200px+ desktop.
+</environment>
 
-## Routing with react-router-dom
+<examples>
 
-When the user asks for multiple pages (e.g. Home, About, Contact, Products), use react-router-dom to create proper routes:
+User: "Build a landing page for a SaaS product"
+Assistant:
+  - thinks about brand colors, typography, layout strategy
+  - writes src/styles/theme.css (CSS custom properties, mobile-first)
+  - writes src/App.tsx (minimal, imports pages)
+  - writes src/pages/Home.tsx (hero, features, CTA sections)
+  - writes src/components/Navbar.tsx
+  - writes src/components/Footer.tsx
+  - compiles → fixes any errors → compiles again → calls done
 
-- Import \`BrowserRouter\`, \`Routes\`, \`Route\`, \`Link\`, \`NavLink\`, \`useNavigate\`, \`useParams\` from \`"react-router-dom"\`
+User: "Add a dark mode toggle to the existing site"
+Assistant:
+  - list_files to see current structure
+  - read_file src/styles/theme.css to understand current variables
+  - thinks about dark mode strategy (CSS custom properties + data-theme)
+  - edit_file src/styles/theme.css to add [data-theme="dark"] variables
+  - read_file src/App.tsx
+  - edit_file src/App.tsx to add toggle state + data-theme on root
+  - write_file src/components/ThemeToggle.tsx
+  - compiles → fixes errors → calls done
+
+User: "Find all places where we use inline styles and suggest a better approach"
+Assistant:
+  - search_files pattern="style=\\\\{" glob="*.tsx" to find inline styles
+  - reads relevant files to understand context
+  - spawn_subagent task="Audit inline style usage and recommend CSS variable replacements"
+  - reports findings to user
+
+</examples>
+
+<workflow>
+1. **think** — reason about design before writing code
+2. **list_files** — see what exists
+3. **write_file** — create files one at a time (theme.css → App.tsx → pages → components)
+4. **compile** — after every few files to catch errors early
+5. **edit_file** — for small targeted fixes (never rewrite whole files)
+6. **search_files** — find patterns, imports, references across files
+7. **spawn_subagent** — offload research or audits to a read-only subagent
+8. **done** — when the project compiles and all features are complete
+</workflow>
+
+<rules>
+- Never create a file with empty content.
+- Never import packages beyond react, react-dom, react-router-dom.
+- Never use external CDN fonts, icons, or images.
+- Never leave placeholder comments (TODO, FIXME).
+- Use valid TypeScript. Avoid \`any\`.
+- All files under src/. No path traversal.
+- When compile returns errors: read the file, understand the problem, edit precisely.
+</rules>
+
+<routing-hint>
+If the user asks for multiple pages, use react-router-dom. See the routing skill for details — it loads automatically when needed.
+</routing-hint>`
+
+// ─── Skill Blocks (Progressive Disclosure) ─────────────────────────────────
+
+/**
+ * Skills load on demand when trigger keywords match the user's request.
+ * Metadata is always visible; body is injected via <system-reminder> when triggered.
+ * This keeps the base prompt lean while providing deep knowledge on demand.
+ */
+export interface SkillBlock {
+  id: string
+  /** Short description shown in the skill list (always in context). */
+  description: string
+  /** Keywords that trigger this skill to load its full body. Case-insensitive. */
+  triggers: string[]
+  /** The full skill body, injected as a <system-reminder> when triggered. */
+  body: string
+}
+
+export const SKILL_BLOCKS: SkillBlock[] = [
+  {
+    id: 'routing',
+    description: 'Multi-page apps with react-router-dom v6',
+    triggers: [
+      'pages',
+      'routing',
+      'navigation',
+      'multi-page',
+      'router',
+      'react-router',
+      'link',
+      'navlink',
+      'browserrouter',
+      'routes',
+      'useparams',
+      'usenavigate',
+      'outlet',
+      '404',
+      'not found page',
+    ],
+    body: `<system-reminder>
+The "routing" skill has been activated because this project involves multi-page navigation.
+
+<routing-skill>
+Use react-router-dom v6 for multi-page apps:
+
 - Wrap your app in \`<BrowserRouter>\` at the top level (in App.tsx)
 - Define routes with \`<Routes>\` and \`<Route path="..." element={...} />\`
-- Use \`<Link>\` or \`<NavLink>\` for navigation (never plain \`<a href>\` for internal links)
-- Create page components in \`src/pages/\` (e.g. \`src/pages/Home.tsx\`, \`src/pages/About.tsx\`)
-- Use \`<Outlet />\` for shared layouts
-- Always include a catch-all \`<Route path="*" element={<NotFound />} />\` for 404 pages
-- For single-page websites, a multi-section scroll layout without react-router-dom is still fine
+- Use \`<Link>\` or \`<NavLink>\` for navigation — never plain \`<a href>\` for internal links
+- Create page components in \`src/pages/\` (e.g. Home.tsx, About.tsx)
+- Use \`<Outlet />\` for shared layouts with nested routes
+- Always include \`<Route path="*" element={<NotFound />} />\` as the last route
+- The Navbar lives in src/components/ and uses Link/NavLink
 
-**Route structure example:**
-\`\`\`
-src/App.tsx — BrowserRouter + Routes + shared Layout
-src/pages/Home.tsx
-src/pages/About.tsx
-src/pages/Contact.tsx
-src/pages/NotFound.tsx
-src/components/Navbar.tsx — contains Link/NavLink elements
-src/components/Footer.tsx
-src/styles/theme.css
-\`\`\`
+Example route structure:
+  src/App.tsx       → BrowserRouter + Routes + shared Layout
+  src/pages/Home.tsx
+  src/pages/About.tsx
+  src/pages/NotFound.tsx
+  src/components/Navbar.tsx
+  src/components/Footer.tsx
 
-## How You Work
+For single-page scroll sites, skip react-router-dom entirely — use id anchors and scrollIntoView instead.
+</routing-skill>
+</system-reminder>`,
+  },
+  {
+    id: 'accessibility',
+    description: 'WCAG compliance, screen readers, keyboard navigation',
+    triggers: [
+      'accessible',
+      'accessibility',
+      'a11y',
+      'wcag',
+      'screen reader',
+      'keyboard',
+      'focus',
+      'aria',
+      'contrast',
+      'alt text',
+    ],
+    body: `<system-reminder>
+The "accessibility" skill has been activated because this project involves accessibility requirements.
 
-You have access to tools: **think**, **list_files**, **read_file**, **write_file**, **edit_file**, **compile**, and **done**.
+<accessibility-skill>
+- Use semantic HTML: <header>, <nav>, <main>, <section>, <article>, <aside>, <footer>
+- Every <input>, <select>, <textarea> needs an associated <label>
+- Visible focus outlines on all interactive elements (never outline: none without a replacement)
+- Color contrast: at least 4.5:1 for body text, 3:1 for large text (18px+ bold or 24px+ regular)
+- Images and icons: aria-label or aria-hidden with adjacent screen-reader text
+- Use button for actions, a for navigation — never div onClick for interactive elements
+- Add aria-current="page" to the active nav link
+- Test: can you navigate the entire site with just the Tab key?
+</accessibility-skill>
+</system-reminder>`,
+  },
+  {
+    id: 'animation',
+    description: 'CSS animations, transitions, micro-interactions',
+    triggers: [
+      'animation',
+      'animate',
+      'transition',
+      'motion',
+      'fade',
+      'slide',
+      'scroll animation',
+      'micro-interaction',
+      'hover effect',
+    ],
+    body: `<system-reminder>
+The "animation" skill has been activated because this project involves animations or transitions.
 
-Your approach is up to you — there is no fixed checklist. Typically you will:
+<animation-skill>
+- Prefer CSS transitions and @keyframes over JavaScript animation libraries
+- Use transform and opacity for performant animations (they only trigger compositing, not layout)
+- Add prefers-reduced-motion: no-preference around animations:
+  \`\`\`css
+  @media (prefers-reduced-motion: no-preference) {
+    .element { animation: fadeIn 0.5s ease; }
+  }
+  \`\`\`
+- Scroll-triggered animations: use Intersection Observer with a CSS class toggle
+- Keep animations subtle: 200-500ms duration, ease-out or cubic-bezier curves
+- Stagger child animations with animation-delay for list items
+</animation-skill>
+</system-reminder>`,
+  },
+  {
+    id: 'forms',
+    description: 'Form validation, controlled inputs, submission handling',
+    triggers: [
+      'form',
+      'validation',
+      'input',
+      'contact form',
+      'signup',
+      'login',
+      'subscribe',
+      'newsletter',
+    ],
+    body: `<system-reminder>
+The "forms" skill has been activated because this project involves form handling.
 
-1. Use **think** to reason about the design before writing code
-2. Use **list_files** to see what already exists
-3. Use **write_file** to create files one at a time, starting with the foundation (theme.css, then App.tsx, then pages/components)
-4. Use **compile** periodically to catch errors early
-5. Use **edit_file** for small targeted fixes
-6. Use **done** when the project compiles and is complete
+<forms-skill>
+- Use controlled inputs with React useState (value + onChange)
+- Validate on blur, not on every keystroke (better UX)
+- Show inline error messages next to the offending field, not in a generic banner
+- Disable the submit button while submitting (prevents double-submit)
+- Add type="email", required, minLength, pattern attributes for HTML5 validation as a first line
+- Loading state: show a spinner or "Sending..." text on the submit button
+- Success state: clear the form or show a confirmation message
+- Error state: show the error message and re-enable the button
+- All inputs need accessible labels (see accessibility skill)
+</forms-skill>
+</system-reminder>`,
+  },
+]
 
-**Create files one at a time.** Write a file, then write the next. This keeps the project state consistent and makes errors easy to fix. After writing a few files, compile to check your work.
+/**
+ * Determine which skill blocks should be activated based on the user's prompt.
+ * Returns the skill bodies to inject (only those whose triggers match).
+ */
+export function resolveActiveSkills(prompt: string): string[] {
+  const lower = prompt.toLowerCase()
+  const active: string[] = []
 
-**Fix errors precisely.** When compile returns errors, read the affected file, understand the problem, and make a targeted fix with edit_file. Do not rewrite the whole file unless necessary.
+  for (const skill of SKILL_BLOCKS) {
+    const triggered = skill.triggers.some((trigger) =>
+      lower.includes(trigger.toLowerCase()),
+    )
+    if (triggered) {
+      active.push(skill.body)
+    }
+  }
 
-## Design Principles
+  return active
+}
 
-- Pick 2-3 brand colors plus neutrals. Use CSS custom properties.
-- One system font stack. Clear typography hierarchy with clamp() for responsive sizing.
-- Consistent spacing scale: 4, 8, 12, 16, 24, 32, 48, 64, 96px.
-- Mobile-first CSS. Layer on min-width media queries.
-- Semantic HTML landmarks. Visible focus states. Adequate contrast.
-- Domain-specific copy, labels, and CTAs that match the user's request.
-- Each component file has exactly one default export.
-- All files live under src/. No path traversal.
+// ─── Compaction Prompt ─────────────────────────────────────────────────────
 
-## Hard Rules
+export const COMPACTION_PROMPT = `<system-reminder>
+The conversation has been compacted to save context. Older tool outputs (file reads, listings, search results, compile output) have been truncated. The current project file state is accurate in the workspace. Below is a summary of progress so far.
+</system-reminder>`
 
-- Never create a file with empty content.
-- Never import packages other than react, react-dom, or react-router-dom.
-- Never use external CDN fonts, icons, or images.
-- Never leave placeholder comments (TODO, FIXME, "add code here").
-- Use valid TypeScript. Avoid \`any\` unless absolutely necessary.
-- The user should be able to compile and view the site at any point.`
+// ─── Subagent System Prompt ────────────────────────────────────────────────
+
+export const SUBAGENT_SYSTEM_PROMPT = `You are a focused research subagent for Bloom. You analyze code and answer questions about the project's files. You have read-only access — you CANNOT modify any files.
+
+<tools>
+- think — reason about your analysis
+- list_files — see all files in the project
+- read_file — read file contents
+- search_files — search across files with regex patterns
+</tools>
+
+<output-format>
+Return your findings in this exact JSON structure:
+{
+  "findings": "Your detailed analysis and findings. Be specific — cite file paths and line numbers.",
+  "recommendations": ["Actionable recommendation 1", "Actionable recommendation 2", ...],
+  "filesExamined": ["path/to/file1.tsx", "path/to/file2.css"]
+}
+Wrap your JSON in \`\`\`json ... \`\`\` markers.
+</output-format>`
 
 // ─── Legacy JSON Parser (kept for backward compatibility) ──────────────────
 
@@ -252,7 +541,18 @@ export interface AgentResponse {
 }
 
 export interface StreamEvent {
-  type: 'thought' | 'plan_start' | 'plan_item' | 'files_start' | 'file_start' | 'file_chunk' | 'file_end' | 'files_end' | 'suggestions' | 'done' | 'error'
+  type:
+    | 'thought'
+    | 'plan_start'
+    | 'plan_item'
+    | 'files_start'
+    | 'file_start'
+    | 'file_chunk'
+    | 'file_end'
+    | 'files_end'
+    | 'suggestions'
+    | 'done'
+    | 'error'
   text?: string
   index?: number
   item?: string
@@ -293,9 +593,12 @@ export function parseAgentResponse(raw: string): AgentResponse | null {
 
     parsed.nextSuggestions = Array.isArray(parsed.nextSuggestions)
       ? parsed.nextSuggestions
-        .filter((item: unknown) => typeof item === 'string' && item.trim().length > 0)
-        .map((item: string) => item.trim())
-        .slice(0, 4)
+          .filter(
+            (item: unknown) =>
+              typeof item === 'string' && item.trim().length > 0,
+          )
+          .map((item: string) => item.trim())
+          .slice(0, 4)
       : []
 
     return parsed as AgentResponse
@@ -305,7 +608,10 @@ export function parseAgentResponse(raw: string): AgentResponse | null {
 }
 
 function extractJsonObject(raw: string): string | null {
-  const trimmed = raw.replace(/^```(?:json)?\s*/i, '').replace(/\s*```$/i, '').trim()
+  const trimmed = raw
+    .replace(/^```(?:json)?\s*/i, '')
+    .replace(/\s*```$/i, '')
+    .trim()
   if (trimmed.startsWith('{') && trimmed.endsWith('}')) return trimmed
 
   let start = -1
