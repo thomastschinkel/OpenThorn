@@ -9,8 +9,12 @@ interface Project {
   title: string
 }
 
+export type ProjectFilter = 'all' | 'starred' | 'mine'
+
 interface DashboardSidebarProps {
   projects?: Project[]
+  activeFilter?: ProjectFilter
+  onProjectFilterChange?: (filter: ProjectFilter) => void
 }
 
 interface NavItem {
@@ -104,7 +108,13 @@ const projectNavItems: NavItem[] = [
   },
 ]
 
-export default function DashboardSidebar({ projects = [] }: DashboardSidebarProps) {
+const filterMap: Record<string, ProjectFilter> = {
+  'All projects': 'all',
+  'Starred': 'starred',
+  'Created by me': 'mine',
+}
+
+export default function DashboardSidebar({ projects = [], activeFilter = 'all', onProjectFilterChange }: DashboardSidebarProps) {
   const { user, signOut } = useAuth()
   const navigate = useNavigate()
   const location = useLocation()
@@ -125,6 +135,15 @@ export default function DashboardSidebar({ projects = [] }: DashboardSidebarProp
     setActiveNav(label)
     if (label === 'Providers') navigate('/providers')
     if (label === 'Home') navigate('/dashboard')
+  }
+
+  const handleProjectFilterClick = (label: string) => {
+    const filter = filterMap[label]
+    if (filter && onProjectFilterChange) {
+      onProjectFilterChange(filter)
+      setActiveNav(label)
+      navigate('/dashboard')
+    }
   }
 
   const firstName = user?.user_metadata?.full_name?.split(' ')[0] ?? user?.email?.split('@')[0] ?? 'there'
@@ -196,7 +215,17 @@ export default function DashboardSidebar({ projects = [] }: DashboardSidebarProp
         {/* Projects section */}
         <div className={styles.navGroup}>
           <div className={styles.sectionLabel}>Projects</div>
-          {projectNavItems.map((item) => renderNavItem(item, activeNav === item.label, true))}
+          {projectNavItems.map((item) => (
+            <button
+              key={item.label}
+              className={`${styles.navItem} ${styles.navItemSub} ${filterMap[item.label] === activeFilter ? styles.navItemActive : ''}`}
+              onClick={() => handleProjectFilterClick(item.label)}
+              type="button"
+            >
+              <span className={styles.navIcon}>{item.icon}</span>
+              <span className={styles.navLabel}>{item.label}</span>
+            </button>
+          ))}
         </div>
 
         {/* Recent projects */}

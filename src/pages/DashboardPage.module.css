@@ -120,6 +120,7 @@
   border-radius: var(--radius-lg);
   overflow: hidden;
   cursor: pointer;
+  position: relative;
   transition: border-color 0.25s ease, transform 0.25s ease, box-shadow 0.25s ease;
 }
 
@@ -228,6 +229,47 @@
 @keyframes fadeIn {
   from { opacity: 0; transform: translateY(-4px); }
   to { opacity: 1; transform: translateY(0); }
+}
+
+/* Star button */
+.starBtn {
+  position: absolute;
+  top: 8px;
+  left: 8px;
+  width: 28px;
+  height: 28px;
+  border-radius: 6px;
+  background: rgba(0, 0, 0, 0.4);
+  color: rgba(255, 255, 255, 0.55);
+  border: none;
+  cursor: pointer;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  opacity: 0;
+  transition: opacity 0.15s ease, background 0.15s ease, color 0.15s ease;
+  z-index: 2;
+}
+
+.projectCard:hover .starBtn,
+.starBtn:focus-visible {
+  opacity: 1;
+}
+
+.starBtn:hover {
+  background: rgba(0, 0, 0, 0.6);
+  color: #fff;
+}
+
+.starBtnActive {
+  opacity: 1;
+  color: #f59e0b;
+  background: rgba(0, 0, 0, 0.4);
+}
+
+.starBtnActive:hover {
+  color: #fbbf24;
+  background: rgba(0, 0, 0, 0.6);
 }
 
 /* Context menu button (three dots) */

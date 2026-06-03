@@ -2,16 +2,18 @@ import { useState, useEffect, useCallback, useRef } from 'react'
 import { useNavigate } from 'react-router-dom'
 import { useAuth } from '../lib/AuthContext'
 import { supabase } from '../lib/supabase'
-import DashboardSidebar from '../components/DashboardSidebar/DashboardSidebar'
+import DashboardSidebar, { type ProjectFilter } from '../components/DashboardSidebar/DashboardSidebar'
 import PromptInput from '../components/PromptInput/PromptInput'
 import type { SelectedModel } from '../components/ModelSelector/ModelSelector'
 import styles from './DashboardPage.module.css'
 
 interface Project {
   id: string
+  user_id: string
   title: string
   preview_url: string | null
   created_at: string
+  starred: boolean
 }
 
 const examplePrompts = [
@@ -34,6 +36,7 @@ export default function DashboardPage() {
   const [projects, setProjects] = useState<Project[]>([])
   const [projectsLoading, setProjectsLoading] = useState(true)
   const [showAllPrompts, setShowAllPrompts] = useState(false)
+  const [activeFilter, setActiveFilter] = useState<ProjectFilter>('all')
   const [modelError, setModelError] = useState(false)
   const [contextMenu, setContextMenu] = useState<{ projectId: string; x: number; y: number } | null>(null)
   const [renamingProject, setRenamingProject] = useState<{ id: string; title: string } | null>(null)
@@ -69,7 +72,7 @@ export default function DashboardPage() {
     const fetchProjects = async () => {
       const { data, error } = await supabase
         .from('projects')
-        .select('id, title, preview_url, created_at')
+        .select('id, user_id, title, preview_url, created_at, starred')
         .eq('user_id', user.id)
         .order('created_at', { ascending: false })
 
@@ -173,9 +176,35 @@ export default function DashboardPage() {
     window.open(`/projects/${projectId}`, '_blank')
   }, [])
 
+  const handleStarToggle = useCallback(async (projectId: string, e: React.MouseEvent) => {
+    e.stopPropagation()
+    if (!user) return
+    const project = projects.find((p) => p.id === projectId)
+    if (!project) return
+    const newStarred = !project.starred
+    setProjects((prev) => prev.map((p) => p.id === projectId ? { ...p, starred: newStarred } : p))
+    const { error } = await supabase
+      .from('projects')
+      .update({ starred: newStarred })
+      .eq('id', projectId)
+      .eq('user_id', user.id)
+    if (error) {
+      console.error('Failed to update starred:', error.message)
+      setProjects((prev) => prev.map((p) => p.id === projectId ? { ...p, starred: !newStarred } : p))
+    }
+  }, [projects, user])
+
   const handleExampleClick = (prompt: string) => {
     setPromptDefault(prompt)
   }
+
+  const filteredProjects = projects.filter((p) => {
+    if (activeFilter === 'starred') return p.starred
+    if (activeFilter === 'mine') return p.user_id === user?.id
+    return true
+  })
+
+  const filterLabel = activeFilter === 'starred' ? 'Starred projects' : activeFilter === 'mine' ? 'Created by me' : 'Your projects'
 
   if (authLoading) return null
 
@@ -183,7 +212,11 @@ export default function DashboardPage() {
 
   return (
     <div className={styles.root}>
-      <DashboardSidebar projects={projects} />
+      <DashboardSidebar
+        projects={projects}
+        activeFilter={activeFilter}
+        onProjectFilterChange={setActiveFilter}
+      />
 
       <main className={`${styles.main} ${hasProjects ? styles.mainWithProjects : ''}`}>
         <div className={styles.content}>
@@ -225,13 +258,13 @@ export default function DashboardPage() {
 
           {/* Projects section */}
           <section className={styles.projectsSection}>
-            <h2 className={styles.sectionTitle}>Your projects</h2>
+            <h2 className={styles.sectionTitle}>{filterLabel}</h2>
 
             {projectsLoading ? (
               <div className={styles.emptyState}>
                 <p className={styles.emptyText}>Loading projects…</p>
               </div>
-            ) : projects.length === 0 ? (
+            ) : filteredProjects.length === 0 ? (
               <div className={styles.emptyState}>
                 <div className={styles.emptyIcon}>
                   <svg width="40" height="40" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round">
@@ -240,14 +273,18 @@ export default function DashboardPage() {
                     <line x1="9" y1="21" x2="9" y2="9"/>
                   </svg>
                 </div>
-                <h3 className={styles.emptyTitle}>No projects yet</h3>
+                <h3 className={styles.emptyTitle}>
+                  {activeFilter === 'starred' ? 'No starred projects' : activeFilter === 'mine' ? 'No projects yet' : 'No projects yet'}
+                </h3>
                 <p className={styles.emptyText}>
-                  Describe what you want to build above and hit Send to create your first project.
+                  {activeFilter === 'starred'
+                    ? 'Star a project to find it here quickly.'
+                    : 'Describe what you want to build above and hit Send to create your first project.'}
                 </p>
               </div>
             ) : (
               <div className={styles.projectGrid}>
-                {projects.map((project) => (
+                {filteredProjects.map((project) => (
                   <div
                     key={project.id}
                     className={styles.projectCard}
@@ -301,6 +338,16 @@ export default function DashboardPage() {
                       </span>
                     </div>
                     <button
+                      className={`${styles.starBtn} ${project.starred ? styles.starBtnActive : ''}`}
+                      type="button"
+                      aria-label={project.starred ? 'Unstar project' : 'Star project'}
+                      onClick={(e) => handleStarToggle(project.id, e)}
+                    >
+                      <svg width="14" height="14" viewBox="0 0 24 24" fill={project.starred ? 'currentColor' : 'none'} stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+                        <polygon points="12 2 15.09 8.26 22 9.27 17 14.14 18.18 21.02 12 17.77 5.82 21.02 7 14.14 2 9.27 8.91 8.26 12 2"/>
+                      </svg>
+                    </button>
+                    <button
                       className={styles.contextMenuBtn}
                       type="button"
                       aria-label="Project actions"
@@ -328,6 +375,18 @@ export default function DashboardPage() {
               className={styles.contextMenu}
               style={{ top: contextMenu.y, left: contextMenu.x }}
             >
+              <button
+                type="button"
+                onClick={(e) => {
+                  handleStarToggle(contextMenu.projectId, e)
+                  setContextMenu(null)
+                }}
+              >
+                <svg width="14" height="14" viewBox="0 0 24 24" fill={projects.find((p) => p.id === contextMenu.projectId)?.starred ? 'currentColor' : 'none'} stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" style={{ color: projects.find((p) => p.id === contextMenu.projectId)?.starred ? '#f59e0b' : undefined }}>
+                  <polygon points="12 2 15.09 8.26 22 9.27 17 14.14 18.18 21.02 12 17.77 5.82 21.02 7 14.14 2 9.27 8.91 8.26 12 2"/>
+                </svg>
+                {projects.find((p) => p.id === contextMenu.projectId)?.starred ? 'Unstar' : 'Star'}
+              </button>
               <button
                 type="button"
                 onClick={(e) => {
