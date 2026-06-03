@@ -1,120 +1,31 @@
-import { supabase } from './supabase'
-
-export interface CodeFile {
-  path: string
-  language: string
-  code: string
+export interface DeployResult {
+  url: string
+  siteId: string
 }
 
-function escapeHtml(value: string): string {
-  return value
-    .replace(/&/g, '&amp;')
-    .replace(/</g, '&lt;')
-    .replace(/>/g, '&gt;')
-    .replace(/"/g, '&quot;')
-}
+export async function deployToNetlify(
+  projectId: string,
+  html: string,
+  existingSiteId?: string | null,
+): Promise<DeployResult> {
+  const res = await fetch('/.netlify/functions/deploy-netlify', {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify({ projectId, html, existingSiteId }),
+  })
 
-export function bundleProject(files: CodeFile[], title: string): string {
-  let css = ''
-  let components = ''
-
-  for (const file of files) {
-    if (file.language === 'css') {
-      css += `/* ${file.path} */\n${file.code}\n`
-    } else if (file.language === 'tsx' || file.language === 'jsx') {
-      // Strip import/export — Babel standalone runs everything in one scope
-      const cleaned = file.code
-        .replace(/^\s*import\s+.*$/gm, '')
-        .replace(/^\s*export\s+default\s+/gm, 'const Default_')
-        .replace(/^\s*export\s+/gm, '')
-        // Remove react-router-dom imports since Router globals are available via UMD
-        .replace(/import\s+\{([^}]*)\}\s+from\s+['"]react-router-dom['"]\s*;?/gm, '')
-        .replace(/import\s+\*\s+as\s+(\w+)\s+from\s+['"]react-router-dom['"]\s*;?/gm, '')
-      components += `// ${file.path}\n${cleaned}\n`
-    } else {
-      components += `// ${file.path}\n${file.code}\n`
-    }
+  if (!res.ok) {
+    const body = await res.text().catch(() => res.statusText)
+    throw new Error(`Deploy failed: ${body || res.statusText}`)
   }
 
-  return `<!DOCTYPE html>
-<html lang="en">
-<head>
-  <meta charset="UTF-8">
-  <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <title>${escapeHtml(title)}</title>
-  <style>${css}</style>
-</head>
-<body>
-  <div id="root"></div>
-  <script src="https://unpkg.com/react@18/umd/react.production.min.js" crossorigin="anonymous"></script>
-  <script src="https://unpkg.com/react-dom@18/umd/react-dom.production.min.js" crossorigin="anonymous"></script>
-  <script src="https://unpkg.com/react-router-dom@6/umd/react-router-dom.production.min.js" crossorigin="anonymous"></script>
-  <script src="https://unpkg.com/@babel/standalone/babel.min.js" crossorigin="anonymous"></script>
-  <script type="text/babel">
-const { useState, useEffect, useCallback, useMemo, useRef, createContext, useContext } = React;
-const {
-  BrowserRouter,
-  HashRouter,
-  Routes,
-  Route,
-  Link,
-  NavLink,
-  Navigate,
-  Outlet,
-  useNavigate,
-  useParams,
-  useLocation,
-  useSearchParams,
-  useRoutes,
-} = ReactRouterDOM;
-${components}
-
-
-// Find and render the root component
-var rootComponent = typeof App !== 'undefined' ? App
-  : typeof Default_ !== 'undefined' ? Default_
-  : null;
-
-if (rootComponent) {
-  var root = ReactDOM.createRoot(document.getElementById('root'));
-  root.render(React.createElement(rootComponent));
-}
-  </script>
-</body>
-</html>`
-}
-
-const HTML_CONTENT_TYPE = 'text/html; charset=utf-8'
-
-function createHtmlFile(html: string): File | Blob {
-  const blob = new Blob([html], { type: HTML_CONTENT_TYPE })
-
-  if (typeof File === 'undefined') {
-    return blob
+  const data = await res.json()
+  if (!data?.url || !data?.siteId) {
+    throw new Error('Deploy failed: invalid response from deploy endpoint')
   }
 
-  return new File([blob], 'index.html', { type: HTML_CONTENT_TYPE })
-}
-
-export async function deployToStorage(projectId: string, html: string): Promise<string> {
-  const file = createHtmlFile(html)
-  const objectPath = `${projectId}/${Date.now()}/index.html`
-
-  const { error } = await supabase.storage
-    .from('deployments')
-    .upload(objectPath, file, {
-      contentType: HTML_CONTENT_TYPE,
-      upsert: false,
-      cacheControl: 'no-store',
-    })
-
-  if (error) {
-    throw new Error(`Deploy failed: ${error.message}`)
+  return {
+    url: String(data.url),
+    siteId: String(data.siteId),
   }
-
-  const { data } = supabase.storage
-    .from('deployments')
-    .getPublicUrl(objectPath)
-
-  return data.publicUrl
 }

@@ -5,7 +5,7 @@ import remarkGfm from 'remark-gfm'
 import JSZip from 'jszip'
 import { useAuth } from '../lib/AuthContext'
 import { supabase } from '../lib/supabase'
-import { deployToStorage } from '../lib/deploy'
+import { deployToNetlify } from '../lib/deploy'
 import { pushFiles, createRepo, getGitHubUser } from '../lib/github'
 import { buildPreview, escapeHtml } from '../lib/preview-bundle'
 import { capturePreviewThumbnail } from '../lib/preview-screenshot'
@@ -629,7 +629,7 @@ export default function ProjectBuilderPage() {
     // Only create initial user message if we have a fresh prompt from dashboard
     // Otherwise wait for chat history to load from Supabase
     if (state.prompt) {
-      return [{ id: 'initial-user', role: 'user', content: state.prompt }]
+      return [{ id: 'initial-user', role: 'user', content: state.prompt, timeline: [] }]
     }
     return []
   })
@@ -669,6 +669,7 @@ export default function ProjectBuilderPage() {
   const [deployUrl, setDeployUrl] = useState('')
   const [deployError, setDeployError] = useState('')
   const [deployModalOpen, setDeployModalOpen] = useState(false)
+  const [netlifySiteId, setNetlifySiteId] = useState<string | null>(null)
   const [githubToken, setGithubToken] = useState('')
   const [githubUsername, setGithubUsername] = useState('')
   const [githubDialogOpen, setGithubDialogOpen] = useState(false)
@@ -739,7 +740,7 @@ export default function ProjectBuilderPage() {
       // Verify ownership before upserting to prevent IDOR
       const { data: existing } = await supabase
         .from('projects')
-        .select('user_id, title, files, chat_history')
+        .select('user_id, title, files, chat_history, netlify_site_id')
         .eq('id', projectId)
         .single()
 
@@ -784,6 +785,8 @@ export default function ProjectBuilderPage() {
       if (existing?.title && existing.title !== 'Untitled project') {
         setTitle(existing.title)
       }
+
+      setNetlifySiteId(typeof existing?.netlify_site_id === 'string' ? existing.netlify_site_id : null)
 
       // Upsert project metadata (don't overwrite files)
       const { error } = await supabase
@@ -1016,14 +1019,28 @@ export default function ProjectBuilderPage() {
         throw new Error(`Build failed: ${result.errors[0]}`)
       }
 
-      const url = await deployToStorage(projectId!, result.html)
-      setDeployUrl(url)
+      const deploy = await deployToNetlify(projectId!, result.html, netlifySiteId)
+      setDeployUrl(deploy.url)
+
+      if (deploy.siteId !== netlifySiteId && user && projectId) {
+        const { error } = await supabase
+          .from('projects')
+          .update({ netlify_site_id: deploy.siteId })
+          .eq('id', projectId)
+          .eq('user_id', user.id)
+
+        if (error) {
+          throw new Error(`Deploy succeeded, but saving the Netlify site failed: ${error.message}`)
+        }
+
+        setNetlifySiteId(deploy.siteId)
+      }
       setDeployState('deployed')
     } catch (err) {
       setDeployError(err instanceof Error ? err.message : 'Deploy failed')
       setDeployState('error')
     }
-  }, [projectFiles, projectId, title])
+  }, [netlifySiteId, projectFiles, projectId, user])
 
   const handleGithubConnect = useCallback(async () => {
     setGithubConnecting(true)
@@ -1274,7 +1291,7 @@ export default function ProjectBuilderPage() {
     setMessages((current) => {
       const withUser = options.reuseInitialUser
         ? current
-        : [...current, { id: `user-${runId}`, role: 'user' as const, content: request }]
+        : [...current, { id: `user-${runId}`, role: 'user' as const, content: request, timeline: [] }]
 
       return [
         ...withUser,
@@ -1423,7 +1440,6 @@ export default function ProjectBuilderPage() {
       })
     } catch (err) {
       if (err instanceof DOMException && err.name === 'AbortError') return
-      const message = err instanceof Error ? err.message : String(err)
       setAgentStatus('')
       for (let i = timeline.length - 1; i >= 0; i--) {
         if (timeline[i].type === 'tool_call' && timeline[i].toolStatus === 'running') {
