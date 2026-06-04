@@ -499,9 +499,11 @@ export default function DashboardPage() {
                     className={styles.projectCard}
                     role="button"
                     tabIndex={0}
+                    style={{ '--accent': projectAccentColor(project.title) } as React.CSSProperties}
                     onClick={() => navigate(`/projects/${project.id}`, { state: { title: project.title } })}
                     onKeyDown={(e) => { if (e.key === 'Enter') navigate(`/projects/${project.id}`, { state: { title: project.title } }) }}
                   >
+                    <div className={styles.projectAccentBar} />
                     <div className={styles.projectPreview}>
                       {project.preview_url ? (
                         <img
@@ -537,13 +539,20 @@ export default function DashboardPage() {
                       ) : (
                         <h3 className={styles.projectTitle}>{project.title}</h3>
                       )}
-                      <span className={styles.projectDate}>
-                        {new Date(project.created_at).toLocaleDateString('en-US', {
-                          month: 'short',
-                          day: 'numeric',
-                          year: 'numeric',
-                        })}
-                      </span>
+                      <div className={styles.projectFooter}>
+                        <span className={styles.projectDate}>
+                          {formatRelativeTime(project.updated_at)}
+                        </span>
+                        {project.isShared && (
+                          <span className={styles.sharedBadge}>
+                            <svg width="10" height="10" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round">
+                              <circle cx="18" cy="5" r="3"/><circle cx="6" cy="12" r="3"/><circle cx="18" cy="19" r="3"/>
+                              <line x1="8.59" y1="13.51" x2="15.42" y2="17.49"/><line x1="15.41" y1="6.51" x2="8.59" y2="10.49"/>
+                            </svg>
+                            Shared
+                          </span>
+                        )}
+                      </div>
                     </div>
                     <button
                       className={`${styles.starBtn} ${project.starred ? styles.starBtnActive : ''}`}
