@@ -760,6 +760,22 @@ export default function ProjectBuilderPage() {
         }
 
         setProjectAccess(collaboration.permission === 'view' ? 'view' : 'edit')
+
+        if (Array.isArray(existing.files) && (existing.files as AgentCodeFile[]).length > 0) {
+          setProjectFiles(existing.files as AgentCodeFile[])
+          setFirstRunComplete(true)
+          initialAgentStartedRef.current = true
+        }
+
+        if (Array.isArray(existing.chat_history) && (existing.chat_history as ChatMessage[]).length > 0) {
+          setMessages(existing.chat_history as ChatMessage[])
+        }
+        setChatHistoryLoaded(true)
+
+        if (existing.title && existing.title !== 'Untitled project') {
+          setTitle(existing.title)
+        }
+
         setFilesLoaded(true)
         return
       }
@@ -857,6 +873,7 @@ export default function ProjectBuilderPage() {
     projectId,
     userId: user?.id,
     userName,
+    userEmail: user?.email ?? '',
     onFilesUpdate: (files) => {
       if (!agentRunning) setProjectFiles(files as AgentCodeFile[])
     },
