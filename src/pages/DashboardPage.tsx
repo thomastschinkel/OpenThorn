@@ -85,6 +85,8 @@ export default function DashboardPage() {
   useEffect(() => {
     if (!user) return
 
+    const SEEN_KEY = `seen_shared_projects_${user.id}`
+
     const fetchProjects = async () => {
       // Owned projects
       const { data: owned } = await supabase
@@ -111,16 +113,37 @@ export default function DashboardPage() {
       }
 
       // Merge, deduplicate by id
-      const seen = new Set<string>()
+      const seenIds = new Set<string>()
       const all: Project[] = []
       for (const p of [...(owned ?? []), ...shared]) {
-        if (!seen.has(p.id)) {
-          seen.add(p.id)
+        if (!seenIds.has(p.id)) {
+          seenIds.add(p.id)
           all.push(p)
         }
       }
       setProjects(all)
       setProjectsLoading(false)
+
+      // Notify about shared projects the user hasn't seen yet — persists across refreshes
+      if (shared.length > 0) {
+        const notifiedIds: string[] = JSON.parse(localStorage.getItem(SEEN_KEY) ?? '[]')
+        const notifiedSet = new Set(notifiedIds)
+        const novel = shared.filter((p) => !notifiedSet.has(p.id))
+        if (novel.length > 0) {
+          setSidebarNotifications((prev) => {
+            const existingIds = new Set(prev.map((n) => n.id))
+            const newItems = novel
+              .map((p) => ({
+                id: `share-${p.id}`,
+                text: `"${p.title}" was shared with you.`,
+                time: 'New',
+                unread: true,
+              }))
+              .filter((n) => !existingIds.has(n.id))
+            return newItems.length > 0 ? [...newItems, ...prev] : prev
+          })
+        }
+      }
     }
 
     fetchProjects()
@@ -138,24 +161,14 @@ export default function DashboardPage() {
 
     // Watch for new shares directed at this user
     const sharedChannel = supabase
-      .channel('projects_shared')
+      .channel(`projects_shared_${user.id}`)
       .on('postgres_changes', {
         event: 'INSERT',
         schema: 'public',
         table: 'project_collaborators',
         filter: `user_id=eq.${user.id}`,
-      }, (payload) => {
+      }, () => {
         fetchProjects()
-        const row = payload.new as { email?: string; permission?: string }
-        setSidebarNotifications((prev) => [
-          {
-            id: `share-${Date.now()}`,
-            text: `A project was shared with you (${row.permission === 'edit' ? 'edit access' : 'view-only'}).`,
-            time: 'Just now',
-            unread: true,
-          },
-          ...prev,
-        ])
       })
       .subscribe()
 
@@ -300,9 +313,13 @@ export default function DashboardPage() {
         activeFilter={activeFilter}
         onProjectFilterChange={setActiveFilter}
         notifications={sidebarNotifications}
-        onNotificationsRead={() =>
+        onNotificationsRead={() => {
           setSidebarNotifications((prev) => prev.map((n) => ({ ...n, unread: false })))
-        }
+          const seenKey = `seen_shared_projects_${user?.id}`
+          const sharedIds = projects.filter((p) => p.isShared).map((p) => p.id)
+          const existing: string[] = JSON.parse(localStorage.getItem(seenKey) ?? '[]')
+          localStorage.setItem(seenKey, JSON.stringify([...new Set([...existing, ...sharedIds])]))
+        }}
       />
 
       <main className={`${styles.main} ${hasProjects ? styles.mainWithProjects : ''}`}>
