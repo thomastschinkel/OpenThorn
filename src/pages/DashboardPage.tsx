@@ -15,8 +15,42 @@ interface Project {
   title: string
   preview_url: string | null
   created_at: string
+  updated_at: string
   starred: boolean
   isShared?: boolean
+}
+
+function formatRelativeTime(iso: string): string {
+  const diff = Date.now() - new Date(iso).getTime()
+  const minutes = Math.floor(diff / 60_000)
+  if (minutes < 1) return 'just now'
+  if (minutes < 60) return `${minutes}m ago`
+  const hours = Math.floor(minutes / 60)
+  if (hours < 24) return `${hours}h ago`
+  const days = Math.floor(hours / 24)
+  if (days < 7) return `${days}d ago`
+  const weeks = Math.floor(days / 7)
+  if (weeks < 5) return `${weeks}w ago`
+  return new Date(iso).toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' })
+}
+
+const ACCENT_COLORS = [
+  '#7c6af7', // violet
+  '#4f9cf9', // blue
+  '#34c98a', // teal
+  '#f97b4f', // orange
+  '#e05ae0', // pink
+  '#f7c048', // amber
+  '#5ec7f7', // sky
+  '#a78bfa', // lavender
+]
+
+function projectAccentColor(title: string): string {
+  let hash = 0
+  for (let i = 0; i < title.length; i++) {
+    hash = (hash * 31 + title.charCodeAt(i)) >>> 0
+  }
+  return ACCENT_COLORS[hash % ACCENT_COLORS.length]
 }
 
 const examplePrompts = [
@@ -92,7 +126,7 @@ export default function DashboardPage() {
       // Owned projects
       const { data: owned } = await supabase
         .from('projects')
-        .select('id, user_id, title, preview_url, created_at, starred')
+        .select('id, user_id, title, preview_url, created_at, updated_at, starred')
         .eq('user_id', user.id)
         .order('created_at', { ascending: false })
 
@@ -107,7 +141,7 @@ export default function DashboardPage() {
         const ids = collabRows.map((r) => r.project_id as string)
         const { data: sharedData } = await supabase
           .from('projects')
-          .select('id, user_id, title, preview_url, created_at, starred')
+          .select('id, user_id, title, preview_url, created_at, updated_at, starred')
           .in('id', ids)
           .order('created_at', { ascending: false })
         shared = (sharedData ?? []).map((p) => ({ ...p, isShared: true }))
