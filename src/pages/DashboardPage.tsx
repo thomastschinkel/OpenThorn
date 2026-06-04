@@ -483,10 +483,15 @@ export default function DashboardPage() {
                   </svg>
                 </div>
                 <h3 className={styles.emptyTitle}>
-                  {activeFilter === 'starred' ? 'No starred projects' : activeFilter === 'mine' ? 'No projects yet' : 'No projects yet'}
+                  {searchQuery
+                    ? 'No projects match'
+                    : activeFilter === 'starred' ? 'No starred projects'
+                    : 'No projects yet'}
                 </h3>
                 <p className={styles.emptyText}>
-                  {activeFilter === 'starred'
+                  {searchQuery
+                    ? `No projects found for "${searchQuery}". Try a different search.`
+                    : activeFilter === 'starred'
                     ? 'Star a project to find it here quickly.'
                     : 'Describe what you want to build above and hit Send to create your first project.'}
                 </p>

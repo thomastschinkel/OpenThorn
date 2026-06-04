@@ -638,4 +638,22 @@
   .projectGrid {
     grid-template-columns: 1fr;
   }
+
+  .sectionHeader {
+    flex-direction: column;
+    align-items: flex-start;
+  }
+
+  .controls {
+    width: 100%;
+    flex-wrap: wrap;
+  }
+
+  .searchInput {
+    width: 140px;
+  }
+
+  .searchInput:focus {
+    width: 180px;
+  }
 }
