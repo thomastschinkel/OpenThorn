@@ -195,7 +195,7 @@ export async function buildPreview(
     if (!anchor) return;
 
     var rawHref = (anchor.getAttribute('href') || '').trim();
-    if (!rawHref || rawHref === '#' || isSpecialHref(rawHref)) return;
+    if (!rawHref || isSpecialHref(rawHref)) return;
 
     var target = (anchor.getAttribute('target') || '').toLowerCase();
     if (target && target !== '_self') return;

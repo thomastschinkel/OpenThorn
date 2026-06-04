@@ -4,7 +4,7 @@ export interface Template {
   id: string
   name: string
   description: string
-  category: 'Portfolio' | 'SaaS' | 'E-commerce'
+  category: 'Portfolio' | 'SaaS' | 'E-commerce' | 'Restaurant' | 'Blog'
   highlights: string[]
   accentColor: string
   files: AgentCodeFile[]
@@ -14,6 +14,9 @@ export const TEMPLATES: Template[] = [
   creativePortfolio(),
   saasLanding(),
   ecommerceStorefront(),
+  photographyStudio(),
+  restaurantLanding(),
+  techBlog(),
 ]
 
 // ─────────────────────────────────────────────────────────────────────────────
@@ -97,6 +100,7 @@ button{cursor:pointer;border:none;background:none;font:inherit;color:inherit}
 .project-card:hover{transform:translateY(-6px);border-color:rgba(124,106,247,.4);box-shadow:0 20px 60px rgba(0,0,0,.5)}
 .project-thumb{height:196px;display:flex;align-items:center;justify-content:center;font-size:3rem;position:relative;overflow:hidden}
 .project-thumb-bg{position:absolute;inset:0}
+.project-thumb-img{position:absolute;inset:0;width:100%;height:100%;object-fit:cover;opacity:0.55;mix-blend-mode:luminosity}
 .project-thumb-icon{position:relative;z-index:1;filter:drop-shadow(0 4px 12px rgba(0,0,0,.4))}
 .project-body{padding:1.25rem 1.5rem 1.5rem}
 .project-tags{display:flex;gap:.4rem;flex-wrap:wrap;margin-bottom:.75rem}
@@ -219,12 +223,12 @@ export default function Navbar() {
         code: `import { useState } from 'react'
 
 const PROJECTS = [
-  { name: 'Phantom Analytics', desc: 'Real-time data platform processing 10M+ events/day with custom WebGL charts.', tags: ['React', 'Node', 'WebGL'], cat: 'Web', icon: '📊', bg: 'linear-gradient(135deg,#1a1a3e,#2d1b69)' },
-  { name: 'Orbit Design System', desc: 'Component library with 80+ components used across 5 product teams.', tags: ['Design', 'TypeScript', 'Storybook'], cat: 'Design', icon: '🎨', bg: 'linear-gradient(135deg,#0f2027,#2c5364)' },
-  { name: 'FlowCast Mobile', desc: 'Cross-platform podcast app with AI transcription and smart chapter detection.', tags: ['React Native', 'AI', 'Audio'], cat: 'Mobile', icon: '🎙️', bg: 'linear-gradient(135deg,#16213e,#0f3460)' },
-  { name: 'NovaPay Gateway', desc: 'High-throughput payment API handling $2M+ daily transactions.', tags: ['Go', 'Stripe', 'Postgres'], cat: 'Web', icon: '💳', bg: 'linear-gradient(135deg,#0d1b2a,#1b4332)' },
-  { name: 'Lumina Portfolio', desc: 'Bespoke site for award-winning photographer with immersive gallery.', tags: ['Design', 'GSAP', 'Three.js'], cat: 'Design', icon: '📷', bg: 'linear-gradient(135deg,#1a1a2e,#0f3460)' },
-  { name: 'Halo Fitness', desc: 'iOS/Android tracker with AI training plans and progress analytics.', tags: ['React Native', 'ML', 'HealthKit'], cat: 'Mobile', icon: '🏋️', bg: 'linear-gradient(135deg,#1c0a00,#4a1503)' },
+  { name: 'Phantom Analytics', desc: 'Real-time data platform processing 10M+ events/day with custom WebGL charts.', tags: ['React', 'Node', 'WebGL'], cat: 'Web', img: 'https://picsum.photos/seed/pp1/640/400', bg: 'linear-gradient(135deg,#1a1a3e,#2d1b69)' },
+  { name: 'Orbit Design System', desc: 'Component library with 80+ components used across 5 product teams.', tags: ['Design', 'TypeScript', 'Storybook'], cat: 'Design', img: 'https://picsum.photos/seed/pp2/640/400', bg: 'linear-gradient(135deg,#0f2027,#2c5364)' },
+  { name: 'FlowCast Mobile', desc: 'Cross-platform podcast app with AI transcription and smart chapter detection.', tags: ['React Native', 'AI', 'Audio'], cat: 'Mobile', img: 'https://picsum.photos/seed/pp3/640/400', bg: 'linear-gradient(135deg,#16213e,#0f3460)' },
+  { name: 'NovaPay Gateway', desc: 'High-throughput payment API handling $2M+ daily transactions.', tags: ['Go', 'Stripe', 'Postgres'], cat: 'Web', img: 'https://picsum.photos/seed/pp4/640/400', bg: 'linear-gradient(135deg,#0d1b2a,#1b4332)' },
+  { name: 'Lumina Portfolio', desc: 'Bespoke site for award-winning photographer with immersive gallery.', tags: ['Design', 'GSAP', 'Three.js'], cat: 'Design', img: 'https://picsum.photos/seed/pp5/640/400', bg: 'linear-gradient(135deg,#1a1a2e,#0f3460)' },
+  { name: 'Halo Fitness', desc: 'iOS/Android tracker with AI training plans and progress analytics.', tags: ['React Native', 'ML', 'HealthKit'], cat: 'Mobile', img: 'https://picsum.photos/seed/pp6/640/400', bg: 'linear-gradient(135deg,#1c0a00,#4a1503)' },
 ]
 const FILTERS = ['All', 'Web', 'Design', 'Mobile']
 
@@ -249,7 +253,7 @@ export default function Projects() {
             <div key={p.name} className="project-card">
               <div className="project-thumb">
                 <div className="project-thumb-bg" style={{ background: p.bg }} />
-                <span className="project-thumb-icon">{p.icon}</span>
+                <img className="project-thumb-img" src={p.img} alt={p.name} />
               </div>
               <div className="project-body">
                 <div className="project-tags">{p.tags.map(t => <span key={t} className="project-tag">{t}</span>)}</div>
@@ -821,7 +825,7 @@ button{cursor:pointer;border:none;background:none;font:inherit;color:inherit}
 .nav-icon-btn:hover{background:var(--bg-2)}
 .cart-badge{position:absolute;top:4px;right:4px;width:16px;height:16px;background:var(--accent);color:#fff;border-radius:50%;font-size:.6rem;font-weight:700;display:grid;place-items:center}
 
-.hero{display:grid;grid-template-columns:1fr 1fr;min-height:88vh;max-width:1300px;margin:0 auto;padding:0 2rem;gap:4rem;align-items:center}
+.hero{display:grid;grid-template-columns:1fr 1fr;max-width:1300px;margin:0 auto;padding:4rem 2rem;gap:4rem;align-items:center}
 .hero-overline{font-size:.7rem;font-weight:700;letter-spacing:.15em;text-transform:uppercase;color:var(--accent);margin-bottom:1.5rem}
 .hero-heading{font-size:clamp(2.5rem,4vw,4rem);font-weight:900;letter-spacing:-.04em;line-height:1.0;margin-bottom:1.25rem}
 .hero-desc{font-size:1rem;color:var(--muted);max-width:420px;line-height:1.75;margin-bottom:2rem}
@@ -833,7 +837,7 @@ button{cursor:pointer;border:none;background:none;font:inherit;color:inherit}
 .btn-wishlist{padding:.875rem 1.5rem;border:1.5px solid var(--border);border-radius:var(--r-lg);color:var(--text);font-weight:500;font-size:.95rem;transition:all .2s}
 .btn-wishlist:hover{border-color:var(--accent);color:var(--accent)}
 .hero-image-side{position:relative}
-.hero-product-img{width:100%;aspect-ratio:3/4;border-radius:var(--r-xl);overflow:hidden;background:var(--bg-2);display:flex;align-items:center;justify-content:center}
+.hero-product-img{width:100%;aspect-ratio:3/4;max-height:420px;border-radius:var(--r-xl);overflow:hidden;background:var(--bg-2);position:relative}
 .hero-product-emoji{font-size:8rem;filter:drop-shadow(0 20px 40px rgba(0,0,0,.15))}
 .hero-badge-float{position:absolute;bottom:2rem;left:-1.5rem;background:#fff;border-radius:var(--r-lg);padding:.875rem 1.25rem;box-shadow:0 8px 24px rgba(0,0,0,.12);display:flex;align-items:center;gap:.75rem}
 .hero-badge-icon{font-size:1.5rem}
@@ -906,7 +910,10 @@ button{cursor:pointer;border:none;background:none;font:inherit;color:inherit}
 .footer-link:hover{color:#e8e3da}
 .footer-bottom{border-top:1px solid #2d2d2d;padding-top:1.5rem;max-width:1300px;margin:0 auto;display:flex;justify-content:space-between;align-items:center;font-size:.8rem;color:#6b7280}
 
-@media(max-width:900px){.hero{grid-template-columns:1fr;min-height:auto;padding:3rem 1.5rem}.hero-image-side{order:-1}.footer-inner{grid-template-columns:1fr 1fr}}
+.hero-product-img img{position:absolute;inset:0;width:100%;height:100%;object-fit:cover}
+.product-img img{position:absolute;inset:0;width:100%;height:100%;object-fit:cover}
+.cart-item-img img{width:100%;height:100%;object-fit:cover;border-radius:var(--r)}
+@media(max-width:900px){.hero{grid-template-columns:1fr;padding:3rem 1.5rem}.hero-image-side{order:-1}.footer-inner{grid-template-columns:1fr 1fr}}
 @media(max-width:768px){.nav-links{display:none}.products-grid{grid-template-columns:repeat(2,1fr)}.footer-inner{grid-template-columns:1fr}}`,
       },
       {
@@ -1034,7 +1041,7 @@ export default function Hero({ onAddToCart }: HeroProps) {
       </div>
       <div className="hero-image-side">
         <div className="hero-product-img">
-          <span className="hero-product-emoji">🌿</span>
+          <img src="https://picsum.photos/seed/verde-hero/600/750" alt="Linen Essentials" />
         </div>
         <div className="hero-badge-float">
           <span className="hero-badge-icon">♻️</span>
@@ -1077,14 +1084,14 @@ export default function Categories() {
         code: `import type { CartItem } from '../App'
 
 const PRODUCTS = [
-  { id: 1, name: 'Linen Shirt — Sage', price: 129, icon: '👕', category: 'Apparel', rating: '4.9 (124)' },
-  { id: 2, name: 'Ceramic Pour-Over Set', price: 89, icon: '☕', category: 'Home & Living', rating: '5.0 (68)' },
-  { id: 3, name: 'Canvas Tote Bag', price: 45, icon: '👜', category: 'Accessories', rating: '4.8 (201)' },
-  { id: 4, name: 'Rosehip Face Oil', price: 64, icon: '🌹', category: 'Skincare', rating: '4.9 (89)' },
-  { id: 5, name: 'Merino Knit Sweater', price: 159, icon: '🧶', category: 'Apparel', rating: '4.7 (55)' },
-  { id: 6, name: 'Beeswax Candle Set', price: 38, icon: '🕯️', category: 'Home & Living', rating: '5.0 (143)' },
-  { id: 7, name: 'Leather Card Wallet', price: 55, icon: '💳', category: 'Accessories', rating: '4.8 (77)' },
-  { id: 8, name: 'Bamboo Body Scrub', price: 29, icon: '🎋', category: 'Skincare', rating: '4.6 (112)' },
+  { id: 1, name: 'Linen Shirt — Sage', price: 129, icon: '👕', img: 'https://picsum.photos/seed/vp1/400/400', category: 'Apparel', rating: '4.9 (124)' },
+  { id: 2, name: 'Ceramic Pour-Over Set', price: 89, icon: '☕', img: 'https://picsum.photos/seed/vp2/400/400', category: 'Home & Living', rating: '5.0 (68)' },
+  { id: 3, name: 'Canvas Tote Bag', price: 45, icon: '👜', img: 'https://picsum.photos/seed/vp3/400/400', category: 'Accessories', rating: '4.8 (201)' },
+  { id: 4, name: 'Rosehip Face Oil', price: 64, icon: '🌹', img: 'https://picsum.photos/seed/vp4/400/400', category: 'Skincare', rating: '4.9 (89)' },
+  { id: 5, name: 'Merino Knit Sweater', price: 159, icon: '🧶', img: 'https://picsum.photos/seed/vp5/400/400', category: 'Apparel', rating: '4.7 (55)' },
+  { id: 6, name: 'Beeswax Candle Set', price: 38, icon: '🕯️', img: 'https://picsum.photos/seed/vp6/400/400', category: 'Home & Living', rating: '5.0 (143)' },
+  { id: 7, name: 'Leather Card Wallet', price: 55, icon: '💳', img: 'https://picsum.photos/seed/vp7/400/400', category: 'Accessories', rating: '4.8 (77)' },
+  { id: 8, name: 'Bamboo Body Scrub', price: 29, icon: '🎋', img: 'https://picsum.photos/seed/vp8/400/400', category: 'Skincare', rating: '4.6 (112)' },
 ]
 
 interface ProductGridProps { onAddToCart: (item: Omit<CartItem, 'qty'>) => void }
@@ -1100,7 +1107,7 @@ export default function ProductGrid({ onAddToCart }: ProductGridProps) {
         {PRODUCTS.map(p => (
           <div key={p.id} className="product-card">
             <div className="product-img">
-              {p.icon}
+              <img src={p.img} alt={p.name} />
               <button className="product-quick-add" type="button" onClick={() => onAddToCart(p)}>+ Add to cart</button>
             </div>
             <div className="product-body">
@@ -1152,7 +1159,7 @@ export default function CartDrawer({ items, onClose, onUpdateQty }: CartDrawerPr
             <div className="cart-items">
               {items.map(item => (
                 <div key={item.id} className="cart-item">
-                  <div className="cart-item-img">{item.icon}</div>
+                  <div className="cart-item-img"><img src={(item as any).img || ''} alt={item.name} /></div>
                   <div className="cart-item-info">
                     <p className="cart-item-name">{item.name}</p>
                     <p className="cart-item-cat">{item.category}</p>
@@ -1178,6 +1185,943 @@ export default function CartDrawer({ items, onClose, onUpdateQty }: CartDrawerPr
         )}
       </aside>
     </>
+  )
+}`,
+      },
+    ],
+  }
+}
+
+// ─────────────────────────────────────────────────────────────────────────────
+// Template 4: Photography Studio
+// ─────────────────────────────────────────────────────────────────────────────
+function photographyStudio(): Template {
+  return {
+    id: 'photography-studio',
+    name: 'Photography Studio',
+    description: 'A minimal, image-first portfolio for photographers and visual artists.',
+    category: 'Portfolio',
+    accentColor: '#111111',
+    highlights: [
+      'Full-bleed hero with large cover photo',
+      'Masonry-style gallery with lightbox overlay',
+      'About section with portrait and bio',
+      'Booking inquiry form',
+    ],
+    files: [
+      {
+        path: 'src/styles/theme.css',
+        language: 'css',
+        code: `*,*::before,*::after{box-sizing:border-box;margin:0;padding:0}
+html{scroll-behavior:smooth}
+body{font-family:'Georgia',serif;background:#fefefe;color:#111;line-height:1.65;overflow-x:hidden}
+a{color:inherit;text-decoration:none}
+button{cursor:pointer;border:none;background:none;font:inherit;color:inherit}
+
+:root{--bg:#fefefe;--bg-2:#f5f5f3;--border:#e0ddd8;--text:#111;--muted:#888;--accent:#111;--r:4px;--r-lg:8px}
+
+.navbar{position:fixed;top:0;left:0;right:0;z-index:100;padding:0 2.5rem;height:60px;display:flex;align-items:center;justify-content:space-between;transition:background .3s}
+.navbar.scrolled{background:rgba(254,254,254,.95);backdrop-filter:blur(12px);border-bottom:1px solid var(--border)}
+.nav-logo{font-size:1rem;font-weight:400;letter-spacing:.18em;text-transform:uppercase}
+.nav-links{display:flex;gap:2.5rem}
+.nav-link{font-size:.8rem;letter-spacing:.12em;text-transform:uppercase;color:var(--muted);transition:color .2s}
+.nav-link:hover,.nav-link-white:hover{opacity:.7}
+.nav-book{font-size:.8rem;letter-spacing:.12em;text-transform:uppercase;border-bottom:1px solid currentColor;padding-bottom:2px;transition:opacity .2s}
+.nav-book:hover{opacity:.6}
+
+.hero{position:relative;height:100vh;overflow:hidden}
+.hero-img{width:100%;height:100%;object-fit:cover;display:block}
+.hero-overlay{position:absolute;inset:0;background:linear-gradient(to bottom,rgba(0,0,0,.15) 0%,rgba(0,0,0,.55) 100%)}
+.hero-content{position:absolute;bottom:4rem;left:2.5rem;color:#fff}
+.hero-eyebrow{font-size:.7rem;letter-spacing:.2em;text-transform:uppercase;opacity:.75;margin-bottom:.75rem}
+.hero-name{font-size:clamp(2.5rem,5vw,4rem);font-weight:400;letter-spacing:-.02em;line-height:1.05;margin-bottom:.5rem}
+.hero-tagline{font-size:1rem;opacity:.75;font-style:italic}
+.hero-scroll{position:absolute;bottom:2rem;right:2.5rem;color:#fff;font-size:.7rem;letter-spacing:.15em;text-transform:uppercase;opacity:.6;display:flex;flex-direction:column;align-items:center;gap:.5rem}
+.hero-scroll-line{width:1px;height:40px;background:rgba(255,255,255,.5)}
+
+.section{padding:6rem 2.5rem}.container{max-width:1200px;margin:0 auto}
+.section-eyebrow{font-size:.7rem;letter-spacing:.18em;text-transform:uppercase;color:var(--muted);margin-bottom:1rem}
+
+.gallery-tabs{display:flex;gap:2rem;margin-bottom:3rem;border-bottom:1px solid var(--border)}
+.gallery-tab{font-size:.8rem;letter-spacing:.12em;text-transform:uppercase;color:var(--muted);padding-bottom:1rem;border-bottom:2px solid transparent;margin-bottom:-1px;transition:all .2s;background:none;border-left:none;border-right:none;border-top:none;cursor:pointer}
+.gallery-tab:hover{color:var(--text)}
+.gallery-tab.active{color:var(--text);border-bottom:2px solid var(--text)}
+.gallery-grid{columns:3;gap:1rem}
+.gallery-item{break-inside:avoid;margin-bottom:1rem;overflow:hidden;cursor:pointer;position:relative}
+.gallery-item img{width:100%;display:block;transition:transform .4s ease}
+.gallery-item:hover img{transform:scale(1.03)}
+.gallery-item-overlay{position:absolute;inset:0;background:rgba(0,0,0,0);transition:background .3s;display:flex;align-items:center;justify-content:center}
+.gallery-item:hover .gallery-item-overlay{background:rgba(0,0,0,.25)}
+.gallery-item-label{color:#fff;font-size:.75rem;letter-spacing:.12em;text-transform:uppercase;opacity:0;transition:opacity .3s}
+.gallery-item:hover .gallery-item-label{opacity:1}
+
+.lightbox{position:fixed;inset:0;background:rgba(0,0,0,.9);z-index:500;display:flex;align-items:center;justify-content:center;animation:fadeIn .2s}
+@keyframes fadeIn{from{opacity:0}to{opacity:1}}
+.lightbox-close{position:absolute;top:2rem;right:2rem;color:#fff;font-size:1.5rem;opacity:.7;transition:opacity .2s;background:none;border:none;cursor:pointer}
+.lightbox-close:hover{opacity:1}
+.lightbox img{max-width:90vw;max-height:85vh;object-fit:contain}
+.lightbox-caption{position:absolute;bottom:2rem;left:50%;transform:translateX(-50%);color:rgba(255,255,255,.6);font-size:.8rem;letter-spacing:.1em;text-transform:uppercase}
+
+.about-grid{display:grid;grid-template-columns:1fr 1fr;gap:6rem;align-items:center}
+.about-img{width:100%;aspect-ratio:3/4;overflow:hidden;border-radius:var(--r-lg)}
+.about-img img{width:100%;height:100%;object-fit:cover}
+.about-eyebrow{font-size:.7rem;letter-spacing:.18em;text-transform:uppercase;color:var(--muted);margin-bottom:1.25rem}
+.about-heading{font-size:clamp(1.5rem,2.5vw,2rem);font-weight:400;letter-spacing:-.02em;margin-bottom:1.5rem;line-height:1.25}
+.about-text{font-size:.95rem;color:var(--muted);line-height:1.85;margin-bottom:1.5rem}
+.about-stats{display:flex;gap:3rem;margin-top:2.5rem;padding-top:2.5rem;border-top:1px solid var(--border)}
+.about-stat-num{font-size:2rem;font-weight:400;letter-spacing:-.03em;display:block}
+.about-stat-label{font-size:.75rem;letter-spacing:.1em;text-transform:uppercase;color:var(--muted)}
+
+.contact-section{background:var(--bg-2)}
+.contact-inner{max-width:640px;margin:0 auto;text-align:center;padding:6rem 2rem}
+.contact-heading{font-size:clamp(1.5rem,2.5vw,2.25rem);font-weight:400;letter-spacing:-.02em;margin-bottom:.75rem}
+.contact-sub{font-size:.95rem;color:var(--muted);margin-bottom:3rem;line-height:1.7}
+.form-row{display:grid;grid-template-columns:1fr 1fr;gap:1rem;margin-bottom:1rem}
+.form-field{text-align:left;margin-bottom:1rem}
+.form-label{display:block;font-size:.7rem;letter-spacing:.12em;text-transform:uppercase;color:var(--muted);margin-bottom:.5rem}
+.form-input,.form-select,.form-textarea{width:100%;padding:.75rem 1rem;background:var(--bg);border:1px solid var(--border);border-radius:var(--r);color:var(--text);font:inherit;font-size:.9rem;font-family:'Georgia',serif;transition:border-color .2s}
+.form-input:focus,.form-select:focus,.form-textarea:focus{outline:none;border-color:var(--text)}
+.form-textarea{height:120px;resize:vertical}
+.btn-submit{margin-top:.5rem;padding:.875rem 3rem;background:var(--text);color:var(--bg);border-radius:var(--r);font-size:.8rem;font-family:'Georgia',serif;letter-spacing:.12em;text-transform:uppercase;transition:opacity .2s;cursor:pointer}
+.btn-submit:hover{opacity:.75}
+
+.site-footer{padding:2rem 2.5rem;border-top:1px solid var(--border);display:flex;align-items:center;justify-content:space-between;font-size:.75rem;letter-spacing:.1em;text-transform:uppercase;color:var(--muted)}
+.footer-socials{display:flex;gap:1.5rem}
+.footer-social{transition:color .2s}.footer-social:hover{color:var(--text)}
+
+@media(max-width:900px){.about-grid{grid-template-columns:1fr;gap:3rem}.gallery-grid{columns:2}.form-row{grid-template-columns:1fr}}
+@media(max-width:640px){.nav-links{display:none}.gallery-grid{columns:1}}`,
+      },
+      {
+        path: 'src/App.tsx',
+        language: 'tsx',
+        code: `import Navbar from './components/Navbar'
+import Hero from './components/Hero'
+import Gallery from './components/Gallery'
+import About from './components/About'
+import Contact from './components/Contact'
+import './styles/theme.css'
+
+export default function App() {
+  return (
+    <div>
+      <Navbar />
+      <Hero />
+      <Gallery />
+      <About />
+      <Contact />
+      <footer className="site-footer">
+        <span>© 2025 Maya Sorel Photography</span>
+        <div className="footer-socials">
+          <a href="#" className="footer-social">Instagram</a>
+          <a href="#" className="footer-social">Behance</a>
+          <a href="#" className="footer-social">500px</a>
+        </div>
+      </footer>
+    </div>
+  )
+}`,
+      },
+      {
+        path: 'src/components/Navbar.tsx',
+        language: 'tsx',
+        code: `import { useState, useEffect } from 'react'
+
+export default function Navbar() {
+  const [scrolled, setScrolled] = useState(false)
+  useEffect(() => {
+    const fn = () => setScrolled(window.scrollY > 80)
+    window.addEventListener('scroll', fn)
+    return () => window.removeEventListener('scroll', fn)
+  }, [])
+  const white = !scrolled
+  return (
+    <nav className={\`navbar\${scrolled ? ' scrolled' : ''}\`} style={{ color: white ? '#fff' : 'var(--text)' }}>
+      <a href="#" className="nav-logo">Maya Sorel</a>
+      <div className="nav-links">
+        {['Work', 'About', 'Contact'].map(l => (
+          <a key={l} href={\`#\${l.toLowerCase()}\`} className="nav-link" style={{ color: white ? 'rgba(255,255,255,.75)' : undefined }}>{l}</a>
+        ))}
+      </div>
+      <a href="#contact" className="nav-book" style={{ color: white ? '#fff' : 'var(--text)', borderColor: white ? '#fff' : 'var(--text)' }}>Book a session</a>
+    </nav>
+  )
+}`,
+      },
+      {
+        path: 'src/components/Hero.tsx',
+        language: 'tsx',
+        code: `export default function Hero() {
+  return (
+    <section className="hero">
+      <img className="hero-img" src="https://images.unsplash.com/photo-1531746020798-e6953c6e8e04?w=1800&q=80&auto=format&fit=crop" alt="Hero" />
+      <div className="hero-overlay" />
+      <div className="hero-content">
+        <p className="hero-eyebrow">Fine art & portrait photography</p>
+        <h1 className="hero-name">Maya Sorel</h1>
+        <p className="hero-tagline">Capturing light, emotion, and the in-between</p>
+      </div>
+      <div className="hero-scroll">
+        <div className="hero-scroll-line" />
+        scroll
+      </div>
+    </section>
+  )
+}`,
+      },
+      {
+        path: 'src/components/Gallery.tsx',
+        language: 'tsx',
+        code: `import { useState } from 'react'
+
+const PHOTOS = [
+  { id: 1, src: 'https://images.unsplash.com/photo-1531746020798-e6953c6e8e04?w=800&q=80&auto=format&fit=crop', label: 'Portrait Series', cat: 'Portraits' },
+  { id: 2, src: 'https://images.unsplash.com/photo-1554080353-a576cf803bda?w=800&q=80&auto=format&fit=crop', label: 'Golden Hour', cat: 'Landscapes' },
+  { id: 3, src: 'https://images.unsplash.com/photo-1502877338535-766e1452684a?w=800&q=80&auto=format&fit=crop', label: 'Urban Motion', cat: 'Street' },
+  { id: 4, src: 'https://images.unsplash.com/photo-1470252649378-9c29740c9fa8?w=800&q=80&auto=format&fit=crop', label: 'Misty Morning', cat: 'Landscapes' },
+  { id: 5, src: 'https://images.unsplash.com/photo-1509909756405-be0199881695?w=800&q=80&auto=format&fit=crop', label: 'The Look', cat: 'Portraits' },
+  { id: 6, src: 'https://images.unsplash.com/photo-1448375240586-882707db888b?w=800&q=80&auto=format&fit=crop', label: 'Forest Light', cat: 'Landscapes' },
+  { id: 7, src: 'https://images.unsplash.com/photo-1477959858617-67f85cf4f1df?w=800&q=80&auto=format&fit=crop', label: 'City Nights', cat: 'Street' },
+  { id: 8, src: 'https://images.unsplash.com/photo-1517841905240-472988babdf9?w=800&q=80&auto=format&fit=crop', label: 'Studio Session', cat: 'Portraits' },
+  { id: 9, src: 'https://images.unsplash.com/photo-1493246507139-91e8fad9978e?w=800&q=80&auto=format&fit=crop', label: 'Mountain Lake', cat: 'Landscapes' },
+]
+const TABS = ['All', 'Portraits', 'Landscapes', 'Street']
+
+export default function Gallery() {
+  const [tab, setTab] = useState('All')
+  const [lightbox, setLightbox] = useState<typeof PHOTOS[0] | null>(null)
+  const filtered = tab === 'All' ? PHOTOS : PHOTOS.filter(p => p.cat === tab)
+  return (
+    <section className="section" id="work">
+      <div className="container">
+        <p className="section-eyebrow">Selected work</p>
+        <div className="gallery-tabs">
+          {TABS.map(t => (
+            <button key={t} className={\`gallery-tab\${tab === t ? ' active' : ''}\`} onClick={() => setTab(t)} type="button">{t}</button>
+          ))}
+        </div>
+        <div className="gallery-grid">
+          {filtered.map(p => (
+            <div key={p.id} className="gallery-item" onClick={() => setLightbox(p)}>
+              <img src={p.src} alt={p.label} loading="lazy" />
+              <div className="gallery-item-overlay">
+                <span className="gallery-item-label">{p.label}</span>
+              </div>
+            </div>
+          ))}
+        </div>
+      </div>
+      {lightbox && (
+        <div className="lightbox" onClick={() => setLightbox(null)}>
+          <button className="lightbox-close" type="button" onClick={() => setLightbox(null)}>✕</button>
+          <img src={lightbox.src.replace('w=800', 'w=1400')} alt={lightbox.label} />
+          <span className="lightbox-caption">{lightbox.label}</span>
+        </div>
+      )}
+    </section>
+  )
+}`,
+      },
+      {
+        path: 'src/components/About.tsx',
+        language: 'tsx',
+        code: `export default function About() {
+  return (
+    <section className="section" id="about" style={{ background: 'var(--bg-2)' }}>
+      <div className="container">
+        <div className="about-grid">
+          <div className="about-img">
+            <img src="https://images.unsplash.com/photo-1502767882945-b43c6e93ddb8?w=800&q=80&auto=format&fit=crop" alt="Maya Sorel" />
+          </div>
+          <div>
+            <p className="about-eyebrow">About the artist</p>
+            <h2 className="about-heading">I find the extraordinary in the everyday</h2>
+            <p className="about-text">Based in Amsterdam, I've been photographing people, places, and fleeting moments for over a decade. My work spans editorial portraiture, landscape, and documentary — always searching for the quiet truth in a frame.</p>
+            <p className="about-text">I work with natural light whenever possible, believing that the best photographs aren't taken — they're discovered. My clients include The New York Times, Vogue, and independent artists worldwide.</p>
+            <div className="about-stats">
+              <div><span className="about-stat-num">340+</span><span className="about-stat-label">Projects</span></div>
+              <div><span className="about-stat-num">12</span><span className="about-stat-label">Countries</span></div>
+              <div><span className="about-stat-num">8</span><span className="about-stat-label">Awards</span></div>
+            </div>
+          </div>
+        </div>
+      </div>
+    </section>
+  )
+}`,
+      },
+      {
+        path: 'src/components/Contact.tsx',
+        language: 'tsx',
+        code: `import { useState } from 'react'
+
+export default function Contact() {
+  const [sent, setSent] = useState(false)
+  return (
+    <section className="contact-section" id="contact">
+      <div className="contact-inner">
+        {sent ? (
+          <div style={{ padding: '3rem 0', textAlign: 'center' }}>
+            <p style={{ fontSize: '1.5rem', fontWeight: 400, letterSpacing: '-.02em', marginBottom: '.75rem' }}>Thank you.</p>
+            <p style={{ color: 'var(--muted)', fontSize: '.9rem' }}>I'll be in touch within 2 business days.</p>
+          </div>
+        ) : (
+          <>
+            <h2 className="contact-heading">Let's create something together</h2>
+            <p className="contact-sub">Whether it's a portrait session, editorial shoot, or licensing inquiry — I'd love to hear from you.</p>
+            <form onSubmit={e => { e.preventDefault(); setSent(true) }}>
+              <div className="form-row">
+                <div className="form-field">
+                  <label className="form-label" htmlFor="c-name">Name</label>
+                  <input id="c-name" className="form-input" type="text" placeholder="Your name" required />
+                </div>
+                <div className="form-field">
+                  <label className="form-label" htmlFor="c-email">Email</label>
+                  <input id="c-email" className="form-input" type="email" placeholder="you@email.com" required />
+                </div>
+              </div>
+              <div className="form-field">
+                <label className="form-label" htmlFor="c-type">Session type</label>
+                <select id="c-type" className="form-select">
+                  <option>Portrait / Headshot</option>
+                  <option>Editorial</option>
+                  <option>Landscape / Travel</option>
+                  <option>Licensing inquiry</option>
+                  <option>Other</option>
+                </select>
+              </div>
+              <div className="form-field">
+                <label className="form-label" htmlFor="c-msg">Message</label>
+                <textarea id="c-msg" className="form-textarea" placeholder="Tell me about your project…" required />
+              </div>
+              <button type="submit" className="btn-submit">Send inquiry</button>
+            </form>
+          </>
+        )}
+      </div>
+    </section>
+  )
+}`,
+      },
+    ],
+  }
+}
+
+// ─────────────────────────────────────────────────────────────────────────────
+// Template 5: Restaurant Landing
+// ─────────────────────────────────────────────────────────────────────────────
+function restaurantLanding(): Template {
+  return {
+    id: 'restaurant-landing',
+    name: 'Restaurant Landing',
+    description: 'A luxe, atmospheric landing page for an upscale restaurant.',
+    category: 'Restaurant',
+    accentColor: '#c9883a',
+    highlights: [
+      'Cinematic full-bleed hero with overlay',
+      'Interactive menu with categories and dish cards',
+      'Reservation form with date and party size',
+      'Chef story and press mentions section',
+    ],
+    files: [
+      {
+        path: 'src/styles/theme.css',
+        language: 'css',
+        code: `*,*::before,*::after{box-sizing:border-box;margin:0;padding:0}
+html{scroll-behavior:smooth}
+body{font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',system-ui,sans-serif;background:#0d0a06;color:#f0ead9;line-height:1.65;overflow-x:hidden}
+a{color:inherit;text-decoration:none}
+button{cursor:pointer;border:none;background:none;font:inherit;color:inherit}
+::selection{background:rgba(201,136,58,.3)}
+
+:root{--bg:#0d0a06;--bg-2:#141007;--bg-3:#1c1509;--border:rgba(240,234,217,.12);--text:#f0ead9;--muted:#8a7e6a;--gold:#c9883a;--gold-light:rgba(201,136,58,.15);--gold-glow:rgba(201,136,58,.3);--r:6px;--r-lg:12px;--r-xl:20px}
+
+.navbar{position:fixed;top:0;left:0;right:0;z-index:100;padding:0 2.5rem;height:72px;display:flex;align-items:center;justify-content:space-between;transition:all .3s}
+.navbar.scrolled{background:rgba(13,10,6,.92);backdrop-filter:blur(20px);border-bottom:1px solid var(--border)}
+.nav-logo{text-align:center}
+.nav-logo-name{display:block;font-size:1.1rem;font-weight:700;letter-spacing:.12em;text-transform:uppercase}
+.nav-logo-sub{display:block;font-size:.6rem;letter-spacing:.3em;text-transform:uppercase;color:var(--gold);margin-top:.1rem}
+.nav-links{display:flex;gap:2.5rem}
+.nav-link{font-size:.75rem;letter-spacing:.12em;text-transform:uppercase;color:var(--muted);transition:color .2s}
+.nav-link:hover{color:var(--text)}
+.nav-reserve{padding:.55rem 1.25rem;border:1px solid var(--gold);color:var(--gold);border-radius:var(--r);font-size:.75rem;letter-spacing:.1em;text-transform:uppercase;transition:all .2s}
+.nav-reserve:hover{background:var(--gold);color:#0d0a06}
+
+.hero{position:relative;height:100vh;min-height:600px;overflow:hidden;display:flex;align-items:center;justify-content:center}
+.hero-img{position:absolute;inset:0;width:100%;height:100%;object-fit:cover}
+.hero-overlay{position:absolute;inset:0;background:linear-gradient(to bottom,rgba(13,10,6,.3) 0%,rgba(13,10,6,.7) 60%,rgba(13,10,6,1) 100%)}
+.hero-content{position:relative;z-index:1;text-align:center;padding:2rem}
+.hero-eyebrow{font-size:.7rem;letter-spacing:.3em;text-transform:uppercase;color:var(--gold);margin-bottom:1.5rem}
+.hero-divider{width:40px;height:1px;background:var(--gold);margin:0 auto 1.5rem}
+.hero-heading{font-size:clamp(3rem,7vw,6rem);font-weight:300;letter-spacing:-.01em;line-height:1.05;margin-bottom:1.5rem}
+.hero-heading em{font-style:italic;color:var(--gold)}
+.hero-sub{font-size:1rem;color:var(--muted);max-width:440px;margin:0 auto 2.5rem;line-height:1.75}
+.hero-actions{display:flex;gap:1rem;justify-content:center;flex-wrap:wrap}
+.btn-reserve{padding:.875rem 2.5rem;background:var(--gold);color:#0d0a06;border-radius:var(--r);font-weight:700;font-size:.85rem;letter-spacing:.08em;text-transform:uppercase;transition:all .2s}
+.btn-reserve:hover{background:#d99840;transform:translateY(-1px);box-shadow:0 6px 24px var(--gold-glow)}
+.btn-menu-link{padding:.875rem 2rem;border:1px solid var(--border);color:var(--text);border-radius:var(--r);font-size:.85rem;letter-spacing:.08em;text-transform:uppercase;transition:all .2s}
+.btn-menu-link:hover{border-color:var(--gold);color:var(--gold)}
+.hero-hours{position:absolute;bottom:2.5rem;left:50%;transform:translateX(-50%);display:flex;gap:3rem;font-size:.7rem;letter-spacing:.15em;text-transform:uppercase;color:var(--muted);white-space:nowrap}
+
+.section{padding:6rem 2rem}.container{max-width:1100px;margin:0 auto}
+.section-eyebrow{font-size:.65rem;letter-spacing:.25em;text-transform:uppercase;color:var(--gold);margin-bottom:.75rem;text-align:center}
+.section-heading{font-size:clamp(1.75rem,3vw,2.75rem);font-weight:300;letter-spacing:-.01em;text-align:center;margin-bottom:.75rem}
+.section-divider{width:40px;height:1px;background:var(--gold);margin:1rem auto 3.5rem}
+
+.menu-tabs{display:flex;justify-content:center;gap:.75rem;flex-wrap:wrap;margin-bottom:3rem}
+.menu-tab{padding:.5rem 1.5rem;border:1px solid var(--border);border-radius:999px;font-size:.75rem;letter-spacing:.1em;text-transform:uppercase;color:var(--muted);transition:all .2s}
+.menu-tab:hover{border-color:var(--gold);color:var(--gold)}
+.menu-tab.active{background:var(--gold);border-color:var(--gold);color:#0d0a06}
+.menu-grid{display:grid;grid-template-columns:repeat(2,1fr);gap:1px;background:var(--border)}
+.menu-item{background:var(--bg-2);padding:1.75rem;transition:background .2s}
+.menu-item:hover{background:var(--bg-3)}
+.menu-item-img{width:100%;height:180px;border-radius:var(--r-lg);overflow:hidden;margin-bottom:1.25rem}
+.menu-item-img img{width:100%;height:100%;object-fit:cover;transition:transform .4s}
+.menu-item:hover .menu-item-img img{transform:scale(1.04)}
+.menu-item-top{display:flex;justify-content:space-between;align-items:baseline;margin-bottom:.35rem}
+.menu-item-name{font-size:1rem;font-weight:500}
+.menu-item-price{font-size:1rem;color:var(--gold);font-weight:600}
+.menu-item-desc{font-size:.85rem;color:var(--muted);line-height:1.65}
+.menu-item-tag{display:inline-block;font-size:.6rem;letter-spacing:.1em;text-transform:uppercase;padding:.2rem .6rem;border-radius:4px;background:var(--gold-light);color:var(--gold);margin-top:.75rem}
+
+.chef-section{background:var(--bg-2)}
+.chef-grid{display:grid;grid-template-columns:1fr 1fr;gap:5rem;align-items:center;padding:6rem 2rem;max-width:1100px;margin:0 auto}
+.chef-img{position:relative}
+.chef-img img{width:100%;aspect-ratio:2/3;object-fit:cover;border-radius:var(--r-xl)}
+.chef-quote-card{position:absolute;bottom:-1.5rem;right:-1.5rem;background:var(--gold);color:#0d0a06;padding:1.25rem 1.5rem;border-radius:var(--r-lg);max-width:220px;font-size:.85rem;font-weight:600;line-height:1.5}
+.chef-quote-mark{font-size:2rem;line-height:1;display:block;margin-bottom:.25rem}
+.chef-eyebrow{font-size:.65rem;letter-spacing:.25em;text-transform:uppercase;color:var(--gold);margin-bottom:.75rem}
+.chef-name{font-size:clamp(1.5rem,2.5vw,2.25rem);font-weight:300;letter-spacing:-.01em;margin-bottom:1.25rem}
+.chef-text{font-size:.95rem;color:var(--muted);line-height:1.8;margin-bottom:1rem}
+.press-mentions{margin-top:2.5rem;padding-top:2rem;border-top:1px solid var(--border)}
+.press-label{font-size:.65rem;letter-spacing:.2em;text-transform:uppercase;color:var(--muted);margin-bottom:.875rem}
+.press-logos{display:flex;gap:2rem;flex-wrap:wrap;align-items:center}
+.press-name{font-size:.85rem;color:var(--muted);font-style:italic}
+
+.reservation-section{padding:6rem 2rem}
+.reservation-inner{max-width:640px;margin:0 auto}
+.res-form{background:var(--bg-2);border:1px solid var(--border);border-radius:var(--r-xl);padding:2.5rem}
+.res-row{display:grid;grid-template-columns:1fr 1fr;gap:1rem;margin-bottom:1rem}
+.res-field{margin-bottom:1rem}
+.res-label{display:block;font-size:.65rem;letter-spacing:.15em;text-transform:uppercase;color:var(--muted);margin-bottom:.5rem}
+.res-input,.res-select{width:100%;padding:.75rem 1rem;background:var(--bg-3);border:1px solid var(--border);border-radius:var(--r);color:var(--text);font:inherit;font-size:.9rem;transition:border-color .2s}
+.res-input:focus,.res-select:focus{outline:none;border-color:var(--gold)}
+.res-select option{background:var(--bg-3)}
+.res-btn{width:100%;padding:1rem;background:var(--gold);color:#0d0a06;border-radius:var(--r-lg);font-weight:700;font-size:.9rem;letter-spacing:.08em;text-transform:uppercase;transition:all .2s;margin-top:.5rem;cursor:pointer}
+.res-btn:hover{background:#d99840}
+.res-note{text-align:center;font-size:.75rem;color:var(--muted);margin-top:1rem}
+
+.site-footer{padding:2rem 2.5rem;border-top:1px solid var(--border);display:flex;align-items:center;justify-content:space-between;font-size:.75rem;letter-spacing:.1em;text-transform:uppercase;color:var(--muted)}
+
+@media(max-width:900px){.chef-grid{grid-template-columns:1fr;gap:3rem}.menu-grid{grid-template-columns:1fr}.chef-quote-card{display:none}.res-row{grid-template-columns:1fr}}
+@media(max-width:640px){.nav-links{display:none}.hero-hours{gap:1.5rem;font-size:.6rem}}`,
+      },
+      {
+        path: 'src/App.tsx',
+        language: 'tsx',
+        code: `import Navbar from './components/Navbar'
+import Hero from './components/Hero'
+import Menu from './components/Menu'
+import Chef from './components/Chef'
+import Reservation from './components/Reservation'
+import './styles/theme.css'
+
+export default function App() {
+  return (
+    <div>
+      <Navbar />
+      <Hero />
+      <Menu />
+      <Chef />
+      <Reservation />
+      <footer className="site-footer">
+        <span>© 2025 Aurore — 14 Rue des Martyrs, Paris</span>
+        <span>+33 1 42 00 00 00</span>
+      </footer>
+    </div>
+  )
+}`,
+      },
+      {
+        path: 'src/components/Navbar.tsx',
+        language: 'tsx',
+        code: `import { useState, useEffect } from 'react'
+
+export default function Navbar() {
+  const [scrolled, setScrolled] = useState(false)
+  useEffect(() => {
+    const fn = () => setScrolled(window.scrollY > 60)
+    window.addEventListener('scroll', fn)
+    return () => window.removeEventListener('scroll', fn)
+  }, [])
+  return (
+    <nav className={\`navbar\${scrolled ? ' scrolled' : ''}\`}>
+      <div className="nav-links">
+        <a href="#menu" className="nav-link">Menu</a>
+        <a href="#chef" className="nav-link">Our story</a>
+      </div>
+      <a href="#" className="nav-logo">
+        <span className="nav-logo-name">Aurore</span>
+        <span className="nav-logo-sub">Paris · Est. 2018</span>
+      </a>
+      <div style={{ display: 'flex', gap: '1.5rem', alignItems: 'center' }}>
+        <a href="#" className="nav-link">Press</a>
+        <a href="#reservation" className="nav-reserve">Reserve</a>
+      </div>
+    </nav>
+  )
+}`,
+      },
+      {
+        path: 'src/components/Hero.tsx',
+        language: 'tsx',
+        code: `export default function Hero() {
+  return (
+    <section className="hero">
+      <img className="hero-img" src="https://images.unsplash.com/photo-1414235077428-338989a2e8c0?w=1800&q=80&auto=format&fit=crop" alt="Restaurant interior" />
+      <div className="hero-overlay" />
+      <div className="hero-content">
+        <p className="hero-eyebrow">Gastronomie française contemporaine</p>
+        <div className="hero-divider" />
+        <h1 className="hero-heading">Where every dish<br />tells a <em>story</em></h1>
+        <p className="hero-sub">Seasonal ingredients, classical technique, and a deep respect for produce — served in an intimate Montmartre setting.</p>
+        <div className="hero-actions">
+          <a href="#reservation" className="btn-reserve">Reserve a table</a>
+          <a href="#menu" className="btn-menu-link">View menu</a>
+        </div>
+      </div>
+      <div className="hero-hours">
+        <span>Lunch: 12:00 – 14:30</span>
+        <span>·</span>
+        <span>Dinner: 19:00 – 22:30</span>
+        <span>·</span>
+        <span>Montmartre, Paris</span>
+      </div>
+    </section>
+  )
+}`,
+      },
+      {
+        path: 'src/components/Menu.tsx',
+        language: 'tsx',
+        code: `import { useState } from 'react'
+
+const DISHES = {
+  Starters: [
+    { name: 'Foie Gras Torchon', price: '€28', desc: 'Sauternes gelée, brioche, Périgord truffle shavings', tag: 'Signature', img: 'https://images.unsplash.com/photo-1559847844-5315695dadae?w=600&q=80&auto=format&fit=crop' },
+    { name: 'Burrata & Heirloom Tomatoes', price: '€18', desc: 'Aged balsamic, fresh basil oil, Maldon sea salt', img: 'https://images.unsplash.com/photo-1608897013039-887f21d8c804?w=600&q=80&auto=format&fit=crop' },
+    { name: "Soupe à l'Oignon Gratinée", price: '€16', desc: 'Slow-cooked Cévennes onions, Gruyère croûte', tag: 'Seasonal', img: 'https://images.unsplash.com/photo-1547592166-23ac45744acd?w=600&q=80&auto=format&fit=crop' },
+    { name: 'Tuna Tartare', price: '€24', desc: 'Sesame, cucumber, wasabi crème, crispy wonton', img: 'https://images.unsplash.com/photo-1611599537845-1c7aca0091c0?w=600&q=80&auto=format&fit=crop' },
+  ],
+  Mains: [
+    { name: 'Duck Confit', price: '€38', desc: 'Sarladaise potatoes, cherry jus, micro herbs', tag: 'Bestseller', img: 'https://images.unsplash.com/photo-1432139509613-5c4255815697?w=600&q=80&auto=format&fit=crop' },
+    { name: 'Sole Meunière', price: '€42', desc: 'Brown butter, capers, lemon, parsley potatoes', img: 'https://images.unsplash.com/photo-1467003909585-2f8a72700288?w=600&q=80&auto=format&fit=crop' },
+    { name: 'Côte de Boeuf (for 2)', price: '€89', desc: '800g aged Charolais, béarnaise, truffle fries', tag: 'Signature', img: 'https://images.unsplash.com/photo-1546833999-b9f581a1996d?w=600&q=80&auto=format&fit=crop' },
+    { name: 'Risotto aux Champignons', price: '€29', desc: 'Wild mushroom, aged Parmesan, truffle oil', tag: 'Vegetarian', img: 'https://images.unsplash.com/photo-1476124369491-e7addf5db371?w=600&q=80&auto=format&fit=crop' },
+  ],
+  Desserts: [
+    { name: 'Tarte Tatin', price: '€14', desc: 'Caramelised apple, crème fraîche, vanilla ice cream', tag: 'Classic', img: 'https://images.unsplash.com/photo-1568571780765-9276ac8b75a2?w=600&q=80&auto=format&fit=crop' },
+    { name: 'Chocolate Fondant', price: '€16', desc: 'Valrhona 70%, praline heart, vanilla anglaise', tag: 'Signature', img: 'https://images.unsplash.com/photo-1578985545062-69928b1d9587?w=600&q=80&auto=format&fit=crop' },
+    { name: 'Île Flottante', price: '€12', desc: 'Soft meringue, crème anglaise, caramel, praline', img: 'https://images.unsplash.com/photo-1488477181946-6428a0291777?w=600&q=80&auto=format&fit=crop' },
+    { name: 'Cheese Selection', price: '€22', desc: 'Five French cheeses, walnut bread, quince paste', img: 'https://images.unsplash.com/photo-1452195100486-9cc805987862?w=600&q=80&auto=format&fit=crop' },
+  ],
+}
+
+export default function Menu() {
+  const [tab, setTab] = useState<keyof typeof DISHES>('Mains')
+  const dishes = DISHES[tab]
+  return (
+    <section className="section" id="menu">
+      <div className="container">
+        <p className="section-eyebrow">À la carte</p>
+        <h2 className="section-heading">The Menu</h2>
+        <div className="section-divider" />
+        <div className="menu-tabs">
+          {(Object.keys(DISHES) as (keyof typeof DISHES)[]).map(k => (
+            <button key={k} className={\`menu-tab\${tab === k ? ' active' : ''}\`} onClick={() => setTab(k)} type="button">{k}</button>
+          ))}
+        </div>
+        <div className="menu-grid">
+          {dishes.map(d => (
+            <div key={d.name} className="menu-item">
+              <div className="menu-item-img"><img src={d.img} alt={d.name} loading="lazy" /></div>
+              <div className="menu-item-top">
+                <span className="menu-item-name">{d.name}</span>
+                <span className="menu-item-price">{d.price}</span>
+              </div>
+              <p className="menu-item-desc">{d.desc}</p>
+              {d.tag && <span className="menu-item-tag">{d.tag}</span>}
+            </div>
+          ))}
+        </div>
+      </div>
+    </section>
+  )
+}`,
+      },
+      {
+        path: 'src/components/Chef.tsx',
+        language: 'tsx',
+        code: `export default function Chef() {
+  return (
+    <section className="chef-section" id="chef">
+      <div className="chef-grid">
+        <div className="chef-img">
+          <img src="https://images.unsplash.com/photo-1577219491135-ce391730fb2c?w=800&q=80&auto=format&fit=crop" alt="Chef Laurent Moreau" />
+          <div className="chef-quote-card">
+            <span className="chef-quote-mark">"</span>
+            Cuisine is not about perfection. It's about honesty.
+          </div>
+        </div>
+        <div>
+          <p className="chef-eyebrow">The chef</p>
+          <h2 className="chef-name">Laurent Moreau</h2>
+          <p className="chef-text">Trained under Alain Ducasse in Monaco and Joel Robuchon in Paris, Laurent returned to his hometown of Lyon before opening Aurore in 2018.</p>
+          <p className="chef-text">His cooking is rooted in the French canon — but never trapped by it. Every dish reflects a personal memory, a market discovery, or a dialogue with a local producer.</p>
+          <div className="press-mentions">
+            <p className="press-label">As seen in</p>
+            <div className="press-logos">
+              {['Le Monde', 'Condé Nast Traveler', 'The Guardian', 'Michelin Guide'].map(p => (
+                <span key={p} className="press-name">{p}</span>
+              ))}
+            </div>
+          </div>
+        </div>
+      </div>
+    </section>
+  )
+}`,
+      },
+      {
+        path: 'src/components/Reservation.tsx',
+        language: 'tsx',
+        code: `import { useState } from 'react'
+
+export default function Reservation() {
+  const [confirmed, setConfirmed] = useState(false)
+  return (
+    <section className="reservation-section" id="reservation">
+      <div className="reservation-inner">
+        <p className="section-eyebrow">Book a table</p>
+        <h2 className="section-heading">Reserve your evening</h2>
+        <div className="section-divider" />
+        <div className="res-form">
+          {confirmed ? (
+            <div style={{ textAlign: 'center', padding: '2rem 0' }}>
+              <p style={{ fontSize: '1.25rem', marginBottom: '.75rem' }}>Reservation confirmed ✓</p>
+              <p style={{ color: 'var(--muted)', fontSize: '.9rem' }}>A confirmation has been sent to your email. We look forward to welcoming you.</p>
+            </div>
+          ) : (
+            <form onSubmit={e => { e.preventDefault(); setConfirmed(true) }}>
+              <div className="res-row">
+                <div className="res-field">
+                  <label className="res-label" htmlFor="r-name">Name</label>
+                  <input id="r-name" className="res-input" type="text" placeholder="Full name" required />
+                </div>
+                <div className="res-field">
+                  <label className="res-label" htmlFor="r-email">Email</label>
+                  <input id="r-email" className="res-input" type="email" placeholder="you@email.com" required />
+                </div>
+              </div>
+              <div className="res-row">
+                <div className="res-field">
+                  <label className="res-label" htmlFor="r-date">Date</label>
+                  <input id="r-date" className="res-input" type="date" required />
+                </div>
+                <div className="res-field">
+                  <label className="res-label" htmlFor="r-time">Service</label>
+                  <select id="r-time" className="res-select">
+                    <option>Lunch — 12:00</option><option>Lunch — 13:00</option>
+                    <option>Dinner — 19:00</option><option>Dinner — 20:00</option><option>Dinner — 21:00</option>
+                  </select>
+                </div>
+              </div>
+              <div className="res-row">
+                <div className="res-field">
+                  <label className="res-label" htmlFor="r-guests">Guests</label>
+                  <select id="r-guests" className="res-select">
+                    {[1,2,3,4,5,6,7,8].map(n => <option key={n}>{n} {n === 1 ? 'guest' : 'guests'}</option>)}
+                  </select>
+                </div>
+                <div className="res-field">
+                  <label className="res-label" htmlFor="r-occasion">Occasion</label>
+                  <select id="r-occasion" className="res-select">
+                    <option>No special occasion</option><option>Birthday</option>
+                    <option>Anniversary</option><option>Business dinner</option>
+                  </select>
+                </div>
+              </div>
+              <button type="submit" className="res-btn">Confirm reservation</button>
+              <p className="res-note">For parties of 9+, please call us directly.</p>
+            </form>
+          )}
+        </div>
+      </div>
+    </section>
+  )
+}`,
+      },
+    ],
+  }
+}
+
+// ─────────────────────────────────────────────────────────────────────────────
+// Template 6: Tech Blog
+// ─────────────────────────────────────────────────────────────────────────────
+function techBlog(): Template {
+  return {
+    id: 'tech-blog',
+    name: 'Tech Blog',
+    description: 'A clean, editorial-style blog for developers, writers, and thought leaders.',
+    category: 'Blog',
+    accentColor: '#e85d2f',
+    highlights: [
+      'Featured hero article with large cover image',
+      'Article grid with reading time and author info',
+      'Tag/category filter bar',
+      'Newsletter signup section',
+    ],
+    files: [
+      {
+        path: 'src/styles/theme.css',
+        language: 'css',
+        code: `*,*::before,*::after{box-sizing:border-box;margin:0;padding:0}
+html{scroll-behavior:smooth}
+body{font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',system-ui,sans-serif;background:#fff;color:#1a1a1a;line-height:1.65;overflow-x:hidden}
+a{color:inherit;text-decoration:none}
+button{cursor:pointer;border:none;background:none;font:inherit;color:inherit}
+
+:root{--bg:#fff;--bg-2:#f7f7f5;--bg-3:#f0eeeb;--border:#e8e5e0;--text:#1a1a1a;--muted:#888;--accent:#e85d2f;--accent-light:rgba(232,93,47,.1);--r:6px;--r-lg:12px;--r-xl:20px}
+
+.navbar{position:sticky;top:0;z-index:100;background:rgba(255,255,255,.96);backdrop-filter:blur(12px);border-bottom:1px solid var(--border)}
+.navbar-inner{max-width:1200px;margin:0 auto;padding:0 2rem;height:60px;display:flex;align-items:center;justify-content:space-between;gap:2rem}
+.nav-logo{font-size:1.2rem;font-weight:900;letter-spacing:-.03em}
+.nav-logo-dot{color:var(--accent)}
+.nav-search{flex:1;max-width:300px;position:relative}
+.nav-search-input{width:100%;padding:.4rem .75rem .4rem 2.25rem;background:var(--bg-2);border:1px solid var(--border);border-radius:999px;font:inherit;font-size:.8rem;color:var(--text);transition:border-color .2s}
+.nav-search-input:focus{outline:none;border-color:var(--accent)}
+.nav-search-icon{position:absolute;left:.75rem;top:50%;transform:translateY(-50%);font-size:.8rem;color:var(--muted)}
+.nav-links{display:flex;align-items:center;gap:.25rem}
+.nav-link{padding:.4rem .75rem;font-size:.85rem;color:var(--muted);border-radius:var(--r);transition:all .15s}
+.nav-link:hover{color:var(--text);background:var(--bg-2)}
+.nav-subscribe{padding:.45rem 1.125rem;background:var(--accent);color:#fff;border-radius:var(--r);font-size:.85rem;font-weight:600;transition:all .2s}
+.nav-subscribe:hover{background:#d14e22}
+
+.featured-section{max-width:1200px;margin:0 auto;padding:3rem 2rem 2rem}
+.featured-article{display:grid;grid-template-columns:1fr 1fr;gap:3rem;align-items:center;padding:2.5rem;background:var(--bg-2);border-radius:var(--r-xl);border:1px solid var(--border);cursor:pointer;transition:box-shadow .2s}
+.featured-article:hover{box-shadow:0 8px 32px rgba(0,0,0,.08)}
+.featured-img{border-radius:var(--r-lg);overflow:hidden;aspect-ratio:16/10}
+.featured-img img{width:100%;height:100%;object-fit:cover;transition:transform .4s}
+.featured-article:hover .featured-img img{transform:scale(1.02)}
+.featured-tag{display:inline-flex;align-items:center;padding:.25rem .75rem;background:var(--accent);color:#fff;border-radius:999px;font-size:.7rem;font-weight:700;letter-spacing:.06em;text-transform:uppercase;margin-bottom:1rem}
+.featured-heading{font-size:clamp(1.4rem,2.5vw,2rem);font-weight:800;letter-spacing:-.03em;line-height:1.2;margin-bottom:.875rem;transition:color .2s}
+.featured-article:hover .featured-heading{color:var(--accent)}
+.featured-excerpt{font-size:.95rem;color:var(--muted);line-height:1.75;margin-bottom:1.5rem}
+.article-meta{display:flex;align-items:center;gap:1rem}
+.author-avatar{width:36px;height:36px;border-radius:50%;overflow:hidden;flex-shrink:0}
+.author-avatar img{width:100%;height:100%;object-fit:cover}
+.author-name{font-size:.85rem;font-weight:600}
+.article-info{font-size:.8rem;color:var(--muted)}
+.read-time{color:var(--accent);font-weight:600}
+
+.articles-section{max-width:1200px;margin:0 auto;padding:2rem}
+.articles-header{display:flex;align-items:center;justify-content:space-between;margin-bottom:1.5rem;gap:1rem;flex-wrap:wrap}
+.articles-title{font-size:1.1rem;font-weight:800;letter-spacing:-.02em}
+.tag-filter{display:flex;gap:.5rem;flex-wrap:wrap}
+.tag-btn{padding:.35rem .875rem;border:1px solid var(--border);border-radius:999px;font-size:.75rem;color:var(--muted);transition:all .2s}
+.tag-btn:hover{border-color:var(--accent);color:var(--accent)}
+.tag-btn.active{background:var(--accent);border-color:var(--accent);color:#fff}
+.articles-grid{display:grid;grid-template-columns:repeat(3,1fr);gap:1.5rem;margin-top:2rem}
+.article-card{border:1px solid var(--border);border-radius:var(--r-xl);overflow:hidden;transition:all .2s;cursor:pointer}
+.article-card:hover{transform:translateY(-3px);box-shadow:0 8px 32px rgba(0,0,0,.08)}
+.article-card-img{aspect-ratio:16/9;overflow:hidden}
+.article-card-img img{width:100%;height:100%;object-fit:cover;transition:transform .4s}
+.article-card:hover .article-card-img img{transform:scale(1.04)}
+.article-card-body{padding:1.25rem}
+.article-card-tags{display:flex;gap:.4rem;flex-wrap:wrap;margin-bottom:.625rem}
+.article-card-tag{font-size:.65rem;font-weight:700;letter-spacing:.06em;text-transform:uppercase;color:var(--accent)}
+.article-card-title{font-size:.95rem;font-weight:700;letter-spacing:-.02em;line-height:1.35;margin-bottom:.5rem;transition:color .2s}
+.article-card:hover .article-card-title{color:var(--accent)}
+.article-card-excerpt{font-size:.8rem;color:var(--muted);line-height:1.65;margin-bottom:.875rem;display:-webkit-box;-webkit-line-clamp:2;-webkit-box-orient:vertical;overflow:hidden}
+.article-card-meta{display:flex;align-items:center;gap:.6rem}
+.article-card-avatar{width:24px;height:24px;border-radius:50%;overflow:hidden;flex-shrink:0}
+.article-card-avatar img{width:100%;height:100%;object-fit:cover}
+.article-card-author{font-size:.75rem;font-weight:600}
+.article-card-dot{color:var(--border)}
+.article-card-date{font-size:.75rem;color:var(--muted)}
+
+.newsletter-section{margin:3rem 2rem 0;background:linear-gradient(135deg,#1a1a1a,#2d2d2d);border-radius:var(--r-xl);padding:4rem 3rem;text-align:center;max-width:1156px;margin-left:auto;margin-right:auto}
+.newsletter-eyebrow{font-size:.7rem;letter-spacing:.2em;text-transform:uppercase;color:var(--accent);margin-bottom:.75rem}
+.newsletter-heading{font-size:clamp(1.5rem,2.5vw,2rem);font-weight:800;letter-spacing:-.03em;color:#fff;margin-bottom:.75rem}
+.newsletter-sub{font-size:.95rem;color:rgba(255,255,255,.55);max-width:440px;margin:0 auto 2rem;line-height:1.65}
+.newsletter-form{display:flex;gap:.75rem;max-width:440px;margin:0 auto}
+.newsletter-input{flex:1;padding:.75rem 1.25rem;background:rgba(255,255,255,.1);border:1px solid rgba(255,255,255,.15);border-radius:var(--r-lg);color:#fff;font:inherit;font-size:.9rem;transition:border-color .2s}
+.newsletter-input::placeholder{color:rgba(255,255,255,.35)}
+.newsletter-input:focus{outline:none;border-color:var(--accent)}
+.newsletter-btn{padding:.75rem 1.5rem;background:var(--accent);color:#fff;border-radius:var(--r-lg);font-weight:700;font-size:.875rem;white-space:nowrap;transition:all .2s;cursor:pointer}
+.newsletter-btn:hover{background:#d14e22}
+.newsletter-note{font-size:.75rem;color:rgba(255,255,255,.3);margin-top:1rem}
+
+.site-footer{max-width:1200px;margin:0 auto;padding:2rem;display:flex;align-items:center;justify-content:space-between;border-top:1px solid var(--border);font-size:.8rem;color:var(--muted)}
+.footer-links{display:flex;gap:1.5rem}
+.footer-link:hover{color:var(--text)}
+
+@media(max-width:1024px){.articles-grid{grid-template-columns:repeat(2,1fr)}}
+@media(max-width:768px){.featured-article{grid-template-columns:1fr}.nav-search,.nav-links{display:none}.articles-grid{grid-template-columns:1fr}.newsletter-form{flex-direction:column}}`,
+      },
+      {
+        path: 'src/App.tsx',
+        language: 'tsx',
+        code: `import Navbar from './components/Navbar'
+import FeaturedArticle from './components/FeaturedArticle'
+import ArticleGrid from './components/ArticleGrid'
+import Newsletter from './components/Newsletter'
+import './styles/theme.css'
+
+export default function App() {
+  return (
+    <div>
+      <Navbar />
+      <FeaturedArticle />
+      <ArticleGrid />
+      <Newsletter />
+      <footer className="site-footer">
+        <span>© 2025 Codex Magazine</span>
+        <div className="footer-links">
+          {['About', 'Write for us', 'Privacy', 'RSS'].map(l => <a key={l} href="#" className="footer-link">{l}</a>)}
+        </div>
+      </footer>
+    </div>
+  )
+}`,
+      },
+      {
+        path: 'src/components/Navbar.tsx',
+        language: 'tsx',
+        code: `export default function Navbar() {
+  return (
+    <header className="navbar">
+      <div className="navbar-inner">
+        <a href="#" className="nav-logo">Codex<span className="nav-logo-dot">.</span></a>
+        <div className="nav-search">
+          <span className="nav-search-icon">🔍</span>
+          <input className="nav-search-input" type="text" placeholder="Search articles…" />
+        </div>
+        <nav className="nav-links">
+          <a href="#" className="nav-link">Web Dev</a>
+          <a href="#" className="nav-link">AI & ML</a>
+          <a href="#" className="nav-link">Design</a>
+          <a href="#" className="nav-link">Career</a>
+        </nav>
+        <a href="#newsletter" className="nav-subscribe">Subscribe</a>
+      </div>
+    </header>
+  )
+}`,
+      },
+      {
+        path: 'src/components/FeaturedArticle.tsx',
+        language: 'tsx',
+        code: `export default function FeaturedArticle() {
+  return (
+    <section className="featured-section">
+      <article className="featured-article">
+        <div className="featured-img">
+          <img src="https://images.unsplash.com/photo-1555066931-4365d14bab8c?w=1000&q=80&auto=format&fit=crop" alt="Featured article" />
+        </div>
+        <div>
+          <span className="featured-tag">Featured</span>
+          <h1 className="featured-heading">Why TypeScript 5.5 Changes How We Think About Type Predicates</h1>
+          <p className="featured-excerpt">The new inferred type predicates feature isn't just syntactic sugar — it fundamentally shifts the boundary between runtime checks and compile-time guarantees. Here's what every TypeScript developer needs to know.</p>
+          <div className="article-meta">
+            <div className="author-avatar">
+              <img src="https://images.unsplash.com/photo-1507003211169-0a1dd7228f2d?w=80&q=80&auto=format&fit=crop" alt="Marcus Webb" />
+            </div>
+            <div>
+              <p className="author-name">Marcus Webb</p>
+              <p className="article-info">Jun 4, 2025 · <span className="read-time">8 min read</span></p>
+            </div>
+          </div>
+        </div>
+      </article>
+    </section>
+  )
+}`,
+      },
+      {
+        path: 'src/components/ArticleGrid.tsx',
+        language: 'tsx',
+        code: `import { useState } from 'react'
+
+const ARTICLES = [
+  { id: 1, title: 'Building a real-time collaborative editor with CRDTs', excerpt: 'Conflict-free replicated data types sound intimidating, but they unlock a class of distributed apps that OT can never achieve cleanly.', tag: 'Web Dev', date: 'Jun 2', time: '12 min', img: 'https://images.unsplash.com/photo-1498050108023-c5249f4df085?w=600&q=80&auto=format&fit=crop', author: { name: 'Priya Nair', avatar: 'https://images.unsplash.com/photo-1494790108377-be9c29b29330?w=80&q=80&auto=format&fit=crop' } },
+  { id: 2, title: 'The State of AI Coding Assistants in 2025', excerpt: 'We benchmarked 7 coding assistants on 400 real-world tasks. The results surprised us — and might change how you work.', tag: 'AI & ML', date: 'May 30', time: '15 min', img: 'https://images.unsplash.com/photo-1677442135703-1787eea5ce01?w=600&q=80&auto=format&fit=crop', author: { name: 'Leo Zhang', avatar: 'https://images.unsplash.com/photo-1500648767791-00dcc994a43e?w=80&q=80&auto=format&fit=crop' } },
+  { id: 3, title: 'Micro-interactions that make users feel smart', excerpt: "Good UX isn't invisible — it's perceptible but effortless. A guide to designing feedback that empowers instead of distracts.", tag: 'Design', date: 'May 28', time: '7 min', img: 'https://images.unsplash.com/photo-1561070791-2526d30994b5?w=600&q=80&auto=format&fit=crop', author: { name: 'Sofia Rios', avatar: 'https://images.unsplash.com/photo-1438761681033-6461ffad8d80?w=80&q=80&auto=format&fit=crop' } },
+  { id: 4, title: 'From SWE to Staff: The skills that actually matter', excerpt: "Technical excellence gets you to senior. Here's what takes you to staff — and why most companies measure it wrong.", tag: 'Career', date: 'May 25', time: '10 min', img: 'https://images.unsplash.com/photo-1522202176988-66273c2fd55f?w=600&q=80&auto=format&fit=crop', author: { name: 'Marcus Webb', avatar: 'https://images.unsplash.com/photo-1507003211169-0a1dd7228f2d?w=80&q=80&auto=format&fit=crop' } },
+  { id: 5, title: 'CSS Grid subgrid is finally here — use it', excerpt: "Subgrid solves the layout problem that has haunted CSS developers for a decade. Here's every pattern you need to know.", tag: 'Web Dev', date: 'May 22', time: '6 min', img: 'https://images.unsplash.com/photo-1517180102446-f3ece451e9d8?w=600&q=80&auto=format&fit=crop', author: { name: 'Priya Nair', avatar: 'https://images.unsplash.com/photo-1494790108377-be9c29b29330?w=80&q=80&auto=format&fit=crop' } },
+  { id: 6, title: 'Fine-tuning vs RAG: the definitive 2025 guide', excerpt: 'Both approaches have their place. We break down the tradeoffs across cost, latency, freshness, and quality with concrete numbers.', tag: 'AI & ML', date: 'May 20', time: '14 min', img: 'https://images.unsplash.com/photo-1620712943543-bcc4688e7485?w=600&q=80&auto=format&fit=crop', author: { name: 'Leo Zhang', avatar: 'https://images.unsplash.com/photo-1500648767791-00dcc994a43e?w=80&q=80&auto=format&fit=crop' } },
+]
+const TAGS = ['All', 'Web Dev', 'AI & ML', 'Design', 'Career']
+
+export default function ArticleGrid() {
+  const [active, setActive] = useState('All')
+  const filtered = active === 'All' ? ARTICLES : ARTICLES.filter(a => a.tag === active)
+  return (
+    <section className="articles-section">
+      <div className="articles-header">
+        <h2 className="articles-title">Latest articles</h2>
+        <div className="tag-filter">
+          {TAGS.map(t => (
+            <button key={t} className={\`tag-btn\${active === t ? ' active' : ''}\`} onClick={() => setActive(t)} type="button">{t}</button>
+          ))}
+        </div>
+      </div>
+      <div className="articles-grid">
+        {filtered.map(a => (
+          <article key={a.id} className="article-card">
+            <div className="article-card-img"><img src={a.img} alt={a.title} loading="lazy" /></div>
+            <div className="article-card-body">
+              <div className="article-card-tags"><span className="article-card-tag">{a.tag}</span></div>
+              <h3 className="article-card-title">{a.title}</h3>
+              <p className="article-card-excerpt">{a.excerpt}</p>
+              <div className="article-card-meta">
+                <div className="article-card-avatar"><img src={a.author.avatar} alt={a.author.name} /></div>
+                <span className="article-card-author">{a.author.name}</span>
+                <span className="article-card-dot">·</span>
+                <span className="article-card-date">{a.date} · {a.time}</span>
+              </div>
+            </div>
+          </article>
+        ))}
+      </div>
+    </section>
+  )
+}`,
+      },
+      {
+        path: 'src/components/Newsletter.tsx',
+        language: 'tsx',
+        code: `import { useState } from 'react'
+
+export default function Newsletter() {
+  const [subscribed, setSubscribed] = useState(false)
+  return (
+    <section className="newsletter-section" id="newsletter">
+      <p className="newsletter-eyebrow">Newsletter</p>
+      <h2 className="newsletter-heading">Get the best articles in your inbox</h2>
+      <p className="newsletter-sub">Join 28,000 developers and designers who read Codex every week. No spam, unsubscribe any time.</p>
+      {subscribed ? (
+        <p style={{ color: '#fff', fontSize: '1rem' }}>You're in! Check your inbox to confirm. ✓</p>
+      ) : (
+        <>
+          <form className="newsletter-form" onSubmit={e => { e.preventDefault(); setSubscribed(true) }}>
+            <input className="newsletter-input" type="email" placeholder="your@email.com" required />
+            <button type="submit" className="newsletter-btn">Subscribe →</button>
+          </form>
+          <p className="newsletter-note">No spam · Unsubscribe any time · Read by 28k developers</p>
+        </>
+      )}
+    </section>
   )
 }`,
       },

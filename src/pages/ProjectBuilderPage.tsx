@@ -12,6 +12,7 @@ import { capturePreviewThumbnail } from '../lib/preview-screenshot'
 import { runFlorviaAgent, type AgentCodeFile, type SelectedAgentModel } from '../lib/agent'
 import {
   DEFAULT_THINKING_LEVEL,
+  normalizeThinkingLevel,
   type AgentThinkingLevel,
 } from '../lib/agent-thinking'
 import PromptInput from '../components/PromptInput/PromptInput'
@@ -708,7 +709,7 @@ export default function ProjectBuilderPage() {
   const state = (location.state ?? {}) as ProjectRouteState
   const hasInitialPrompt = Boolean(state.prompt)
   const prompt = state.prompt || ''
-  const initialThinkingLevel = state.thinkingLevel ?? DEFAULT_THINKING_LEVEL
+  const initialThinkingLevel = normalizeThinkingLevel(state.thinkingLevel)
   const [title, setTitle] = useState('')
   const [projectFiles, setProjectFiles] = useState<AgentCodeFile[]>([])
   const [activeModel, setActiveModel] = useState<SelectedAgentModel | null>(state.selectedModel ?? null)

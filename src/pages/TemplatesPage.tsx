@@ -1,4 +1,4 @@
-import { useState, useEffect, useRef, useCallback } from 'react'
+import { useState, useEffect, useCallback } from 'react'
 import { useNavigate } from 'react-router-dom'
 import { useAuth } from '../lib/AuthContext'
 import { supabase } from '../lib/supabase'
@@ -30,7 +30,6 @@ export default function TemplatesPage() {
   const [deviceMode, setDeviceMode] = useState<DeviceMode>('desktop')
   const [selectedModel, setSelectedModel] = useState<SelectedModel | null>(null)
   const [launching, setLaunching] = useState(false)
-  const overlayIframeRef = useRef<HTMLIFrameElement>(null)
 
   useEffect(() => {
     if (!loading && !user) navigate('/', { replace: true })
@@ -46,19 +45,6 @@ export default function TemplatesPage() {
       })
     }
   }, [])
-
-  // Write HTML into overlay iframe when selection or device mode changes
-  useEffect(() => {
-    if (!selected || !overlayIframeRef.current) return
-    const html = htmlMap[selected.id]
-    if (!html) return
-    const doc = overlayIframeRef.current.contentDocument
-    if (doc) {
-      doc.open()
-      doc.write(html)
-      doc.close()
-    }
-  }, [selected, htmlMap, deviceMode])
 
   // Close on Escape
   useEffect(() => {
@@ -92,7 +78,7 @@ export default function TemplatesPage() {
         isTemplate: true,
         templateName: selected.name,
         selectedModel,
-        thinkingLevel: 'auto',
+        thinkingLevel: 'medium',
       },
     })
   }, [user, selected, selectedModel, navigate])
@@ -184,21 +170,26 @@ export default function TemplatesPage() {
                         type="button"
                         className={`${styles.deviceBtn} ${deviceMode === d ? styles.deviceBtnActive : ''}`}
                         onClick={() => setDeviceMode(d)}
-                        title={d}
+                        aria-label={`${d} preview`}
                       >
-                        {d === 'desktop' ? '🖥' : d === 'tablet' ? '📱' : '📲'}
+                        {d === 'desktop' ? <DesktopIcon /> : d === 'tablet' ? <TabletIcon /> : <PhoneIcon />}
                       </button>
                     ))}
                   </div>
                 </div>
                 <div className={styles.overlayIframeWrapper}>
-                  <iframe
-                    ref={overlayIframeRef}
-                    className={styles.overlayIframe}
-                    title={`${selected.name} preview`}
-                    sandbox="allow-scripts"
-                    style={{ width: iframeWidth }}
-                  />
+                  <div
+                    className={styles.overlayIframeContainer}
+                    style={{ maxWidth: deviceMode === 'desktop' ? 'none' : iframeWidth }}
+                  >
+                    <iframe
+                      key={selected.id}
+                      srcDoc={htmlMap[selected.id] || ''}
+                      className={styles.overlayIframe}
+                      title={`${selected.name} preview`}
+                      sandbox="allow-scripts"
+                    />
+                  </div>
                 </div>
               </div>
 
@@ -229,7 +220,8 @@ export default function TemplatesPage() {
                     page="dashboard"
                     selectedModel={selectedModel}
                     onModelSelect={setSelectedModel}
-                    placement="top"
+                    placement="bottom"
+                    subLayout="stacked"
                   />
                 </div>
 
@@ -251,4 +243,16 @@ export default function TemplatesPage() {
       })()}
     </div>
   )
+}
+
+function DesktopIcon() {
+  return <svg width="17" height="17" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8"><rect x="3" y="4" width="18" height="12" rx="2"/><path d="M8 20h8M12 16v4"/></svg>
+}
+
+function TabletIcon() {
+  return <svg width="17" height="17" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8"><rect x="5" y="2" width="14" height="20" rx="2"/><path d="M11 18h2"/></svg>
+}
+
+function PhoneIcon() {
+  return <svg width="17" height="17" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8"><rect x="7" y="2" width="10" height="20" rx="2"/><path d="M11 18h2"/></svg>
 }

@@ -31,6 +31,8 @@ interface ModelSelectorProps {
   selectedModel: SelectedModel | null
   onModelSelect: (model: SelectedModel) => void
   placement?: 'bottom' | 'top'
+  subDirection?: 'right' | 'left'
+  subLayout?: 'side' | 'stacked'
 }
 
 // ── Constants ──────────────────────────────────────────
@@ -71,7 +73,7 @@ function parseModels(raw: string): ModelInfo[] {
 
 // ── Component ──────────────────────────────────────────
 
-export default function ModelSelector({ page, selectedModel, onModelSelect, placement = 'bottom' }: ModelSelectorProps) {
+export default function ModelSelector({ page, selectedModel, onModelSelect, placement = 'bottom', subDirection = 'right', subLayout = 'side' }: ModelSelectorProps) {
   const { user } = useAuth()
   const [isOpen, setIsOpen] = useState(false)
   const [hoveredProvider, setHoveredProvider] = useState<string | null>(null)
@@ -282,7 +284,7 @@ export default function ModelSelector({ page, selectedModel, onModelSelect, plac
       <AnimatePresence>
         {isOpen && (
           <motion.div
-            className={`${styles.dropdown} ${placement === 'top' ? styles.dropdownTop : ''}`}
+            className={`${styles.dropdown} ${placement === 'top' ? styles.dropdownTop : ''} ${subDirection === 'left' ? styles.dropdownSubLeft : ''}`}
             initial={{ opacity: 0, y: placement === 'top' ? 6 : -6, scale: 0.97 }}
             animate={{ opacity: 1, y: 0, scale: 1 }}
             exit={{ opacity: 0, y: placement === 'top' ? 6 : -6, scale: 0.97 }}
@@ -298,74 +300,102 @@ export default function ModelSelector({ page, selectedModel, onModelSelect, plac
                 <div className={styles.providerList}>
                   {providers.map((p) => {
                     const isSelected = selectedModel?.provider_id === p.provider_id
+                    const isExpanded = hoveredProvider === p.provider_id
                     return (
-                      <button
-                        key={p.provider_id}
-                        type="button"
-                        className={`${styles.providerRow} ${hoveredProvider === p.provider_id ? styles.providerRowActive : ''}`}
-                        onMouseEnter={() => handleProviderHover(p.provider_id)}
-                        onClick={() => handleProviderHover(p.provider_id)}
-                        style={{ '--provider-color': p.color } as React.CSSProperties}
-                      >
-                        <img
-                          src={p.logo}
-                          alt={p.provider_name}
-                          className={styles.providerRowIcon}
-                          onError={(e) => { (e.target as HTMLImageElement).style.display = 'none' }}
-                        />
-                        <span className={styles.providerRowName}>{p.provider_name}</span>
-                        {isSelected && (
-                          <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" className={styles.checkIcon}>
-                            <polyline points="20 6 9 17 4 12" />
+                      <div key={p.provider_id}>
+                        <button
+                          type="button"
+                          className={`${styles.providerRow} ${isExpanded ? styles.providerRowActive : ''}`}
+                          onMouseEnter={() => handleProviderHover(p.provider_id)}
+                          onClick={() => handleProviderHover(p.provider_id)}
+                          style={{ '--provider-color': p.color } as React.CSSProperties}
+                        >
+                          <img
+                            src={p.logo}
+                            alt={p.provider_name}
+                            className={styles.providerRowIcon}
+                            onError={(e) => { (e.target as HTMLImageElement).style.display = 'none' }}
+                          />
+                          <span className={styles.providerRowName}>{p.provider_name}</span>
+                          {isSelected && (
+                            <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" className={styles.checkIcon}>
+                              <polyline points="20 6 9 17 4 12" />
+                            </svg>
+                          )}
+                          <svg width="10" height="10" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" className={`${styles.providerRowChevron} ${subLayout === 'stacked' ? styles.providerRowChevronToggle : ''}`} style={subLayout === 'stacked' ? { transform: isExpanded ? 'rotate(90deg)' : undefined, transition: 'transform 0.15s' } : undefined}>
+                            <polyline points="9 18 15 12 9 6" />
                           </svg>
+                        </button>
+
+                        {/* Stacked inline models */}
+                        {subLayout === 'stacked' && isExpanded && (
+                          <div className={styles.inlineModels}>
+                            {p.models.map((m) => {
+                              const isModelSelected = selectedModel?.provider_id === p.provider_id && selectedModel?.model_id === m.id
+                              return (
+                                <button
+                                  key={m.id}
+                                  type="button"
+                                  className={`${styles.modelItem} ${isModelSelected ? styles.modelItemSelected : ''}`}
+                                  onClick={() => handleModelClick(p, m)}
+                                >
+                                  <span className={styles.modelItemName}>{m.name}</span>
+                                  {isModelSelected && (
+                                    <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" className={styles.checkIcon}>
+                                      <polyline points="20 6 9 17 4 12" />
+                                    </svg>
+                                  )}
+                                </button>
+                              )
+                            })}
+                          </div>
                         )}
-                        <svg width="10" height="10" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" className={styles.providerRowChevron}>
-                          <polyline points="9 18 15 12 9 6" />
-                        </svg>
-                      </button>
+                      </div>
                     )
                   })}
                 </div>
 
-                {/* Sub-overlay — slides out to the right */}
-                <AnimatePresence>
-                  {activeProvider && (
-                    <motion.div
-                      key={activeProvider.provider_id}
-                      className={styles.subOverlay}
-                      initial={{ opacity: 0, x: -6 }}
-                      animate={{ opacity: 1, x: 0 }}
-                      exit={{ opacity: 0, x: -6 }}
-                      transition={{ duration: 0.15, ease: [0.19, 1, 0.22, 1] }}
-                    >
-                      <div className={styles.subOverlayHeader}>
-                        {activeProvider.provider_name}
-                      </div>
-                      <div className={styles.modelList}>
-                        {activeProvider.models.map((m) => {
-                          const isSelected =
-                            selectedModel?.provider_id === activeProvider.provider_id &&
-                            selectedModel?.model_id === m.id
-                          return (
-                            <button
-                              key={m.id}
-                              type="button"
-                              className={`${styles.modelItem} ${isSelected ? styles.modelItemSelected : ''}`}
-                              onClick={() => handleModelClick(activeProvider, m)}
-                            >
-                              <span className={styles.modelItemName}>{m.name}</span>
-                              {isSelected && (
-                                <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" className={styles.checkIcon}>
-                                  <polyline points="20 6 9 17 4 12" />
-                                </svg>
-                              )}
-                            </button>
-                          )
-                        })}
-                      </div>
-                    </motion.div>
-                  )}
-                </AnimatePresence>
+                {/* Side sub-overlay — slides out to the right (side layout only) */}
+                {subLayout === 'side' && (
+                  <AnimatePresence>
+                    {activeProvider && (
+                      <motion.div
+                        key={activeProvider.provider_id}
+                        className={styles.subOverlay}
+                        initial={{ opacity: 0, x: -6 }}
+                        animate={{ opacity: 1, x: 0 }}
+                        exit={{ opacity: 0, x: -6 }}
+                        transition={{ duration: 0.15, ease: [0.19, 1, 0.22, 1] }}
+                      >
+                        <div className={styles.subOverlayHeader}>
+                          {activeProvider.provider_name}
+                        </div>
+                        <div className={styles.modelList}>
+                          {activeProvider.models.map((m) => {
+                            const isSelected =
+                              selectedModel?.provider_id === activeProvider.provider_id &&
+                              selectedModel?.model_id === m.id
+                            return (
+                              <button
+                                key={m.id}
+                                type="button"
+                                className={`${styles.modelItem} ${isSelected ? styles.modelItemSelected : ''}`}
+                                onClick={() => handleModelClick(activeProvider, m)}
+                              >
+                                <span className={styles.modelItemName}>{m.name}</span>
+                                {isSelected && (
+                                  <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" className={styles.checkIcon}>
+                                    <polyline points="20 6 9 17 4 12" />
+                                  </svg>
+                                )}
+                              </button>
+                            )
+                          })}
+                        </div>
+                      </motion.div>
+                    )}
+                  </AnimatePresence>
+                )}
               </>
             )}
           </motion.div>
