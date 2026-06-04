@@ -6,12 +6,14 @@ export interface CollaboratorPresence {
   userId: string
   name: string
   initials: string
+  email: string
 }
 
 export interface CollaborationOptions {
   projectId: string | undefined
   userId: string | undefined
   userName: string
+  userEmail: string
   onFilesUpdate: (files: AgentCodeFile[]) => void
   onChatUpdate: (chat: unknown[]) => void
   onGeneratingChange: (generating: boolean, generatingBy: string | null) => void
@@ -32,6 +34,7 @@ export function useCollaboration({
   projectId,
   userId,
   userName,
+  userEmail,
   onFilesUpdate,
   onChatUpdate,
   onGeneratingChange,
@@ -57,10 +60,16 @@ export function useCollaboration({
 
     channel
       .on('presence', { event: 'sync' }, () => {
-        const state = channel.presenceState<{ userId: string; name: string; initials: string }>()
+        const state = channel.presenceState<{ userId: string; name: string; initials: string; email: string }>()
+        const seen = new Set<string>()
         const others = Object.values(state)
           .flat()
           .filter((p) => p.userId !== userId)
+          .filter((p) => {
+            if (seen.has(p.userId)) return false
+            seen.add(p.userId)
+            return true
+          })
         setOnlineCollaborators(others)
       })
       .on(
@@ -87,14 +96,14 @@ export function useCollaboration({
       )
       .subscribe(async (status) => {
         if (status === 'SUBSCRIBED') {
-          await channel.track({ userId, name: userName, initials })
+          await channel.track({ userId, name: userName, initials, email: userEmail })
         }
       })
 
     return () => {
       supabase.removeChannel(channel)
     }
-  }, [projectId, userId, userName])
+  }, [projectId, userId, userName, userEmail])
 
   return { onlineCollaborators }
 }
