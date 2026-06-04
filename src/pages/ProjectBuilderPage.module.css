@@ -2343,7 +2343,6 @@
   width: 28px;
   height: 28px;
   border-radius: 50%;
-  background: #7c3aed;
   border: 2px solid #1a1a2e;
   color: #fff;
   font-size: 11px;
@@ -2361,7 +2360,7 @@
 
 .presenceAvatar:hover {
   transform: scale(1.1);
-  box-shadow: 0 0 0 3px rgba(124, 58, 237, 0.35);
+  box-shadow: 0 0 0 3px color-mix(in srgb, var(--avatar-color) 35%, transparent);
   z-index: 1;
 }
 
@@ -2390,7 +2389,6 @@
   width: 36px;
   height: 36px;
   border-radius: 50%;
-  background: #7c3aed;
   color: #fff;
   font-size: 14px;
   font-weight: 700;

@@ -544,6 +544,25 @@ interface ChatMessage {
 
 const deviceOrder: DeviceMode[] = ['desktop', 'tablet', 'phone']
 
+const AVATAR_COLORS = [
+  '#7c3aed', // violet
+  '#0d9488', // teal
+  '#d97706', // amber
+  '#e11d48', // rose
+  '#0284c7', // sky
+  '#16a34a', // emerald
+  '#ea580c', // orange
+  '#db2777', // pink
+]
+
+function avatarColor(userId: string): string {
+  let hash = 0
+  for (let i = 0; i < userId.length; i++) {
+    hash = (hash * 31 + userId.charCodeAt(i)) >>> 0
+  }
+  return AVATAR_COLORS[hash % AVATAR_COLORS.length]
+}
+
 function normalizeAgentSuggestions(items: string[]): string[] {
   const seen = new Set<string>()
   const normalized: string[] = []
@@ -1670,6 +1689,7 @@ export default function ProjectBuilderPage() {
                   key={c.userId}
                   type="button"
                   className={styles.presenceAvatar}
+                  style={{ background: avatarColor(c.userId), '--avatar-color': avatarColor(c.userId) } as React.CSSProperties}
                   aria-label={`${c.name} — click for info`}
                   onClick={() => setActivePresenceUser((v) => v?.userId === c.userId ? null : c)}
                 >
@@ -1678,7 +1698,7 @@ export default function ProjectBuilderPage() {
               ))}
               {activePresenceUser && (
                 <div className={styles.presencePopover}>
-                  <div className={styles.presencePopoverAvatar}>{activePresenceUser.initials}</div>
+                  <div className={styles.presencePopoverAvatar} style={{ background: avatarColor(activePresenceUser.userId) }}>{activePresenceUser.initials}</div>
                   <div className={styles.presencePopoverName}>{activePresenceUser.name}</div>
                   <div className={styles.presencePopoverEmail}>{activePresenceUser.email}</div>
                 </div>
