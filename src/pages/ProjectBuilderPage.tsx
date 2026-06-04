@@ -729,6 +729,7 @@ export default function ProjectBuilderPage() {
   const [viewMode, setViewMode] = useState<ViewMode>('preview')
   const [deviceMode, setDeviceMode] = useState<DeviceMode>('desktop')
   const [previewHtml, setPreviewHtml] = useState('')
+  const [lastReadyHtml, setLastReadyHtml] = useState('')
   const [previewStatus, setPreviewStatus] = useState<'idle' | 'building' | 'ready' | 'error'>('idle')
   const [previewErrors, setPreviewErrors] = useState<string[]>([])
   const [activeFile, setActiveFile] = useState(codeFiles[0].path)
@@ -744,6 +745,7 @@ export default function ProjectBuilderPage() {
     return folders
   })
   const [fullscreen, setFullscreen] = useState(false)
+  const [titleEditing, setTitleEditing] = useState(false)
   const [shareOpen, setShareOpen] = useState(false)
   const [inviteEmail, setInviteEmail] = useState('')
   const [invitePermission, setInvitePermission] = useState<SharePermission>('edit')
@@ -769,6 +771,8 @@ export default function ProjectBuilderPage() {
   const [githubPushing, setGithubPushing] = useState(false)
   const [githubPushSuccess, setGithubPushSuccess] = useState('')
   const githubInputRef = useRef<HTMLInputElement>(null)
+  const titleInputRef = useRef<HTMLInputElement>(null)
+  const titleShouldSaveRef = useRef(true)
   const initialAgentStartedRef = useRef(false)
   const agentAbortRef = useRef<AbortController | null>(null)
   const pendingRequestRef = useRef<{ prompt: string; model: SelectedAgentModel | null; thinkingLevel: AgentThinkingLevel } | null>(null)
@@ -896,13 +900,12 @@ export default function ProjectBuilderPage() {
 
       setNetlifySiteId(typeof existing?.netlify_site_id === 'string' ? existing.netlify_site_id : null)
 
-      // Upsert project metadata (don't overwrite files)
+      // Upsert project metadata (don't overwrite files or title)
       const { error } = await supabase
         .from('projects')
         .upsert({
           id: projectId,
           user_id: user.id,
-          title,
           preview_url: null,
           created_at: new Date().toISOString(),
         }, { onConflict: 'id' })
@@ -915,7 +918,8 @@ export default function ProjectBuilderPage() {
     }
 
     loadProject()
-  }, [user, projectId, title, navigate])
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [user, projectId, navigate])
 
   useEffect(() => {
     if (!user || !projectId) return
@@ -966,12 +970,23 @@ export default function ProjectBuilderPage() {
     userName,
     userEmail: user?.email ?? '',
     onFilesUpdate: (files) => {
-      if (!agentRunning) setProjectFiles(files as AgentCodeFile[])
+      if (!agentRunning) {
+        setProjectFiles((current) => {
+          const incoming = files as AgentCodeFile[]
+          if (
+            current.length === incoming.length &&
+            current.every((f, i) => f.path === incoming[i].path && f.code === incoming[i].code)
+          ) return current
+          return incoming
+        })
+      }
     },
     onChatUpdate: (chat) => {
       if (!agentRunning) setMessages(chat as ChatMessage[])
     },
-    onGeneratingChange: (generating) => {
+    onGeneratingChange: (generating, generatingBy) => {
+      // Ignore own agent's generating state — only track remote collaborators
+      if (generatingBy !== null && generatingBy === user?.id) return
       setRemoteGenerating(generating)
     },
   })
@@ -1007,6 +1022,19 @@ export default function ProjectBuilderPage() {
     document.addEventListener('mousedown', handler)
     return () => document.removeEventListener('mousedown', handler)
   }, [activePresenceUser])
+
+  useEffect(() => {
+    if (titleEditing && titleInputRef.current) {
+      titleInputRef.current.focus()
+      titleInputRef.current.select()
+    }
+  }, [titleEditing])
+
+  useEffect(() => {
+    if (previewStatus === 'ready' && previewHtml) {
+      setLastReadyHtml(previewHtml)
+    }
+  }, [previewStatus, previewHtml])
 
   // Build live preview whenever the agent updates files
   useEffect(() => {
@@ -1389,6 +1417,19 @@ export default function ProjectBuilderPage() {
     }
   }, [buildInviteLink, inviteLink, shareLink])
 
+  const handleTitleSave = useCallback((newTitle: string) => {
+    const trimmed = newTitle.trim()
+    if (trimmed && trimmed !== title) {
+      setTitle(trimmed)
+      if (user && projectId) {
+        supabase.from('projects').update({ title: trimmed }).eq('id', projectId).then(({ error }) => {
+          if (error) console.error('Failed to save project title:', error.message)
+        })
+      }
+    }
+    setTitleEditing(false)
+  }, [title, user, projectId])
+
   const updateAssistantMessage = useCallback((id: string, patch: Partial<ChatMessage>) => {
     setMessages((current) => current.map((message) => (
       message.id === id ? { ...message, ...patch } : message
@@ -1706,14 +1747,36 @@ export default function ProjectBuilderPage() {
           <div className={styles.brandCluster}>
             <img src="/assets/logo.png" alt="Florvia" className={styles.logo} />
             <div>
-              <div className={styles.projectName}>{title}</div>
+              {titleEditing ? (
+                <input
+                  ref={titleInputRef}
+                  className={styles.projectNameInput}
+                  defaultValue={title}
+                  onBlur={(e) => {
+                    if (titleShouldSaveRef.current) handleTitleSave(e.currentTarget.value)
+                    else setTitleEditing(false)
+                    titleShouldSaveRef.current = true
+                  }}
+                  onKeyDown={(e) => {
+                    if (e.key === 'Enter') e.currentTarget.blur()
+                    if (e.key === 'Escape') {
+                      titleShouldSaveRef.current = false
+                      e.currentTarget.blur()
+                    }
+                  }}
+                />
+              ) : (
+                <button
+                  type="button"
+                  className={styles.projectNameBtn}
+                  onClick={() => { if (!isViewOnly) setTitleEditing(true) }}
+                  title={isViewOnly ? undefined : 'Click to rename'}
+                >
+                  {title || 'Untitled project'}
+                </button>
+              )}
               <div className={styles.projectMeta}>
-                Draft project - {projectId?.slice(0, 8)} - {accessLabel}
-                {activeModel && (
-                  <span className={styles.modelBadge}>
-                    {activeModel.provider_name} / {activeModel.model_name}
-                  </span>
-                )}
+                {firstRunComplete ? `${projectFiles.length} file${projectFiles.length !== 1 ? 's' : ''}` : 'New project'} · {accessLabel}
               </div>
             </div>
           </div>
@@ -2113,10 +2176,6 @@ export default function ProjectBuilderPage() {
 
       <main className={styles.shell}>
         <aside className={styles.chatPanel}>
-          <div className={styles.panelHeader}>
-            <h1>{title}</h1>
-          </div>
-
           <div className={styles.thread}>
             {messages.map((message) => (
               message.role === 'user' ? (
@@ -2277,14 +2336,32 @@ export default function ProjectBuilderPage() {
         <section className={`${styles.previewPane} ${fullscreen ? styles.previewPaneFullscreen : ''}`}>
           <div className={styles.previewToolbar}>
             <div className={styles.previewCenter}>
-              <button
-                className={styles.iconBtn}
-                type="button"
-                aria-label={`Switch device preview. Current: ${deviceMode}`}
-                onClick={() => setDeviceMode((current) => deviceOrder[(deviceOrder.indexOf(current) + 1) % deviceOrder.length])}
-              >
-                <DeviceIcon mode={deviceMode} />
-              </button>
+              <div className={styles.deviceSwitch} aria-label="Device preview">
+                <button
+                  className={deviceMode === 'desktop' ? styles.deviceBtnActive : styles.deviceBtn}
+                  type="button"
+                  aria-label="Desktop preview"
+                  onClick={() => setDeviceMode('desktop')}
+                >
+                  <DesktopIcon />
+                </button>
+                <button
+                  className={deviceMode === 'tablet' ? styles.deviceBtnActive : styles.deviceBtn}
+                  type="button"
+                  aria-label="Tablet preview"
+                  onClick={() => setDeviceMode('tablet')}
+                >
+                  <TabletIcon />
+                </button>
+                <button
+                  className={deviceMode === 'phone' ? styles.deviceBtnActive : styles.deviceBtn}
+                  type="button"
+                  aria-label="Phone preview"
+                  onClick={() => setDeviceMode('phone')}
+                >
+                  <PhoneIcon />
+                </button>
+              </div>
               <div className={styles.addressBar}>
                 {deployUrl ? (
                   <>
@@ -2344,7 +2421,7 @@ export default function ProjectBuilderPage() {
                     </div>
                   )}
 
-                  {firstRunComplete && previewStatus === 'building' && (
+                  {firstRunComplete && previewStatus === 'building' && !lastReadyHtml && (
                     <div className={styles.previewEmpty}>
                       <div className={styles.previewMark}>
                         <img src="/assets/logo.png" alt="" />
@@ -2388,16 +2465,19 @@ export default function ProjectBuilderPage() {
                     </div>
                   )}
 
-                  {firstRunComplete && previewStatus === 'ready' && (
-                    <iframe
-                      className={styles.previewFrame}
-                      srcDoc={previewHtml}
-                      sandbox="allow-scripts"
-                      title="Live preview"
-                    />
+                  {firstRunComplete && (previewStatus === 'ready' || (previewStatus === 'building' && lastReadyHtml)) && (
+                    <div className={styles.previewRebuild}>
+                      {previewStatus === 'building' && <div className={styles.rebuildOverlay} />}
+                      <iframe
+                        className={styles.previewFrame}
+                        srcDoc={previewStatus === 'ready' ? previewHtml : lastReadyHtml}
+                        sandbox="allow-scripts"
+                        title="Live preview"
+                      />
+                    </div>
                   )}
 
-                  {firstRunComplete && previewStatus !== 'ready' && (
+                  {firstRunComplete && previewStatus !== 'ready' && !lastReadyHtml && (
                     <div className={styles.previewSkeleton} aria-hidden="true">
                       <div className={styles.skeletonWide} />
                       <div />
@@ -2617,6 +2697,14 @@ function DeviceIcon({ mode }: { mode: DeviceMode }) {
   }
 
   return <DesktopIcon />
+}
+
+function TabletIcon() {
+  return <svg width="17" height="17" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8"><rect x="5" y="2" width="14" height="20" rx="2"/><path d="M11 18h2"/></svg>
+}
+
+function PhoneIcon() {
+  return <svg width="17" height="17" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8"><rect x="7" y="2" width="10" height="20" rx="2"/><path d="M11 18h2"/></svg>
 }
 
 function FullscreenIcon() {

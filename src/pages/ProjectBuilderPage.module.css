@@ -133,7 +133,7 @@
   object-fit: contain;
 }
 
-.projectName {
+.projectNameBtn {
   max-width: 360px;
   overflow: hidden;
   color: var(--color-text);
@@ -142,6 +142,34 @@
   line-height: 1.2;
   text-overflow: ellipsis;
   white-space: nowrap;
+  background: transparent;
+  border: none;
+  padding: 2px 5px;
+  margin: 0 -5px;
+  border-radius: 5px;
+  cursor: text;
+  text-align: left;
+  transition: background 0.15s ease;
+}
+
+.projectNameBtn:hover {
+  background: rgba(255, 255, 255, 0.06);
+}
+
+.projectNameInput {
+  max-width: 320px;
+  width: 220px;
+  color: var(--color-text);
+  font-size: 15px;
+  font-weight: 800;
+  line-height: 1.2;
+  background: rgba(255, 255, 255, 0.06);
+  border: 1px solid rgba(94, 234, 212, 0.35);
+  border-radius: 5px;
+  padding: 2px 6px;
+  outline: none;
+  box-shadow: 0 0 0 3px rgba(94, 234, 212, 0.08);
+  font-family: inherit;
 }
 
 .projectMeta {
@@ -837,23 +865,6 @@
   flex-direction: column;
   background: #100d12;
   border-right: 1px solid rgba(255, 255, 255, 0.08);
-}
-
-.panelHeader {
-  display: flex;
-  align-items: center;
-  padding: 18px 20px 16px;
-  border-bottom: 1px solid rgba(255, 255, 255, 0.07);
-}
-
-.panelHeader h1 {
-  max-width: 100%;
-  overflow-wrap: anywhere;
-  color: var(--color-text);
-  font-size: 20px;
-  font-weight: 850;
-  line-height: 1.14;
-  letter-spacing: 0;
 }
 
 .thread {
@@ -1581,6 +1592,75 @@
 
 .previewTools:last-child {
   justify-content: flex-end;
+}
+
+.deviceSwitch {
+  display: inline-flex;
+  align-items: center;
+  gap: 2px;
+  padding: 3px;
+  border-radius: 10px;
+  background: rgba(255, 255, 255, 0.05);
+  border: 1px solid rgba(255, 255, 255, 0.08);
+}
+
+.deviceBtn,
+.deviceBtnActive {
+  width: 32px;
+  height: 30px;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  border-radius: 7px;
+  color: var(--color-text-muted);
+  background: transparent;
+  border: none;
+  cursor: pointer;
+  transition: color 0.15s ease, background 0.15s ease;
+}
+
+.deviceBtn:hover {
+  color: var(--color-text);
+  background: rgba(255, 255, 255, 0.06);
+}
+
+.deviceBtnActive {
+  color: #09060c;
+  background: linear-gradient(135deg, var(--color-secondary), var(--color-warm-accent));
+}
+
+.previewRebuild {
+  flex: 1;
+  min-height: 0;
+  position: relative;
+  display: flex;
+  flex-direction: column;
+}
+
+.rebuildOverlay {
+  position: absolute;
+  top: 0;
+  left: 0;
+  right: 0;
+  height: 3px;
+  background: rgba(86, 222, 205, 0.15);
+  z-index: 10;
+  overflow: hidden;
+}
+
+.rebuildOverlay::after {
+  content: '';
+  position: absolute;
+  top: 0;
+  height: 100%;
+  width: 50%;
+  background: linear-gradient(90deg, transparent, var(--color-secondary), transparent);
+  animation: rebuildSlide 1.2s ease-in-out infinite;
+}
+
+@keyframes rebuildSlide {
+  0% { left: -50%; }
+  100% { left: 100%; }
 }
 
 .previewCenter {
