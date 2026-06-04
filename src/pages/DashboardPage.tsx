@@ -412,7 +412,62 @@ export default function DashboardPage() {
 
           {/* Projects section */}
           <section ref={projectsSectionRef} className={styles.projectsSection}>
-            <h2 className={styles.sectionTitle}>{filterLabel}</h2>
+            <div className={styles.sectionHeader}>
+              <h2 className={styles.sectionTitle}>{filterLabel}</h2>
+              <div className={styles.controls}>
+                <div className={styles.searchWrapper}>
+                  <svg className={styles.searchIcon} width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+                    <circle cx="11" cy="11" r="8"/><line x1="21" y1="21" x2="16.65" y2="16.65"/>
+                  </svg>
+                  <input
+                    className={styles.searchInput}
+                    type="text"
+                    placeholder="Search projects…"
+                    value={searchQuery}
+                    onChange={(e) => setSearchQuery(e.target.value)}
+                  />
+                  {searchQuery && (
+                    <button className={styles.searchClear} type="button" onClick={() => setSearchQuery('')} aria-label="Clear search">
+                      <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round"><line x1="18" y1="6" x2="6" y2="18"/><line x1="6" y1="6" x2="18" y2="18"/></svg>
+                    </button>
+                  )}
+                </div>
+                <select
+                  className={styles.sortSelect}
+                  value={sortBy}
+                  onChange={(e) => setSortBy(e.target.value as 'recent' | 'name' | 'starred')}
+                  aria-label="Sort projects"
+                >
+                  <option value="recent">Recent</option>
+                  <option value="name">Name</option>
+                  <option value="starred">Starred</option>
+                </select>
+                <div className={styles.viewToggle}>
+                  <button
+                    className={`${styles.viewBtn} ${viewMode === 'grid' ? styles.viewBtnActive : ''}`}
+                    type="button"
+                    aria-label="Grid view"
+                    onClick={() => setViewMode('grid')}
+                  >
+                    <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+                      <rect x="3" y="3" width="7" height="7" rx="1"/><rect x="14" y="3" width="7" height="7" rx="1"/>
+                      <rect x="3" y="14" width="7" height="7" rx="1"/><rect x="14" y="14" width="7" height="7" rx="1"/>
+                    </svg>
+                  </button>
+                  <button
+                    className={`${styles.viewBtn} ${viewMode === 'list' ? styles.viewBtnActive : ''}`}
+                    type="button"
+                    aria-label="List view"
+                    onClick={() => setViewMode('list')}
+                  >
+                    <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+                      <line x1="8" y1="6" x2="21" y2="6"/><line x1="8" y1="12" x2="21" y2="12"/><line x1="8" y1="18" x2="21" y2="18"/>
+                      <line x1="3" y1="6" x2="3.01" y2="6"/><line x1="3" y1="12" x2="3.01" y2="12"/><line x1="3" y1="18" x2="3.01" y2="18"/>
+                    </svg>
+                  </button>
+                </div>
+              </div>
+            </div>
 
             {projectsLoading ? (
               <div className={styles.emptyState}>
