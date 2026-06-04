@@ -9,7 +9,7 @@ interface Project {
   title: string
 }
 
-export type ProjectFilter = 'all' | 'starred' | 'mine'
+export type ProjectFilter = 'all' | 'starred' | 'mine' | 'shared'
 
 interface DashboardSidebarProps {
   projects?: Project[]
@@ -106,12 +106,25 @@ const projectNavItems: NavItem[] = [
       </svg>
     ),
   },
+  {
+    label: 'Shared with me',
+    icon: (
+      <svg width={iconSize} height={iconSize} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round">
+        <circle cx="18" cy="5" r="3"/>
+        <circle cx="6" cy="12" r="3"/>
+        <circle cx="18" cy="19" r="3"/>
+        <line x1="8.59" y1="13.51" x2="15.42" y2="17.49"/>
+        <line x1="15.41" y1="6.51" x2="8.59" y2="10.49"/>
+      </svg>
+    ),
+  },
 ]
 
 const filterMap: Record<string, ProjectFilter> = {
   'All projects': 'all',
   'Starred': 'starred',
   'Created by me': 'mine',
+  'Shared with me': 'shared',
 }
 
 export default function DashboardSidebar({ projects = [], activeFilter = 'all', onProjectFilterChange }: DashboardSidebarProps) {
