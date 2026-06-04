@@ -82,6 +82,9 @@ export default function DashboardPage() {
   const [renamingProject, setRenamingProject] = useState<{ id: string; title: string } | null>(null)
   const [sidebarNotifications, setSidebarNotifications] = useState<SidebarNotification[]>([])
   const contextMenuRef = useRef<HTMLDivElement>(null)
+  const [searchQuery, setSearchQuery] = useState('')
+  const [sortBy, setSortBy] = useState<'recent' | 'name' | 'starred'>('recent')
+  const [viewMode, setViewMode] = useState<'grid' | 'list'>('grid')
 
   const visiblePrompts = showAllPrompts ? examplePrompts : examplePrompts.slice(0, INITIAL_VISIBLE)
 
@@ -317,12 +320,19 @@ export default function DashboardPage() {
     setPromptDefault(prompt)
   }
 
-  const filteredProjects = projects.filter((p) => {
-    if (activeFilter === 'starred') return p.starred
-    if (activeFilter === 'mine') return p.user_id === user?.id
-    if (activeFilter === 'shared') return p.isShared === true
-    return true
-  })
+  const filteredProjects = projects
+    .filter((p) => {
+      if (activeFilter === 'starred') return p.starred
+      if (activeFilter === 'mine') return p.user_id === user?.id
+      if (activeFilter === 'shared') return p.isShared === true
+      return true
+    })
+    .filter((p) => !searchQuery || p.title.toLowerCase().includes(searchQuery.toLowerCase()))
+    .sort((a, b) => {
+      if (sortBy === 'name') return a.title.localeCompare(b.title)
+      if (sortBy === 'starred') return Number(b.starred) - Number(a.starred)
+      return new Date(b.updated_at).getTime() - new Date(a.updated_at).getTime()
+    })
 
   const filterLabel =
     activeFilter === 'starred' ? 'Starred projects'
