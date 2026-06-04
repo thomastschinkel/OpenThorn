@@ -15,6 +15,13 @@
  *    authoritative source for parameter details.
  */
 
+import { ALLOWED_PACKAGES } from './allowed-packages'
+import {
+  AGENT_THINKING_PROFILES,
+  normalizeThinkingLevel,
+  type AgentThinkingLevel,
+} from './agent-thinking'
+
 // ─── Tool Definitions ──────────────────────────────────────────────────────
 
 export interface ToolDefinition {
@@ -224,6 +231,44 @@ export const AGENT_TOOLS: ToolDefinition[] = [
     },
   },
   {
+    name: 'update_plan',
+    description:
+      'Update the project plan and requirements checklist (PLAN.md), the agent\'s ' +
+      'durable working memory that survives context compaction. Use it to: refine ' +
+      'the requirements derived from the user\'s request (set_requirements), add a ' +
+      'newly-discovered requirement (add_requirements), check items off as you ' +
+      'complete them (check), or record design decisions (notes). Check items off ' +
+      'as you finish them — the done gate verifies every requirement is checked.',
+    input_schema: {
+      type: 'object',
+      properties: {
+        goal: { type: 'string', description: 'Optional: restate the overall goal.' },
+        set_requirements: {
+          type: 'array',
+          items: { type: 'string' },
+          description: 'Replace the entire requirements checklist with these items.',
+        },
+        add_requirements: {
+          type: 'array',
+          items: { type: 'string' },
+          description: 'Append these new requirements to the checklist.',
+        },
+        check: {
+          type: 'array',
+          items: { type: 'integer' },
+          description: 'Requirement ids (numbers) to mark complete.',
+        },
+        uncheck: {
+          type: 'array',
+          items: { type: 'integer' },
+          description: 'Requirement ids (numbers) to mark incomplete.',
+        },
+        notes: { type: 'string', description: 'Replace the free-form design notes.' },
+      },
+      additionalProperties: false,
+    },
+  },
+  {
     name: 'think',
     description:
       'Think through a design decision, architecture choice, or implementation approach. ' +
@@ -300,6 +345,7 @@ export const TOOL_CATEGORIES: Record<string, 'read' | 'write' | 'compile' | 'don
   read_file: 'read',
   search_files: 'read',
   set_title: 'read',
+  update_plan: 'write',
   write_file: 'write',
   edit_file: 'write',
   multi_edit: 'write',
@@ -308,7 +354,12 @@ export const TOOL_CATEGORIES: Record<string, 'read' | 'write' | 'compile' | 'don
   done: 'done',
 }
 
-// ─── System Prompt (optimized — ~1200 tokens, static for caching) ──────────
+// ─── System Prompt (optimized — static for caching) ────────────────────────
+
+/** Built once at module load from the allowlist — deterministic, cache-safe. */
+const ALLOWED_PACKAGES_BLOCK = ALLOWED_PACKAGES.map(
+  (p) => `  - ${p.name} — ${p.description}`,
+).join('\n')
 
 export const AGENT_SYSTEM_PROMPT = `You are Florvia, an expert frontend engineer and product designer. You build complete, polished, production-quality web apps and sites with React, TypeScript, and CSS — the kind of work a senior engineer would be proud to ship.
 
@@ -323,7 +374,9 @@ Never claim the project "works", "compiles", or is "done" unless the compile too
 <environment>
 Stack: React 18+, automatic JSX, TypeScript, CSS with custom properties.
 Entry: src/App.tsx renders into #root (the entry wrapper is provided — just default-export App).
-Packages available: react, react-dom, react-router-dom (v6). NOTHING else — no UI kits, icon packs, fonts, or image URLs. Build icons as inline SVG and visuals with CSS.
+Packages available: react, react-dom, react-router-dom, PLUS this curated allowlist:
+${ALLOWED_PACKAGES_BLOCK}
+Use these freely where they help (real icons via lucide-react, motion via framer-motion, charts via recharts). Import NOTHING outside this list — no other npm packages, CDN fonts, or remote image URLs. For anything not covered, build it with inline SVG and CSS.
 Files: one default export per file, under src/ (src/components/, src/pages/). Styles in src/styles/theme.css.
 Responsive targets: 390px phone, 768px tablet, 1200px+ desktop.
 
@@ -354,6 +407,7 @@ Work like a senior engineer, scaled to the task. A small tweak needs no ceremony
 </approach>
 
 <tool-guidance>
+- Keep visible narration concise and useful. Do not announce routine file operations like "Now I will write..." right before using a tool; the UI already shows tool calls. Use text only for intent, important decisions, blockers, and final human-readable summaries.
 - **think** — reason about design/architecture before building, or about a fix before editing. Cheap; use it to avoid drift.
 - **write_file** — new files or full rewrites. Always complete code.
 - **edit_file** — one targeted change. **multi_edit** — several changes to ONE file at once (atomic; preferred over repeated edit_file on the same file).
@@ -388,7 +442,7 @@ User: "The score doesn't reset when I restart"
 For multiple pages, use react-router-dom with **HashRouter** (works in preview, deploy, and GitHub Pages). Import { HashRouter, Routes, Route, Link, NavLink, useNavigate, useParams, Outlet } from 'react-router-dom'. Use <Link>/<NavLink> for navigation, never plain <a> for internal routes. Add a <Route path="*"> fallback. For single-page scroll sites, skip routing and use id anchors.
 </routing-hint>`
 
-// ─── Spec / Verify / Ralph Phase Prompts ──────────────────────────────────
+// ─── Spec Phase Prompt ─────────────────────────────────────────────────────
 
 /** Injected before the first build turn. Guides the spec phase. */
 export const SPEC_PHASE_PROMPT = `<system-reminder>
@@ -412,41 +466,6 @@ Before writing any code, spend 1-2 turns planning:
 After planning, start building. Create files one at a time. Compile often.
 </system-reminder>`
 
-/** Injected after done is called. Guides the self-verification phase. */
-export const VERIFY_PHASE_PROMPT = `<system-reminder>
-## Self-Verification — Check Your Work
-
-Before finishing, verify the output:
-
-**Verification checklist:**
-1. Does the project fulfill EVERY part of the user's request?
-2. Do all interactive elements work? (buttons, links, forms, toggles)
-3. Is the design responsive? (390px phone, 768px tablet, 1200px+ desktop)
-4. Is the HTML semantic? (header, nav, main, section, footer)
-5. Are there any visible focus states on interactive elements?
-6. Do all internal links go somewhere (no dead links)?
-7. Did the last compile pass BOTH the build and the runtime check (no console/render errors)?
-
-If the verifier finds gaps → fix them and verify again.
-After 2 verify→fix loops → call done regardless (avoid infinite loops).
-</system-reminder>`
-
-/** Injected when the agent tries to call done too early. */
-export const RALPH_PROMPT = `<system-reminder>
-## Ralph Check — Are You REALLY Done?
-
-You just tried to call done. Before I accept that, verify:
-
-- "Have I built EVERY feature the user asked for?"
-- "Does every component actually work?"
-- "Did my LAST compile pass BOTH the build and the runtime check (no crashes)?"
-- "Would I ship this to a real user?"
-
-If ANY answer is NO → do NOT call done. Fix the issues first.
-
-If ALL answers are YES → call done with a detailed summary of what was built.
-</system-reminder>`
-
 // ─── Adaptive Thinking Config ──────────────────────────────────────────────
 
 /**
@@ -456,15 +475,94 @@ If ALL answers are YES → call done with a detailed summary of what was built.
  * - Fix/verify phase (refine mode, late turns): light thinking
  */
 export function getThinkingBudget(params: {
-  mode: 'create' | 'refine' | 'fix'
+  mode: 'create' | 'refine'
   turnCount: number
+  thinkingLevel?: AgentThinkingLevel
 }): number {
-  if (params.mode === 'create' && params.turnCount <= 2) return 8000 // Spec phase
-  if (params.mode === 'create' && params.turnCount <= 5) return 5000 // Early build
-  if (params.mode === 'create') return 4000 // Late build
-  if (params.mode === 'refine') return 2000 // Targeted edits
-  if (params.mode === 'fix') return 1000 // Quick fixes
-  return 3000
+  const level = normalizeThinkingLevel(params.thinkingLevel)
+  const multiplier = AGENT_THINKING_PROFILES[level].budgetMultiplier
+  let base = 3000
+
+  if (params.mode === 'create' && params.turnCount <= 2) base = 8000 // Spec phase
+  else if (params.mode === 'create' && params.turnCount <= 5) base = 5000 // Early build
+  else if (params.mode === 'create') base = 4000 // Late build
+  else if (params.mode === 'refine') base = 2000 // Targeted edits
+
+  return Math.max(512, Math.min(12000, Math.round(base * multiplier)))
+}
+
+export function buildThinkingLevelPrompt(levelInput: AgentThinkingLevel): string {
+  const level = normalizeThinkingLevel(levelInput)
+  const profile = AGENT_THINKING_PROFILES[level]
+  const guidance: Record<AgentThinkingLevel, string> = {
+    low:
+      'Move quickly. Use concise thinking only when it prevents mistakes. Prefer focused edits, batch related changes, compile after the main change, and avoid optional polish loops unless needed for correctness.',
+    medium:
+      'Use the standard workflow. Plan non-trivial work, build in sensible batches, compile regularly, and finish after the required checks pass.',
+    high:
+      'Be more deliberate. Spend extra attention on architecture, responsive behavior, edge cases, and cleanup. Use additional fix/verify turns when the result is not polished.',
+    'extra-high':
+      'Use the deepest workflow. Start with a careful plan, break work into clear steps, verify thoroughly across requirements, runtime, types, visual quality, and user experience, and take the time needed to resolve issues instead of rushing.',
+  }
+
+  return `<system-reminder>
+## Thinking Level: ${profile.label}
+
+${profile.description}
+${guidance[level]}
+</system-reminder>`
+}
+
+// ─── Reasoning config for non-Anthropic providers (#10) ────────────────────
+
+/**
+ * Map a thinking-token budget to provider-specific reasoning controls so
+ * OpenAI o-series / GPT-5 and Gemini 2.5 "thinking" models aren't reasoning-
+ * blind (Anthropic uses the native `thinking` block instead).
+ *
+ * Returns an object spread into the request body. Empty when the model has no
+ * known reasoning control — we must NOT send these params to models that
+ * reject unknown fields, so detection is by model-id pattern.
+ */
+export function getReasoningParams(
+  providerId: string,
+  modelId: string,
+  thinkingBudget: number,
+): Record<string, unknown> {
+  const id = modelId.toLowerCase()
+
+  if (providerId === 'google') {
+    // Gemini 2.5 family supports a thinking budget (in tokens). Flash/Pro 2.5.
+    if (/gemini-2\.5|thinking/.test(id)) {
+      return { thinkingConfig: { thinkingBudget: Math.min(thinkingBudget, 8192) } }
+    }
+    return {}
+  }
+
+  // OpenAI-compatible reasoning models use `reasoning_effort`.
+  const isReasoner =
+    /(^|[/_-])o[1345]($|[/_-])|gpt-5|gpt5|o3|o4|reasoner|deepseek-r/.test(id)
+  if (isReasoner) {
+    const effort = thinkingBudget >= 6000 ? 'high' : thinkingBudget >= 3000 ? 'medium' : 'low'
+    return { reasoning_effort: effort }
+  }
+  return {}
+}
+
+// ─── Loop / stuck-detection nudge (#9) ─────────────────────────────────────
+
+/** Injected when the agent repeats a failing action — breaks it out of the rut. */
+export function loopBreakPrompt(detail: string): string {
+  return `<system-reminder>
+## You appear to be stuck
+
+${detail}
+
+Repeating the same action will not work. Change strategy now:
+- If an edit keeps failing to match → re-read the file with read_file, or use write_file to replace the whole file.
+- If the same compile/runtime error keeps returning → read the actual file around the error line and fix the real cause; do not re-apply the same change.
+- If you are unsure → use think to reconsider the approach before acting.
+</system-reminder>`
 }
 
 // ─── Skill Blocks (Progressive Disclosure) ─────────────────────────────────

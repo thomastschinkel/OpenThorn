@@ -4,14 +4,50 @@ import {
   TOOL_CATEGORIES,
   COMPACTION_PROMPT,
   SPEC_PHASE_PROMPT,
-  VERIFY_PHASE_PROMPT,
-  RALPH_PROMPT,
+  buildThinkingLevelPrompt,
   resolveActiveSkills,
   getThinkingBudget,
+  getReasoningParams,
+  loopBreakPrompt,
   type ToolDefinition,
 } from './agent-prompt'
+import {
+  AGENT_THINKING_PROFILES,
+  normalizeThinkingLevel,
+  type AgentThinkingLevel,
+} from './agent-thinking'
 import { buildPreview } from './preview-bundle'
-import { runtimeSmokeTest, formatRuntimeReport } from './preview-runtime-check'
+import {
+  runtimeSmokeTest,
+  interactiveSmokeTest,
+  formatRuntimeReport,
+} from './preview-runtime-check'
+import { captureResponsiveViews } from './preview-screenshot'
+import {
+  VISUAL_REVIEW_SYSTEM,
+  buildVisualReviewPrompt,
+  viewsToVisionImages,
+  parseVisualReview,
+  formatVisualFeedback,
+} from './agent-vision'
+import { typeCheckProject, formatTypeErrors } from './typecheck'
+import {
+  PLAN_PATH,
+  createPlan,
+  parsePlan,
+  formatPlan,
+  applyPlanUpdate,
+  planToSystemReminder,
+  unmetRequirements,
+  type AgentPlan,
+  type PlanUpdate,
+} from './agent-plan'
+import {
+  loadUserMemory,
+  rememberForUser,
+  userMemoryToSystemReminder,
+  inferPreferencesFromPrompt,
+} from './user-memory'
 import { supabase } from './supabase'
 import {
   type LessonEntry,
@@ -67,6 +103,7 @@ export interface AgentRunInput {
   title: string
   files: AgentCodeFile[]
   selectedModel?: SelectedAgentModel | null
+  thinkingLevel?: AgentThinkingLevel
   mode?: 'create' | 'refine'
   maxTurns?: number
   signal?: AbortSignal
@@ -102,6 +139,8 @@ interface ResolvedProvider {
   key: ProviderKeyRow
   baseUrl: string
   model: ModelInfo
+  /** All models available on this provider (for phase-based routing). */
+  models: ModelInfo[]
 }
 
 interface LlmMessage {
@@ -110,7 +149,7 @@ interface LlmMessage {
 }
 
 interface LlmContentBlock {
-  type: 'text' | 'tool_use' | 'tool_result'
+  type: 'text' | 'tool_use' | 'tool_result' | 'image' | 'thinking'
   text?: string
   id?: string
   name?: string
@@ -118,6 +157,11 @@ interface LlmContentBlock {
   tool_use_id?: string
   content?: string
   is_error?: boolean
+  /** For type 'image': base64 PNG data (no data: prefix) + media type. */
+  image?: { base64: string; mediaType: string }
+  /** For type 'thinking' (Anthropic extended thinking — must be replayed). */
+  thinking?: string
+  signature?: string
 }
 
 interface ToolCall {
@@ -525,7 +569,6 @@ function formatStructuredError(err: StructuredError): string {
 function compactMessages(
   messages: LlmMessage[],
   turnCount: number,
-  _currentFiles: AgentCodeFile[],
 ): { messages: LlmMessage[]; compacted: boolean } {
   if (turnCount <= COMPACTION_THRESHOLD) {
     return { messages, compacted: false }
@@ -619,6 +662,220 @@ function generateProgressSummary(
   return parts.join('\n')
 }
 
+// ─── Model Routing (#7) ─────────────────────────────────────────────────────
+
+/** Model-id fragments that indicate a smaller/cheaper/faster model. */
+const FAST_MODEL_HINTS = ['mini', 'flash', 'haiku', 'lite', 'small', 'nano', 'fast', '8b', 'turbo']
+
+/**
+ * Pick a model for a given workload tier from the provider's available models.
+ * 'strong' → the selected model (best reasoning, used for planning + visual
+ * review). 'fast' → a cheaper sibling when one exists (used for the auxiliary
+ * text self-review), else falls back to the selected model.
+ */
+function pickModel(provider: ResolvedProvider, tier: 'strong' | 'fast'): ModelInfo {
+  if (tier === 'strong') return provider.model
+  const fast = provider.models.find(
+    (m) =>
+      m.id !== provider.model.id &&
+      FAST_MODEL_HINTS.some((h) => m.id.toLowerCase().includes(h)),
+  )
+  return fast ?? provider.model
+}
+
+// ─── Loop / Stuck Detection (#9) ────────────────────────────────────────────
+
+/**
+ * Detects when the agent is repeating the same action or hitting the same
+ * error turn after turn, so the loop can inject a corrective nudge instead of
+ * burning turns. Conservative: only fires on genuine repetition.
+ */
+class LoopDetector {
+  private actions: string[] = []
+  private errors: string[] = []
+  private lastNudgeTurn = 0
+
+  /** Fingerprint of a tool call: name + a hash of its key inputs. */
+  private fingerprint(name: string, input: Record<string, unknown>): string {
+    const key = name === 'edit_file' || name === 'multi_edit' || name === 'write_file'
+      ? String(input.path ?? '') + '|' + String(input.old_string ?? '').slice(0, 80)
+      : JSON.stringify(input).slice(0, 120)
+    return `${name}:${key}`
+  }
+
+  /**
+   * Record this turn's tool calls and error results. Returns a nudge string if
+   * the agent appears stuck, else null. `turn` guards against nudging twice in
+   * quick succession.
+   */
+  record(
+    turn: number,
+    calls: { name: string; input: Record<string, unknown> }[],
+    errorMessages: string[],
+  ): string | null {
+    for (const c of calls) this.actions.push(this.fingerprint(c.name, c.input))
+    for (const e of errorMessages) this.errors.push(e.slice(0, 120))
+    this.actions = this.actions.slice(-8)
+    this.errors = this.errors.slice(-6)
+
+    if (turn - this.lastNudgeTurn < 2) return null
+
+    // Same exact action 3+ times in the recent window.
+    const counts = new Map<string, number>()
+    for (const a of this.actions) counts.set(a, (counts.get(a) ?? 0) + 1)
+    const repeatedAction = [...counts.entries()].find(([, n]) => n >= 3)
+    if (repeatedAction) {
+      this.lastNudgeTurn = turn
+      return `You have repeated the same action (${repeatedAction[0].split(':')[0]}) ${repeatedAction[1]} times without progress.`
+    }
+
+    // Same error message 3+ times.
+    const errCounts = new Map<string, number>()
+    for (const e of this.errors) errCounts.set(e, (errCounts.get(e) ?? 0) + 1)
+    const repeatedError = [...errCounts.entries()].find(([, n]) => n >= 3)
+    if (repeatedError) {
+      this.lastNudgeTurn = turn
+      return `The same error keeps occurring: "${repeatedError[0]}".`
+    }
+
+    return null
+  }
+}
+
+// ─── Auxiliary review model calls (#1 vision, #4 self-review) ───────────────
+
+/** Call a model for plain text (no tools), used by the review stages. */
+async function callReviewModel(
+  provider: ResolvedProvider,
+  model: ModelInfo,
+  system: string,
+  content: LlmContentBlock[] | string,
+  signal: AbortSignal | undefined,
+): Promise<string> {
+  const { text } = await callModelWithTools({
+    providerId: provider.key.provider_id,
+    baseUrl: provider.baseUrl,
+    apiKey: provider.key.api_key,
+    modelId: model.id,
+    system,
+    tools: [],
+    messages: [{ role: 'user', content }],
+    signal,
+    onText: () => {},
+    thinkingBudget: 0,
+  })
+  return text
+}
+
+/**
+ * Visual review (#1): screenshot the built app and ask a vision model to
+ * critique it against the goal. Returns null (skip, don't block) when no DOM,
+ * no screenshot, or the call fails — visual review never blocks on infra.
+ */
+async function runVisualReview(
+  provider: ResolvedProvider,
+  goal: string,
+  html: string,
+  signal: AbortSignal | undefined,
+  onProgress?: (event: AgentProgressEvent) => void,
+): Promise<string | null> {
+  try {
+    onProgress?.({ type: 'status', message: 'Looking at the rendered design...' })
+    const views = await captureResponsiveViews(html)
+    if (views.length === 0) return null
+
+    const images = viewsToVisionImages(views)
+    const content: LlmContentBlock[] = [
+      { type: 'text', text: buildVisualReviewPrompt(goal, views) },
+      ...images.map(
+        (img): LlmContentBlock => ({
+          type: 'image',
+          image: { base64: img.base64, mediaType: img.mediaType },
+        }),
+      ),
+    ]
+    const model = pickModel(provider, 'strong')
+    const raw = await callReviewModel(provider, model, VISUAL_REVIEW_SYSTEM, content, signal)
+    const verdict = parseVisualReview(raw)
+    if (verdict.verdict === 'revise' && verdict.issues.length > 0) {
+      return formatVisualFeedback(verdict)
+    }
+    return null
+  } catch {
+    return null
+  }
+}
+
+const SELF_REVIEW_SYSTEM = `You are a strict senior engineer reviewing a project a colleague says is finished. You did NOT write it, so you have fresh eyes. Given the original request and the project's files, find requirements that are UNMET or features that are clearly broken/missing in the code.
+
+Respond in EXACTLY this format:
+VERDICT: pass OR revise
+ISSUES:
+- <specific unmet requirement or broken thing, referencing a file where possible>
+(If everything is implemented, write "ISSUES:" then "- none".)`
+
+/**
+ * Fresh-context self-review (#4): a second model pass, with no memory of the
+ * build, checks the final files against the original request. Returns feedback
+ * to fix, or null to pass. Best-effort — never blocks on failure.
+ */
+async function runSelfReview(
+  provider: ResolvedProvider,
+  goal: string,
+  files: AgentCodeFile[],
+  signal: AbortSignal | undefined,
+  onProgress?: (event: AgentProgressEvent) => void,
+): Promise<string | null> {
+  try {
+    onProgress?.({ type: 'status', message: 'Reviewing the build against your request...' })
+    // Build a compact, bounded view of the project: file list + truncated code.
+    const fileList = files.map((f) => `- ${f.path} (${f.code.split('\n').length} lines)`).join('\n')
+    const codeBudgetPerFile = 120
+    const codeBlocks = files
+      .filter((f) => /\.(tsx?|jsx?)$/.test(f.path))
+      .slice(0, 12)
+      .map((f) => {
+        const lines = f.code.split('\n').slice(0, codeBudgetPerFile)
+        return `### ${f.path}\n${lines.join('\n')}`
+      })
+      .join('\n\n')
+
+    const prompt = [
+      `Original request: "${goal.trim()}"`,
+      '',
+      `Project files:\n${fileList}`,
+      '',
+      `Source (truncated):\n${codeBlocks}`,
+      '',
+      'Report unmet requirements or broken/missing features in the required format.',
+    ].join('\n')
+
+    const model = pickModel(provider, 'fast')
+    const raw = await callReviewModel(provider, model, SELF_REVIEW_SYSTEM, prompt, signal)
+
+    const verdictMatch = raw.match(/verdict\s*:\s*(pass|revise|fail)/i)
+    const isRevise = verdictMatch && /revise|fail/i.test(verdictMatch[1])
+    const issues: string[] = []
+    const section = raw.split(/issues\s*:/i)[1] ?? ''
+    for (const line of section.split('\n')) {
+      const m = line.match(/^\s*[-*•]\s*(.+)$/)
+      if (m && !/^none\b/i.test(m[1].trim())) issues.push(m[1].trim())
+    }
+    if (isRevise && issues.length > 0) {
+      return [
+        '## Self-review found unmet requirements (fresh-eyes pass over your code)',
+        '',
+        ...issues.map((s, i) => `  ${i + 1}. ${s}`),
+        '',
+        'Implement these, compile, then finish again.',
+      ].join('\n')
+    }
+    return null
+  } catch {
+    return null
+  }
+}
+
 // ─── Main Agent Loop ────────────────────────────────────────────────────────
 
 export async function runFlorviaAgent(input: AgentRunInput): Promise<AgentRunResult> {
@@ -647,6 +904,14 @@ export async function runFlorviaAgent(input: AgentRunInput): Promise<AgentRunRes
     input.onProgress?.({ type: 'status', message: 'Loaded agent memory.' })
   }
 
+  // ── Cross-project user memory (#8) ────────────────────────────
+  // Reinforce durable preferences inferred from this prompt, then load the
+  // user's accumulated memory for injection.
+  for (const fact of inferPreferencesFromPrompt(input.prompt)) {
+    rememberForUser(input.userId, 'preference', fact)
+  }
+  const userMemoryReminder = userMemoryToSystemReminder(loadUserMemory(input.userId))
+
   // ── Resolve active skills from prompt ────────────────────────
   const activeSkills = resolveActiveSkills(input.prompt)
   if (activeSkills.length > 0) {
@@ -659,6 +924,8 @@ export async function runFlorviaAgent(input: AgentRunInput): Promise<AgentRunRes
   const isNewProject =
     input.files.length === 0 || input.files[0].path === 'No files yet'
   const mode = input.mode ?? 'create'
+  const thinkingLevel = normalizeThinkingLevel(input.thinkingLevel)
+  const thinkingProfile = AGENT_THINKING_PROFILES[thinkingLevel]
 
   // ── Build initial messages ────────────────────────────────────
   const messages: LlmMessage[] = []
@@ -673,9 +940,40 @@ export async function runFlorviaAgent(input: AgentRunInput): Promise<AgentRunRes
     messages.push({ role: 'user', content: memoryContext })
   }
 
+  // Inject cross-project user memory (preferences / known fixes)
+  if (userMemoryReminder) {
+    messages.push({ role: 'user', content: userMemoryReminder })
+  }
+
+  messages.push({ role: 'user', content: buildThinkingLevelPrompt(thinkingLevel) })
+
   // SPEC PHASE: for new projects, inject spec guidance
   if (isNewProject || mode === 'create') {
     messages.push({ role: 'user', content: SPEC_PHASE_PROMPT })
+  }
+
+  let currentFiles = normalizeFiles(input.files)
+
+  // ── Plan + requirements checklist (#5) ────────────────────────
+  // Seed PLAN.md from the request so the agent's plan survives compaction and
+  // the done gate can verify requirement coverage. PLAN.md is the source of
+  // truth; the update_plan tool mutates it.
+  const existingPlanFile = currentFiles.find((f) => f.path === PLAN_PATH)
+  const initialPlan: AgentPlan = existingPlanFile
+    ? parsePlan(existingPlanFile.code)
+    : createPlan(input.prompt)
+  if (!existingPlanFile || initialPlan.items.length === 0) {
+    currentFiles = upsertFile(currentFiles, {
+      path: PLAN_PATH,
+      language: 'md',
+      code: formatPlan(initialPlan.items.length > 0 ? initialPlan : createPlan(input.prompt)),
+    })
+  }
+  const planReminder = planToSystemReminder(
+    initialPlan.items.length > 0 ? initialPlan : createPlan(input.prompt),
+  )
+  if (planReminder) {
+    messages.push({ role: 'user', content: planReminder })
   }
 
   // Main user prompt
@@ -690,23 +988,34 @@ export async function runFlorviaAgent(input: AgentRunInput): Promise<AgentRunRes
     ),
   })
 
-  let currentFiles = normalizeFiles(input.files)
   let turnCount = 0
   let lastSummaryTurn = 0
   let runtimeRejectCount = 0
-  const MAX_RUNTIME_REJECTS = 3
+  const MAX_RUNTIME_REJECTS =
+    thinkingProfile.finalReviewDepth === 'basic' ? 2 :
+      thinkingProfile.finalReviewDepth === 'deep' ? 6 : 4
+
+  const goal = input.prompt
+  const loopDetector = new LoopDetector()
+  // Single-shot flags so the expensive/subjective review stages run at most
+  // once and the agent isn't trapped re-revising forever.
+  const reviewState = {
+    requirementsEnforced: false,
+    visualReviewed: false,
+    selfReviewed: false,
+  }
 
   // Track session details for changelog
   const sessionFilesCreated: string[] = []
   const sessionFilesEdited: string[] = []
 
   // Tool execution loop
-  while (turnCount < (input.maxTurns ?? MAX_TOOL_TURNS)) {
+  while (turnCount < (input.maxTurns ?? thinkingProfile.maxTurns ?? MAX_TOOL_TURNS)) {
     throwIfAborted(input.signal)
     turnCount++
 
     // ── Compaction ──────────────────────────────────────────────
-    const compactResult = compactMessages(messages, turnCount, currentFiles)
+    const compactResult = compactMessages(messages, turnCount)
     if (compactResult.compacted) {
       if (turnCount - lastSummaryTurn >= SUMMARY_INTERVAL) {
         const summary = generateProgressSummary(messages, currentFiles, turnCount)
@@ -717,10 +1026,10 @@ export async function runFlorviaAgent(input: AgentRunInput): Promise<AgentRunRes
     }
 
     // ── Adaptive thinking budget ────────────────────────────────
-    const thinkingBudget = getThinkingBudget({ mode, turnCount })
+    const thinkingBudget = getThinkingBudget({ mode, turnCount, thinkingLevel })
 
     // ── Call the model ──────────────────────────────────────────
-    const { text, toolCalls } = await callModelWithTools({
+    const { text, toolCalls, thinkingBlocks } = await callModelWithTools({
       providerId: provider.key.provider_id,
       baseUrl: provider.baseUrl,
       apiKey: provider.key.api_key,
@@ -737,6 +1046,10 @@ export async function runFlorviaAgent(input: AgentRunInput): Promise<AgentRunRes
 
     // ── Build assistant message ─────────────────────────────────
     const assistantBlocks: LlmContentBlock[] = []
+    // Anthropic thinking blocks must lead and be replayed verbatim next turn.
+    for (const tb of thinkingBlocks ?? []) {
+      assistantBlocks.push({ type: 'thinking', thinking: tb.thinking, signature: tb.signature })
+    }
     if (text) assistantBlocks.push({ type: 'text', text })
     for (const tc of toolCalls) {
       assistantBlocks.push({
@@ -782,28 +1095,32 @@ export async function runFlorviaAgent(input: AgentRunInput): Promise<AgentRunRes
       const result = toolResults[i]
       if (result.files) currentFiles = result.files
 
-      // ── Ralph Loop: intercept done calls ─────────────────────
+      // ── Final review gate: intercept done calls ──────────────
       if (tc.name === 'done') {
-        // Deterministic runtime gate — actually run the app before accepting
-        // done. This catches the exact failure class the LLM self-check and
-        // esbuild both miss (e.g. "isJumping is not defined" at render time).
+        // A multi-stage gate that actually verifies the app before accepting
+        // done: build + interactive runtime + type-check + requirement
+        // coverage + visual review + fresh-eyes self-review. Each catches a
+        // different failure class the model and esbuild miss.
         if (runtimeRejectCount < MAX_RUNTIME_REJECTS) {
-          const gate = await runDoneRuntimeGate(currentFiles, input.onProgress)
+          const gate = await runFinalReview({
+            provider,
+            goal,
+            currentFiles,
+            reviewState,
+            reviewDepth: thinkingProfile.finalReviewDepth,
+            signal: input.signal,
+            onProgress: input.onProgress,
+          })
           if (!gate.ok) {
             runtimeRejectCount++
             input.onProgress?.({
               type: 'status',
-              message: `Runtime gate ${runtimeRejectCount}/${MAX_RUNTIME_REJECTS}: app crashes at runtime — not done yet.`,
+              message: `Review ${runtimeRejectCount}/${MAX_RUNTIME_REJECTS} (${gate.stage}): not done yet.`,
             })
             messages.push({
               role: 'user',
               content: [
-                {
-                  type: 'tool_result',
-                  tool_use_id: tc.id,
-                  content: gate.feedback,
-                  is_error: true,
-                },
+                { type: 'tool_result', tool_use_id: tc.id, content: gate.feedback, is_error: true },
               ],
             })
             // Reject done — keep building.
@@ -831,6 +1148,29 @@ export async function runFlorviaAgent(input: AgentRunInput): Promise<AgentRunRes
       }
     }
 
+    // ── Plan re-injection (#5) ──────────────────────────────────
+    // If the agent updated the plan this turn, surface the fresh checklist so
+    // it stays salient even after compaction.
+    if (toolCalls.some((tc) => tc.name === 'update_plan')) {
+      const planFile = currentFiles.find((f) => f.path === PLAN_PATH)
+      if (planFile) {
+        const reminder = planToSystemReminder(parsePlan(planFile.code))
+        if (reminder) messages.push({ role: 'user', content: reminder })
+      }
+    }
+
+    // ── Loop / stuck detection (#9) ─────────────────────────────
+    const turnErrors = toolResults.filter((r) => r.isError).map((r) => r.content)
+    const nudge = loopDetector.record(
+      turnCount,
+      toolCalls.map((tc) => ({ name: tc.name, input: tc.input })),
+      turnErrors,
+    )
+    if (nudge) {
+      input.onProgress?.({ type: 'status', message: 'Detected a stuck loop — nudging a new approach.' })
+      messages.push({ role: 'user', content: loopBreakPrompt(nudge) })
+    }
+
     if (hasDone && doneResult) {
       // Push the final done result
       messages.push({
@@ -855,6 +1195,11 @@ export async function runFlorviaAgent(input: AgentRunInput): Promise<AgentRunRes
         lessons: [],
       })
 
+      // Persist a durable cross-project fact about what was built (#8).
+      if (mode === 'create') {
+        rememberForUser(input.userId, 'fact', `Built: ${input.title || input.prompt.slice(0, 60)}`)
+      }
+
       // Record success on the circuit breaker
       circuitBreaker.recordSuccess(provider.key.provider_id)
       input.onProgress?.({ type: 'done', files: currentFiles })
@@ -877,54 +1222,137 @@ export async function runFlorviaAgent(input: AgentRunInput): Promise<AgentRunRes
   return { files: currentFiles, turns: turnCount, providerName, modelName }
 }
 
-// ─── Runtime Gate (Deterministic Self-Verification) ─────────────────────────
+// ─── Final Review Gate (multi-stage, #1/#2/#3/#4/#5) ────────────────────────
 
-interface RuntimeGateResult {
+interface FinalReviewResult {
   ok: boolean
   feedback: string
+  stage: string
 }
 
 /**
- * Build and actually run the project before accepting `done`. Unlike the LLM
- * Ralph check, this is deterministic: it executes the bundle and catches
- * runtime crashes that esbuild and the model both miss. Inconclusive runs
- * (no DOM, external module stalled) pass so we never block on flakiness.
+ * The full pre-`done` verification pipeline. Runs cheap deterministic checks
+ * first (fail fast) and the expensive/subjective model reviews last, each at
+ * most once. Any single failure rejects `done` with targeted feedback.
+ *
+ * Stages: build → interactive runtime → type-check → requirement coverage →
+ * visual (vision) review → fresh-eyes self-review.
  */
-async function runDoneRuntimeGate(
-  currentFiles: AgentCodeFile[],
-  onProgress?: (event: AgentProgressEvent) => void,
-): Promise<RuntimeGateResult> {
+async function runFinalReview(params: {
+  provider: ResolvedProvider
+  goal: string
+  currentFiles: AgentCodeFile[]
+  reviewState: { requirementsEnforced: boolean; visualReviewed: boolean; selfReviewed: boolean }
+  reviewDepth: 'basic' | 'standard' | 'deep'
+  signal?: AbortSignal
+  onProgress?: (event: AgentProgressEvent) => void
+}): Promise<FinalReviewResult> {
+  const { provider, goal, currentFiles, reviewState, reviewDepth, signal, onProgress } = params
+
+  // ── Stage 1: build ──────────────────────────────────────────
+  let html = ''
   try {
-    onProgress?.({ type: 'status', message: 'Running the app to verify it works...' })
-    const preview = await buildPreview(
-      currentFiles.map((f) => ({ path: f.path, content: f.code })),
-    )
+    onProgress?.({ type: 'status', message: 'Final review: building...' })
+    const preview = await buildPreview(currentFiles.map((f) => ({ path: f.path, content: f.code })))
     if (preview.errors.length > 0) {
       const unique = [...new Set(preview.errors)].slice(0, COMPILE_MAX_ERRORS)
       return {
         ok: false,
+        stage: 'build',
         feedback:
           `Cannot finish — the project does not compile (${preview.errors.length} error(s)):\n` +
           unique.map((e, i) => `  ${i + 1}. ${e}`).join('\n') +
           `\n\nFix these with edit_file, compile to confirm, then call done again.`,
       }
     }
+    html = preview.html
+  } catch {
+    // Build infra failure — don't block.
+    return { ok: true, feedback: '', stage: 'build' }
+  }
 
-    const runtime = await runtimeSmokeTest(preview.html)
-    if (runtime.ok) return { ok: true, feedback: '' }
-
-    const report = formatRuntimeReport(runtime) ?? 'The app crashed at runtime.'
-    return {
-      ok: false,
-      feedback:
-        `## Not done yet — the app crashes when it runs\n\n${report}\n\n` +
-        `You cannot call done while the app throws at runtime. Fix the error above, ` +
-        `then compile (which now runs the app) to confirm it works before finishing.`,
+  // ── Stage 2: interactive runtime (#2) ───────────────────────
+  try {
+    onProgress?.({ type: 'status', message: 'Final review: running and clicking through the app...' })
+    const runtime = await interactiveSmokeTest(html)
+    if (runtime.ran && !runtime.ok) {
+      const report = formatRuntimeReport(runtime) ?? 'The app failed when exercised.'
+      return {
+        ok: false,
+        stage: 'runtime',
+        feedback:
+          `## Not done — the app breaks when run or used\n\n${report}\n\n` +
+          `Fix the error above, then compile (build + runtime) to confirm before finishing.`,
+      }
     }
   } catch {
-    // Never block completion on an infrastructure failure.
-    return { ok: true, feedback: '' }
+    /* runtime infra failure — continue */
   }
+
+  // ── Stage 3: type-check (#3) ────────────────────────────────
+  try {
+    onProgress?.({ type: 'status', message: 'Final review: type-checking...' })
+    const typeResult = await typeCheckProject(
+      currentFiles.map((f) => ({ path: f.path, code: f.code })),
+    )
+    const report = formatTypeErrors(typeResult)
+    if (typeResult.ran && !typeResult.ok && report) {
+      return {
+        ok: false,
+        stage: 'typecheck',
+        feedback:
+          `## Not done — there are TypeScript type errors\n\n${report}`,
+      }
+    }
+  } catch {
+    /* typecheck unavailable — continue */
+  }
+
+  // ── Stage 4: requirement coverage (#5), once ────────────────
+  if (reviewDepth === 'basic') {
+    return { ok: true, feedback: '', stage: 'complete' }
+  }
+
+  if (!reviewState.requirementsEnforced) {
+    const planFile = currentFiles.find((f) => f.path === PLAN_PATH)
+    if (planFile) {
+      const plan = parsePlan(planFile.code)
+      const unmet = unmetRequirements(plan)
+      if (plan.items.length > 0 && unmet.length > 0) {
+        reviewState.requirementsEnforced = true
+        return {
+          ok: false,
+          stage: 'requirements',
+          feedback:
+            `## Not done — ${unmet.length} requirement(s) are still unchecked in PLAN.md\n\n` +
+            unmet.map((it) => `  [ ] ${it.id}. ${it.text}`).join('\n') +
+            `\n\nEither implement each remaining requirement (then update_plan to check it off), ` +
+            `or, if a requirement is already done, call update_plan with check:[ids] to mark it. ` +
+            `Then call done again.`,
+        }
+      }
+    }
+  }
+
+  // ── Stage 5: visual review (#1), once ───────────────────────
+  if (!reviewState.visualReviewed) {
+    reviewState.visualReviewed = true
+    const feedback = await runVisualReview(provider, goal, html, signal, onProgress)
+    if (feedback) {
+      return { ok: false, stage: 'visual', feedback }
+    }
+  }
+
+  // ── Stage 6: fresh-eyes self-review (#4), once ──────────────
+  if (!reviewState.selfReviewed) {
+    reviewState.selfReviewed = true
+    const feedback = await runSelfReview(provider, goal, currentFiles, signal, onProgress)
+    if (feedback) {
+      return { ok: false, stage: 'self-review', feedback }
+    }
+  }
+
+  return { ok: true, feedback: '', stage: 'complete' }
 }
 
 
@@ -1114,7 +1542,7 @@ async function executeTool(
   toolCall: ToolCall,
   currentFiles: AgentCodeFile[],
   signal: AbortSignal | undefined,
-  provider: ResolvedProvider,
+  _provider: ResolvedProvider,
   onProgress?: (event: AgentProgressEvent) => void,
 ): Promise<ToolResult> {
   throwIfAborted(signal)
@@ -1123,6 +1551,43 @@ async function executeTool(
     // ── think ──────────────────────────────────────────────────
     case 'think': {
       return { content: String(toolCall.input.thought ?? ''), isError: false }
+    }
+
+    // ── update_plan ─────────────────────────────────────────────
+    case 'update_plan': {
+      const planFile = currentFiles.find((f) => f.path === PLAN_PATH)
+      const plan = planFile ? parsePlan(planFile.code) : { goal: '', items: [], notes: '' }
+
+      const asStringArray = (v: unknown): string[] | undefined =>
+        Array.isArray(v) ? v.filter((x): x is string => typeof x === 'string') : undefined
+      const asNumberArray = (v: unknown): number[] | undefined =>
+        Array.isArray(v) ? v.map(Number).filter((n) => Number.isFinite(n)) : undefined
+
+      const update: PlanUpdate = {
+        goal: typeof toolCall.input.goal === 'string' ? toolCall.input.goal : undefined,
+        setRequirements: asStringArray(toolCall.input.set_requirements),
+        addRequirements: asStringArray(toolCall.input.add_requirements),
+        check: asNumberArray(toolCall.input.check),
+        uncheck: asNumberArray(toolCall.input.uncheck),
+        notes: typeof toolCall.input.notes === 'string' ? toolCall.input.notes : undefined,
+      }
+
+      const nextPlan = applyPlanUpdate(plan, update)
+      const newFiles = upsertFile(currentFiles, {
+        path: PLAN_PATH,
+        language: 'md',
+        code: formatPlan(nextPlan),
+      })
+      const remaining = unmetRequirements(nextPlan).length
+      return {
+        content:
+          `Plan updated. ${nextPlan.items.length} requirement(s), ${remaining} still unchecked.\n` +
+          nextPlan.items
+            .map((it) => `  [${it.done ? 'x' : ' '}] ${it.id}. ${it.text}`)
+            .join('\n'),
+        isError: false,
+        files: newFiles,
+      }
     }
 
     // ── list_files ──────────────────────────────────────────────
@@ -1600,6 +2065,8 @@ async function executeTool(
 interface ModelCallResult {
   text: string
   toolCalls: ToolCall[]
+  /** Anthropic thinking blocks from this turn — replayed on the next turn. */
+  thinkingBlocks?: { thinking: string; signature: string }[]
 }
 
 async function callModelWithTools({
@@ -1614,9 +2081,9 @@ async function callModelWithTools({
     return callAnthropicWithTools({ baseUrl, apiKey, modelId, system, tools, messages, signal, onText, thinkingBudget })
   }
   if (providerId === 'google') {
-    return callGeminiWithTools({ baseUrl, apiKey, modelId, system, tools, messages, signal, onText })
+    return callGeminiWithTools({ baseUrl, apiKey, modelId, system, tools, messages, signal, onText, thinkingBudget })
   }
-  return callOpenAIWithTools({ baseUrl, apiKey, modelId, system, tools, messages, signal, onText })
+  return callOpenAIWithTools({ providerId, baseUrl, apiKey, modelId, system, tools, messages, signal, onText, thinkingBudget })
 }
 
 // ─── OpenAI-compatible ──────────────────────────────────────────────────────
@@ -1630,11 +2097,11 @@ function toolsToAnthropicFormat(tools: ToolDefinition[]) {
 }
 
 async function callOpenAIWithTools({
-  baseUrl, apiKey, modelId, system, tools, messages, signal, onText,
+  providerId, baseUrl, apiKey, modelId, system, tools, messages, signal, onText, thinkingBudget,
 }: {
-  baseUrl: string; apiKey: string; modelId: string; system: string
+  providerId?: string; baseUrl: string; apiKey: string; modelId: string; system: string
   tools: ToolDefinition[]; messages: LlmMessage[]
-  signal?: AbortSignal; onText: (chunk: string) => void
+  signal?: AbortSignal; onText: (chunk: string) => void; thinkingBudget?: number
 }): Promise<ModelCallResult> {
   const url = baseUrl.endsWith('/chat/completions') ? baseUrl : `${baseUrl}/chat/completions`
 
@@ -1643,13 +2110,19 @@ async function callOpenAIWithTools({
     ...messages.flatMap(convertToOpenAIMessages),
   ]
   const openaiTools = toolsToOpenAIFormat(tools)
+  const reasoning = getReasoningParams(providerId ?? 'openai', modelId, thinkingBudget ?? 0)
 
-  const attempts: Array<Record<string, unknown>> = [
-    { tools: openaiTools, stream: true },
-    { tools: openaiTools, stream: true, tool_choice: 'auto' },
-    { tools: openaiTools, stream: false },
-    { stream: true },
-  ]
+  // When no tools are provided (e.g. visual/self review), make a plain
+  // text completion — don't send an empty tools array some APIs reject.
+  const attempts: Array<Record<string, unknown>> =
+    tools.length === 0
+      ? [{ stream: true, ...reasoning }, { stream: false, ...reasoning }]
+      : [
+          { tools: openaiTools, stream: true, ...reasoning },
+          { tools: openaiTools, stream: true, tool_choice: 'auto', ...reasoning },
+          { tools: openaiTools, stream: false, ...reasoning },
+          { stream: true },
+        ]
 
   let lastError = ''
 
@@ -1795,13 +2268,22 @@ async function callAnthropicWithTools({
 
   const body: Record<string, unknown> = {
     model: modelId, max_tokens: MAX_OUTPUT_TOKENS, temperature: 0.22,
-    tools: toolsToAnthropicFormat(tools), messages: anthropicMessages, stream: true,
+    messages: anthropicMessages, stream: true,
     system: [{ type: 'text', text: system, cache_control: { type: 'ephemeral' } }],
   }
 
+  if (tools.length > 0) {
+    body.tools = toolsToAnthropicFormat(tools)
+  }
+
   const budget = thinkingBudget ?? ANTHROPIC_THINKING_BUDGET
-  if (budget > 0) {
+  // Extended thinking requires temperature:1, and max_tokens must exceed the
+  // thinking budget (the visible output is the remainder) — size it so the
+  // model still has room for tool calls after reasoning.
+  if (budget > 0 && tools.length > 0) {
     body.thinking = { type: 'enabled', budget_tokens: budget }
+    body.temperature = 1
+    body.max_tokens = budget + MAX_OUTPUT_TOKENS
   }
 
   const controller = new AbortController()
@@ -1840,6 +2322,7 @@ async function parseAnthropicToolStream(response: Response, onText: (chunk: stri
   const decoder = new TextDecoder()
   let buffer = '', fullText = ''
   const toolCalls: Map<number, { id: string; name: string; input: string }> = new Map()
+  const thinking: Map<number, { thinking: string; signature: string }> = new Map()
 
   try {
     while (true) {
@@ -1855,6 +2338,23 @@ async function parseAnthropicToolStream(response: Response, onText: (chunk: stri
           const parsed = JSON.parse(trimmed.slice(5).trim())
           if (parsed.type === 'content_block_delta' && parsed.delta?.type === 'text_delta') {
             fullText += parsed.delta.text; onText(parsed.delta.text)
+          }
+          // Extended thinking blocks — captured so they can be replayed on the
+          // next turn (Anthropic 400s if a thinking turn's blocks are dropped
+          // before tool_result).
+          if (parsed.type === 'content_block_start' && parsed.content_block?.type === 'thinking') {
+            thinking.set(parsed.index, {
+              thinking: parsed.content_block.thinking ?? '',
+              signature: parsed.content_block.signature ?? '',
+            })
+          }
+          if (parsed.type === 'content_block_delta' && parsed.delta?.type === 'thinking_delta') {
+            const t = thinking.get(parsed.index)
+            if (t) t.thinking += parsed.delta.thinking ?? ''
+          }
+          if (parsed.type === 'content_block_delta' && parsed.delta?.type === 'signature_delta') {
+            const t = thinking.get(parsed.index)
+            if (t) t.signature += parsed.delta.signature ?? ''
           }
           if (parsed.type === 'content_block_start' && parsed.content_block?.type === 'tool_use') {
             toolCalls.set(parsed.index, { id: parsed.content_block.id, name: parsed.content_block.name, input: '' })
@@ -1872,17 +2372,18 @@ async function parseAnthropicToolStream(response: Response, onText: (chunk: stri
   for (const tc of toolCalls.values()) {
     try { parsedToolCalls.push({ id: tc.id, name: tc.name, input: tc.input ? JSON.parse(tc.input) : {} }) } catch { /* skip */ }
   }
-  return { text: fullText, toolCalls: parsedToolCalls }
+  const thinkingBlocks = [...thinking.values()].filter((t) => t.signature)
+  return { text: fullText, toolCalls: parsedToolCalls, thinkingBlocks }
 }
 
 // ─── Gemini ─────────────────────────────────────────────────────────────────
 
 async function callGeminiWithTools({
-  baseUrl, apiKey, modelId, system, tools, messages, signal, onText,
+  baseUrl, apiKey, modelId, system, tools, messages, signal, onText, thinkingBudget,
 }: {
   baseUrl: string; apiKey: string; modelId: string; system: string
   tools: ToolDefinition[]; messages: LlmMessage[]
-  signal?: AbortSignal; onText: (chunk: string) => void
+  signal?: AbortSignal; onText: (chunk: string) => void; thinkingBudget?: number
 }): Promise<ModelCallResult> {
   const cleanModel = modelId.replace(/^models\//, '')
   const url = `${baseUrl}/models/${encodeURIComponent(cleanModel)}:streamGenerateContent?alt=sse`
@@ -1897,6 +2398,8 @@ async function callGeminiWithTools({
     for (const block of msg.content) {
       if (block.type === 'text' && block.text) {
         parts.push({ text: block.text })
+      } else if (block.type === 'image' && block.image) {
+        parts.push({ inlineData: { mimeType: block.image.mediaType, data: block.image.base64 } })
       } else if (block.type === 'tool_use') {
         parts.push({ functionCall: { name: block.name, args: block.input ?? {} } })
       } else if (block.type === 'tool_result') {
@@ -1924,7 +2427,11 @@ async function callGeminiWithTools({
         systemInstruction: systemParts.length > 0 ? { parts: systemParts } : undefined,
         contents,
         tools: functionDeclarations.length > 0 ? [{ functionDeclarations }] : undefined,
-        generationConfig: { temperature: 0.22, maxOutputTokens: MAX_OUTPUT_TOKENS },
+        generationConfig: {
+          temperature: 0.22,
+          maxOutputTokens: MAX_OUTPUT_TOKENS,
+          ...getReasoningParams('google', modelId, thinkingBudget ?? 0),
+        },
       }),
       signal: combinedSignal,
     })
@@ -2002,6 +2509,11 @@ function convertToOpenAIMessages(msg: LlmMessage): Record<string, unknown>[] {
   for (const block of msg.content) {
     if (block.type === 'text' && block.text) {
       openaiContent.push({ type: 'text', text: block.text })
+    } else if (block.type === 'image' && block.image) {
+      openaiContent.push({
+        type: 'image_url',
+        image_url: { url: `data:${block.image.mediaType};base64,${block.image.base64}` },
+      })
     } else if (block.type === 'tool_use') {
       toolCalls.push({
         id: block.id, type: 'function',
@@ -2013,8 +2525,10 @@ function convertToOpenAIMessages(msg: LlmMessage): Record<string, unknown>[] {
   if (toolCalls.length > 0 && msg.role === 'assistant') {
     return [{ role: 'assistant', content: openaiContent.length > 0 ? openaiContent : null, tool_calls: toolCalls }]
   }
-  if (msg.role === 'assistant' && openaiContent.length > 0) {
-    return [{ role: 'assistant', content: openaiContent }]
+  // Any role with structured content (text and/or images) — preserve the array
+  // so multimodal user messages (visual review) keep their image blocks.
+  if (openaiContent.length > 0) {
+    return [{ role: msg.role, content: openaiContent }]
   }
   return [{ role: msg.role, content: msg.content.map((b) => b.content ?? b.text ?? '').join('\n') }]
 }
@@ -2022,8 +2536,21 @@ function convertToOpenAIMessages(msg: LlmMessage): Record<string, unknown>[] {
 function convertToAnthropicMessage(msg: LlmMessage): Record<string, unknown> {
   if (typeof msg.content === 'string') return { role: msg.role, content: msg.content }
   const content: Record<string, unknown>[] = []
+  // Thinking blocks must lead the assistant content, before text/tool_use.
   for (const block of msg.content) {
+    if (block.type === 'thinking' && block.signature) {
+      content.push({ type: 'thinking', thinking: block.thinking ?? '', signature: block.signature })
+    }
+  }
+  for (const block of msg.content) {
+    if (block.type === 'thinking') continue
     if (block.type === 'text' && block.text) content.push({ type: 'text', text: block.text })
+    else if (block.type === 'image' && block.image) {
+      content.push({
+        type: 'image',
+        source: { type: 'base64', media_type: block.image.mediaType, data: block.image.base64 },
+      })
+    }
     else if (block.type === 'tool_use') content.push({ type: 'tool_use', id: block.id, name: block.name, input: block.input ?? {} })
     else if (block.type === 'tool_result') content.push({ type: 'tool_result', tool_use_id: block.tool_use_id, content: block.content, is_error: block.is_error })
   }
@@ -2134,7 +2661,7 @@ async function resolveProviderWithFallback(
   const keys = allKeys as ProviderKeyRow[]
 
   // Sort: preferred provider first, then by creation date
-  let sortedKeys = [...keys]
+  const sortedKeys = [...keys]
   if (selectedModel) {
     const prefIdx = sortedKeys.findIndex(
       (k) => k.provider_id === selectedModel.provider_id,
@@ -2194,7 +2721,7 @@ async function resolveProviderWithFallback(
 
       const baseUrl = validateProviderUrl(rawBaseUrl)
 
-      return { key, baseUrl, model: selected }
+      return { key, baseUrl, model: selected, models: merged }
     } catch (err) {
       const msg = err instanceof Error ? err.message : String(err)
       errors.push(`${key.provider_name || key.provider_id}: ${msg}`)

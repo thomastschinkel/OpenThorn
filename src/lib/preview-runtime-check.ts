@@ -28,6 +28,12 @@ export interface RuntimeCheckResult {
   consoleErrors: string[]
   /** Whether #root received any rendered content. */
   rendered: boolean
+  /** Number of interactive elements exercised (interactive mode only). */
+  interactionsRun?: number
+  /** Errors thrown specifically while exercising interactions. */
+  interactionErrors?: string[]
+  /** Whether interactions produced any DOM change (a signal handlers are wired). */
+  domChanged?: boolean
 }
 
 /** How long to let the app mount and settle before collecting the report. */
@@ -43,13 +49,17 @@ const HARD_TIMEOUT_MS = 8000
  * It collects errors and posts a single report to the parent after the app
  * has had time to mount. `token` ties the report to this specific run.
  */
-function buildCaptureScript(token: string, waitMs: number): string {
+function buildCaptureScript(token: string, waitMs: number, interactive = false): string {
   return `<script>
 (function(){
   if (typeof window === 'undefined') return;
   var TOKEN = ${JSON.stringify(token)};
+  var INTERACTIVE = ${interactive ? 'true' : 'false'};
   var fatal = [];
   var consoleErrors = [];
+  var interactionErrors = [];
+  var interactionsRun = 0;
+  var domChanged = false;
 
   function describe(value) {
     if (value == null) return String(value);
@@ -79,6 +89,69 @@ function buildCaptureScript(token: string, waitMs: number): string {
     return originalConsoleError.apply(console, arguments);
   };
 
+  // ── Interaction driver ──────────────────────────────────────────
+  // Exercises the rendered UI to catch "looks done but buttons do nothing /
+  // throw" bugs. We prevent real form submits and full navigations so the
+  // page stays alive, click a bounded set of controls, type into text inputs,
+  // and watch for thrown errors and DOM mutations.
+  function snapshotDom() {
+    var root = document.getElementById('root');
+    return root ? (root.innerHTML || '').length + ':' + root.querySelectorAll('*').length : '0:0';
+  }
+
+  function runInteractions() {
+    // Block anything that would unload the document.
+    document.addEventListener('submit', function(e){ e.preventDefault(); }, true);
+
+    var before = snapshotDom();
+    var MAX = 8;
+
+    // Buttons and role=button / [data-testid] clickables (skip obviously
+    // destructive or navigation-away controls).
+    var clickables = [].slice.call(
+      document.querySelectorAll('button, [role="button"], input[type="checkbox"], input[type="radio"], [data-interactive]')
+    ).slice(0, MAX);
+    for (var i = 0; i < clickables.length; i++) {
+      var el = clickables[i];
+      try {
+        if (el.disabled) continue;
+        el.click();
+        interactionsRun++;
+      } catch (err) {
+        interactionErrors.push(describe(err));
+      }
+    }
+
+    // Type into the first few text-like inputs and fire input/change.
+    var inputs = [].slice.call(
+      document.querySelectorAll('input[type="text"], input[type="email"], input[type="search"], input:not([type]), textarea')
+    ).slice(0, 4);
+    for (var j = 0; j < inputs.length; j++) {
+      var inp = inputs[j];
+      try {
+        var setter = Object.getOwnPropertyDescriptor(
+          inp.tagName === 'TEXTAREA' ? HTMLTextAreaElement.prototype : HTMLInputElement.prototype,
+          'value'
+        );
+        if (setter && setter.set) { setter.set.call(inp, 'Test input'); }
+        else { inp.value = 'Test input'; }
+        inp.dispatchEvent(new Event('input', { bubbles: true }));
+        inp.dispatchEvent(new Event('change', { bubbles: true }));
+        interactionsRun++;
+      } catch (err) {
+        interactionErrors.push(describe(err));
+      }
+    }
+
+    // Click in-page hash links (safe; won't unload).
+    var hashLinks = [].slice.call(document.querySelectorAll('a[href^="#"]')).slice(0, 3);
+    for (var k = 0; k < hashLinks.length; k++) {
+      try { hashLinks[k].click(); interactionsRun++; } catch (err) { interactionErrors.push(describe(err)); }
+    }
+
+    domChanged = snapshotDom() !== before;
+  }
+
   var reported = false;
   function report() {
     if (reported) return;
@@ -90,20 +163,33 @@ function buildCaptureScript(token: string, waitMs: number): string {
         __bloomRuntimeCheck: TOKEN,
         fatalErrors: fatal,
         consoleErrors: consoleErrors,
-        rendered: rendered
+        rendered: rendered,
+        interactionsRun: interactionsRun,
+        interactionErrors: interactionErrors,
+        domChanged: domChanged
       }, '*');
     } catch (e) { /* ignore */ }
+  }
+
+  function settleThenReport() {
+    if (INTERACTIVE) {
+      // Let the app mount, then drive it, then let effects settle, then report.
+      try { runInteractions(); } catch (e) { interactionErrors.push(describe(e)); }
+      setTimeout(report, 600);
+    } else {
+      report();
+    }
   }
 
   // Report after the app has mounted and run a few frames. We listen on load
   // so module scripts (deferred) have finished evaluating first.
   if (document.readyState === 'complete') {
-    setTimeout(report, ${waitMs});
+    setTimeout(settleThenReport, ${waitMs});
   } else {
-    window.addEventListener('load', function(){ setTimeout(report, ${waitMs}); });
+    window.addEventListener('load', function(){ setTimeout(settleThenReport, ${waitMs}); });
   }
   // Safety: always report eventually, even if 'load' never fires.
-  setTimeout(report, ${waitMs} + 1500);
+  setTimeout(report, ${waitMs} + 2500);
 })();
 </script>`
 }
@@ -132,7 +218,7 @@ function nextToken(): string {
  */
 export async function runtimeSmokeTest(
   html: string,
-  opts: { waitMs?: number } = {},
+  opts: { waitMs?: number; interactive?: boolean } = {},
 ): Promise<RuntimeCheckResult> {
   const empty: RuntimeCheckResult = {
     ok: true,
@@ -147,9 +233,10 @@ export async function runtimeSmokeTest(
     return empty
   }
 
+  const interactive = opts.interactive ?? false
   const waitMs = opts.waitMs ?? DEFAULT_WAIT_MS
   const token = nextToken()
-  const instrumented = instrumentHtml(html, buildCaptureScript(token, waitMs))
+  const instrumented = instrumentHtml(html, buildCaptureScript(token, waitMs, interactive))
 
   return new Promise<RuntimeCheckResult>((resolve) => {
     const iframe = document.createElement('iframe')
@@ -189,23 +276,39 @@ export async function runtimeSmokeTest(
         ? data.consoleErrors.map((e: unknown) => String(e))
         : []
       const rendered = Boolean(data.rendered)
+      const interactionErrors: string[] = Array.isArray(data.interactionErrors)
+        ? data.interactionErrors.map((e: unknown) => String(e))
+        : []
+      const interactionsRun = Number(data.interactionsRun) || 0
+      const domChanged = Boolean(data.domChanged)
 
-      // Fatal = uncaught errors / rejections. An empty render combined with a
-      // logged console error is also treated as fatal (React crashed during
-      // render without rethrowing). A bare empty render is NOT failed on its
-      // own, to avoid false positives from slow esm.sh module loads.
+      // Fatal = uncaught errors / rejections, OR an error thrown while
+      // exercising an interaction (a dead/broken handler). An empty render
+      // combined with a logged console error is also treated as fatal (React
+      // crashed during render without rethrowing). A bare empty render is NOT
+      // failed on its own, to avoid false positives from slow esm.sh loads.
       const ok =
         fatalErrors.length === 0 &&
+        interactionErrors.length === 0 &&
         !(rendered === false && consoleErrors.length > 0)
 
-      finish({ ok, ran: true, fatalErrors, consoleErrors, rendered })
+      finish({
+        ok,
+        ran: true,
+        fatalErrors,
+        consoleErrors,
+        rendered,
+        interactionsRun,
+        interactionErrors,
+        domChanged,
+      })
     }
 
     const hardTimeout = setTimeout(() => {
       // Never reported — most likely an external module (esm.sh) stalled.
       // Treat as inconclusive (ok) rather than a false failure.
       finish({ ...empty, ran: true })
-    }, HARD_TIMEOUT_MS)
+    }, interactive ? HARD_TIMEOUT_MS + 4000 : HARD_TIMEOUT_MS)
 
     window.addEventListener('message', onMessage)
     document.body.appendChild(iframe)
@@ -214,12 +317,27 @@ export async function runtimeSmokeTest(
 }
 
 /**
+ * Run the app AND drive its interactive elements (clicks, typing, hash links),
+ * catching handlers that throw or do nothing. Use this for the final
+ * pre-`done` gate where "the buttons actually work" matters.
+ */
+export async function interactiveSmokeTest(
+  html: string,
+  opts: { waitMs?: number } = {},
+): Promise<RuntimeCheckResult> {
+  return runtimeSmokeTest(html, { ...opts, interactive: true })
+}
+
+/**
  * Format a runtime check result into a concise, agent-readable report.
  * Returns null when there is nothing worth reporting (clean run).
  */
 export function formatRuntimeReport(result: RuntimeCheckResult): string | null {
   if (!result.ran) return null
-  if (result.ok && result.consoleErrors.length === 0) return null
+  const interactionErrors = result.interactionErrors ?? []
+  if (result.ok && result.consoleErrors.length === 0 && interactionErrors.length === 0) {
+    return null
+  }
 
   const lines: string[] = []
 
@@ -228,6 +346,18 @@ export function formatRuntimeReport(result: RuntimeCheckResult): string | null {
       `Runtime check FAILED — the app threw ${result.fatalErrors.length} uncaught error(s) when rendered:`,
     )
     result.fatalErrors.forEach((e, i) => lines.push(`  ${i + 1}. ${e}`))
+  }
+
+  if (interactionErrors.length > 0) {
+    lines.push(
+      result.fatalErrors.length > 0 ? '' : 'Interaction check FAILED — a control threw when used:',
+    )
+    interactionErrors.slice(0, 8).forEach((e, i) =>
+      lines.push(`  interaction error ${i + 1}: ${e}`),
+    )
+    lines.push(
+      'A button/input handler crashed when exercised. Find the handler, fix the bad reference or state update, then compile again.',
+    )
   }
 
   if (result.consoleErrors.length > 0) {

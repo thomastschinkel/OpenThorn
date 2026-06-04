@@ -2,6 +2,11 @@ import { type FormEvent, useState, useEffect, useRef, useCallback } from 'react'
 import { useNavigate } from 'react-router-dom'
 import { motion, AnimatePresence } from 'framer-motion'
 import { useAuth } from '../../lib/AuthContext'
+import {
+  AGENT_THINKING_PROFILES,
+  DEFAULT_THINKING_LEVEL,
+  type AgentThinkingLevel,
+} from '../../lib/agent-thinking'
 import ModelSelector, { type SelectedModel } from '../ModelSelector/ModelSelector'
 import styles from './PromptInput.module.css'
 
@@ -9,7 +14,12 @@ interface PromptInputProps {
   size?: 'default' | 'small'
   defaultValue?: string
   initialModel?: SelectedModel | null
-  onSubmit?: (prompt: string, selectedModel: SelectedModel | null) => void | boolean | Promise<void | boolean>
+  initialThinkingLevel?: AgentThinkingLevel
+  onSubmit?: (
+    prompt: string,
+    selectedModel: SelectedModel | null,
+    thinkingLevel: AgentThinkingLevel,
+  ) => void | boolean | Promise<void | boolean>
   page?: 'landing' | 'dashboard'
   disableTyping?: boolean
   placeholder?: string
@@ -88,6 +98,7 @@ export default function PromptInput({
   size = 'default',
   defaultValue,
   initialModel,
+  initialThinkingLevel = DEFAULT_THINKING_LEVEL,
   onSubmit,
   page = 'landing',
   disableTyping = false,
@@ -100,9 +111,12 @@ export default function PromptInput({
   const [internalValue, setInternalValue] = useState(defaultValue ?? '')
   const [isFocused, setIsFocused] = useState(false)
   const [selectedModel, setSelectedModel] = useState<SelectedModel | null>(initialModel ?? null)
+  const [thinkingLevel, setThinkingLevel] = useState<AgentThinkingLevel>(initialThinkingLevel)
+  const [thinkingOpen, setThinkingOpen] = useState(false)
   const [uploadedFiles, setUploadedFiles] = useState<File[]>([])
   const textareaRef = useRef<HTMLTextAreaElement>(null)
   const fileInputRef = useRef<HTMLInputElement>(null)
+  const thinkingRef = useRef<HTMLDivElement>(null)
 
   // Sync when defaultValue changes (example chip click)
   useEffect(() => {
@@ -123,6 +137,19 @@ export default function PromptInput({
     autoResize()
   }, [internalValue, autoResize])
 
+  useEffect(() => {
+    if (!thinkingOpen) return
+
+    const handleClickOutside = (event: MouseEvent) => {
+      if (thinkingRef.current && !thinkingRef.current.contains(event.target as Node)) {
+        setThinkingOpen(false)
+      }
+    }
+
+    document.addEventListener('mousedown', handleClickOutside)
+    return () => document.removeEventListener('mousedown', handleClickOutside)
+  }, [thinkingOpen])
+
   const showTyping = !disableTyping && !isFocused && internalValue.length === 0
   const activeTyping = useTypingAnimation(showTyping)
 
@@ -137,7 +164,7 @@ export default function PromptInput({
     const prompt = internalValue.trim() || activeTyping || undefined
 
     if (onSubmit && prompt) {
-      const result = await Promise.resolve(onSubmit(prompt, selectedModel))
+      const result = await Promise.resolve(onSubmit(prompt, selectedModel, thinkingLevel))
       if (result !== false) {
         setInternalValue('')
       }
@@ -296,6 +323,57 @@ export default function PromptInput({
             </div>
 
             <div className={styles.actionRight}>
+              <div ref={thinkingRef} className={styles.thinkingMenuWrap}>
+                <button
+                  type="button"
+                  className={styles.thinkingTrigger}
+                  onClick={() => setThinkingOpen((open) => !open)}
+                  aria-haspopup="listbox"
+                  aria-expanded={thinkingOpen}
+                  aria-label="Agent thinking level"
+                  title={AGENT_THINKING_PROFILES[thinkingLevel].description}
+                  disabled={disabled}
+                >
+                  <span>{AGENT_THINKING_PROFILES[thinkingLevel].label}</span>
+                  <svg width="10" height="10" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round">
+                    <polyline points="6 9 12 15 18 9" />
+                  </svg>
+                </button>
+
+                <AnimatePresence>
+                  {thinkingOpen && (
+                    <motion.div
+                      className={`${styles.thinkingMenu} ${modelMenuPlacement === 'top' ? styles.thinkingMenuTop : ''}`}
+                      role="listbox"
+                      aria-label="Agent thinking level"
+                      initial={{ opacity: 0, y: modelMenuPlacement === 'top' ? 6 : -6, scale: 0.97 }}
+                      animate={{ opacity: 1, y: 0, scale: 1 }}
+                      exit={{ opacity: 0, y: modelMenuPlacement === 'top' ? 6 : -6, scale: 0.97 }}
+                      transition={{ duration: 0.16, ease: [0.19, 1, 0.22, 1] }}
+                    >
+                      {(Object.keys(AGENT_THINKING_PROFILES) as AgentThinkingLevel[]).map((level) => {
+                        const isSelected = level === thinkingLevel
+                        return (
+                          <button
+                            key={level}
+                            type="button"
+                            className={`${styles.thinkingOption} ${isSelected ? styles.thinkingOptionSelected : ''}`}
+                            role="option"
+                            aria-selected={isSelected}
+                            onClick={() => {
+                              setThinkingLevel(level)
+                              setThinkingOpen(false)
+                            }}
+                          >
+                            {AGENT_THINKING_PROFILES[level].label}
+                          </button>
+                        )
+                      })}
+                    </motion.div>
+                  )}
+                </AnimatePresence>
+              </div>
+
               {/* Send button */}
               <motion.button
                 type="submit"

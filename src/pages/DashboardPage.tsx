@@ -2,6 +2,7 @@ import { useState, useEffect, useCallback, useRef } from 'react'
 import { useNavigate, useLocation } from 'react-router-dom'
 import { useAuth } from '../lib/AuthContext'
 import { supabase } from '../lib/supabase'
+import type { AgentThinkingLevel } from '../lib/agent-thinking'
 import DashboardSidebar, { type ProjectFilter, type SidebarNotification } from '../components/DashboardSidebar/DashboardSidebar'
 import PromptInput from '../components/PromptInput/PromptInput'
 import FloatingParticles from '../components/FloatingParticles/FloatingParticles'
@@ -178,7 +179,11 @@ export default function DashboardPage() {
     }
   }, [user])
 
-  const handlePromptSubmit = useCallback(async (prompt: string, selectedModel: SelectedModel | null): Promise<boolean> => {
+  const handlePromptSubmit = useCallback(async (
+    prompt: string,
+    selectedModel: SelectedModel | null,
+    thinkingLevel: AgentThinkingLevel,
+  ): Promise<boolean> => {
     if (!selectedModel) {
       setModelError(true)
       setTimeout(() => setModelError(false), 3000)
@@ -214,8 +219,9 @@ export default function DashboardPage() {
     }
 
     navigate(`/projects/${projectId}`, {
-      state: { prompt, title, selectedModel },
+      state: { prompt, title, selectedModel, thinkingLevel },
     })
+    return true
   }, [navigate, user])
 
   const handleDeleteProject = useCallback(async (projectId: string, e: React.MouseEvent) => {

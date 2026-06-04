@@ -1428,6 +1428,23 @@
   line-height: 1.65;
 }
 
+.timelineStatus {
+  padding: 7px 12px;
+  border-radius: 8px;
+  color: #9b94ad;
+  background: rgba(255, 255, 255, 0.025);
+  border: 1px solid rgba(255, 255, 255, 0.045);
+  font-size: 12px;
+  font-weight: 650;
+  line-height: 1.45;
+}
+
+.timelineStatusSuccess {
+  color: #73e8d9;
+  background: rgba(86, 222, 205, 0.055);
+  border-color: rgba(86, 222, 205, 0.12);
+}
+
 /* ─── Tool Calls ────────────────────────────────────────────────────────── */
 
 .toolCall {
@@ -1477,6 +1494,7 @@
 .toolCallLabel {
   flex: 1;
   min-width: 0;
+  overflow-wrap: anywhere;
 }
 
 .toolCallDetail {
@@ -1486,7 +1504,7 @@
   text-overflow: ellipsis;
   overflow: hidden;
   white-space: nowrap;
-  max-width: 160px;
+  max-width: min(220px, 42%);
 }
 
 .toolCallRunning .toolCallDetail {

@@ -66,6 +66,26 @@ export default function PricingPage() {
       {!models.length && !error && <div className={styles.loading}>Loading...</div>}
       {error && <div className={styles.error}>Could not load data. Try again shortly.</div>}
 
+      {highlightCards.length > 0 && (
+        <motion.div
+          className={styles.highlightCardsRow}
+          initial={{ opacity: 0, y: 20 }}
+          animate={{ opacity: 1, y: 0 }}
+          transition={{ duration: 0.5, delay: 0.05 }}
+        >
+          {highlightCards.map(({ role, model }) => (
+            <div key={role} className={`${styles.highlightCard} ${styles[role]}`}>
+              <span className={styles.highlightCardLabel}>{roleCopy[role].label}</span>
+              <span className={styles.highlightCardName}>{model.name}</span>
+              <span className={styles.highlightCardMeta}>
+                {model.provider} · ${model.outputPer1M.toFixed(2)}/MTok out · q{model.qualityIndex}
+              </span>
+              <p className={styles.highlightCardDetail}>{roleCopy[role].detail}</p>
+            </div>
+          ))}
+        </motion.div>
+      )}
+
       {scatterData.length > 0 && (
         <motion.div
           className={styles.chartSection}

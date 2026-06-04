@@ -4,6 +4,7 @@ import { createVirtualFsPlugin, type VirtualFile } from './virtualFsPlugin'
 // Import the custom hash router source — injected into previews to replace
 // react-router-dom which doesn't work in srcdoc/sandboxed iframes.
 import bloomRouterSource from '../../public/bloom-router.js?raw'
+import { ALLOWED_PACKAGES } from './allowed-packages'
 
 export type { VirtualFile } from './virtualFsPlugin'
 
@@ -32,9 +33,11 @@ export function buildFilesMap(files: VirtualFile[]): Record<string, string> {
   return map
 }
 
+const REACT_VERSION = '18.2.0'
+
 function getImportMap(): Record<string, string> {
-  const reactUrl = 'https://esm.sh/react@18.2.0'
-  const reactDomUrl = 'https://esm.sh/react-dom@18.2.0'
+  const reactUrl = `https://esm.sh/react@${REACT_VERSION}`
+  const reactDomUrl = `https://esm.sh/react-dom@${REACT_VERSION}`
 
   // Encode the custom hash router as a data URL so it works in srcdoc
   // contexts where relative URLs have no base. The router replaces
@@ -42,7 +45,7 @@ function getImportMap(): Record<string, string> {
   // just window.location.hash + hashchange events.
   const routerDataUrl = 'data:text/javascript;base64,' + toBase64(bloomRouterSource)
 
-  return {
+  const map: Record<string, string> = {
     'react': reactUrl,
     'react-dom': reactDomUrl,
     'react-dom/client': `${reactDomUrl}/client`,
@@ -50,6 +53,15 @@ function getImportMap(): Record<string, string> {
     'react/jsx-dev-runtime': `${reactUrl}/jsx-dev-runtime`,
     'react-router-dom': routerDataUrl,
   }
+
+  // Curated third-party allowlist. Sub-path imports (e.g. "date-fns/locale")
+  // resolve through esm.sh too via the trailing-slash entry.
+  for (const pkg of ALLOWED_PACKAGES) {
+    map[pkg.name] = pkg.url
+    map[`${pkg.name}/`] = pkg.url.split('?')[0] + '/'
+  }
+
+  return map
 }
 
 export interface PreviewResult {

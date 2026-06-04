@@ -10,6 +10,10 @@ import { pushFiles, createRepo, getGitHubUser } from '../lib/github'
 import { buildPreview, escapeHtml } from '../lib/preview-bundle'
 import { capturePreviewThumbnail } from '../lib/preview-screenshot'
 import { runFlorviaAgent, type AgentCodeFile, type SelectedAgentModel } from '../lib/agent'
+import {
+  DEFAULT_THINKING_LEVEL,
+  type AgentThinkingLevel,
+} from '../lib/agent-thinking'
 import PromptInput from '../components/PromptInput/PromptInput'
 import { useCollaboration, type CollaboratorPresence } from '../lib/useCollaboration'
 import styles from './ProjectBuilderPage.module.css'
@@ -18,6 +22,7 @@ interface ProjectRouteState {
   prompt?: string
   title?: string
   selectedModel?: SelectedAgentModel | null
+  thinkingLevel?: AgentThinkingLevel
 }
 
 const codeFiles: AgentCodeFile[] = [
@@ -515,7 +520,7 @@ interface Collaborator {
 /** A single event in the agent's chronological timeline. */
 interface TimelineEvent {
   id: string
-  type: 'text' | 'thinking' | 'tool_call'
+  type: 'text' | 'thinking' | 'tool_call' | 'status'
   timestamp: number
   // text
   text?: string
@@ -527,6 +532,7 @@ interface TimelineEvent {
   toolStatus?: 'running' | 'done' | 'error'
   toolDetail?: string
   toolResult?: string
+  statusTone?: 'info' | 'success'
 }
 
 interface ChatMessage {
@@ -581,27 +587,29 @@ function normalizeAgentSuggestions(items: string[]): string[] {
 function formatToolLabel(name: string, input?: Record<string, unknown>): string {
   switch (name) {
     case 'think':
-      return 'Thinking'
+      return 'Planning approach'
     case 'list_files':
-      return 'List files'
+      return 'Checking project files'
     case 'read_file':
-      return `Read ${input?.path || 'file'}`
+      return `Reading ${input?.path || 'file'}`
     case 'write_file':
-      return `Write ${input?.path || 'file'}`
+      return `Writing ${input?.path || 'file'}`
     case 'edit_file':
-      return `Edit ${input?.path || 'file'}`
+      return `Editing ${input?.path || 'file'}`
     case 'multi_edit':
-      return `Edit ${input?.path || 'file'}`
+      return `Editing ${input?.path || 'file'}`
     case 'delete_file':
-      return `Delete ${input?.path || 'file'}`
+      return `Deleting ${input?.path || 'file'}`
     case 'compile':
-      return 'Compile'
+      return 'Verifying build'
     case 'done':
-      return 'Complete'
+      return 'Wrapping up'
     case 'set_title':
-      return `Set title: ${String(input?.title ?? '')}`
+      return 'Naming project'
+    case 'update_plan':
+      return 'Updating checklist'
     default:
-      return name.replace(/_/g, ' ')
+      return name.replace(/_/g, ' ').replace(/^\w/, (char) => char.toUpperCase())
   }
 }
 
@@ -610,22 +618,83 @@ function formatToolDetail(name: string, input?: Record<string, unknown>): string
     case 'think':
       return String(input?.thought ?? '').slice(0, 100)
     case 'write_file':
-      return `${input?.language || 'tsx'} • ${String(input?.code ?? '').length} chars`
+      return `${input?.language || 'tsx'} - ${formatCharCount(String(input?.code ?? '').length)}`
     case 'edit_file':
-      return `replace ${String(input?.old_string ?? '').length} → ${String(input?.new_string ?? '').length} chars`
+      return `Replacing ${formatCharCount(String(input?.old_string ?? '').length)}`
     case 'multi_edit':
-      return `${Array.isArray(input?.edits) ? input.edits.length : 0} edit(s)`
+      return `${Array.isArray(input?.edits) ? input.edits.length : 0} edits`
     case 'delete_file':
       return 'Removing unused file'
     case 'compile':
-      return 'Building and running...'
+      return 'Building and running preview'
     case 'done':
-      return String(input?.summary ?? '').slice(0, 100)
+      return String(input?.summary ?? '').slice(0, 140)
     case 'set_title':
       return String(input?.title ?? '')
     default:
       return ''
   }
+}
+
+function formatCharCount(count: number): string {
+  if (count >= 1000) return `${(count / 1000).toFixed(1)}k chars`
+  return `${count} chars`
+}
+
+function formatToolResultDetail(name: string, result?: string, error?: boolean): string {
+  const text = result?.trim() ?? ''
+  if (!text) return error ? 'Needs attention' : ''
+
+  if (error) return firstLine(text).slice(0, 160)
+
+  switch (name) {
+    case 'write_file':
+      return 'File saved'
+    case 'edit_file':
+    case 'multi_edit':
+      return 'Changes applied'
+    case 'delete_file':
+      return 'File removed'
+    case 'compile':
+      if (text.includes('Compilation + runtime check passed')) return 'Build and runtime check passed'
+      if (text.includes('with warnings')) return 'Passed with warnings'
+      return firstLine(text).slice(0, 160)
+    case 'set_title': {
+      const title = parseJsonStringField(text, 'title')
+      return title ? `Project named "${title}"` : 'Title updated'
+    }
+    case 'update_plan':
+      return formatPlanResultDetail(text)
+    case 'done': {
+      const summary = parseJsonStringField(text, 'summary')
+      return summary ? summary.slice(0, 180) : firstLine(text).slice(0, 180)
+    }
+    default:
+      return firstLine(text).slice(0, 160)
+  }
+}
+
+function firstLine(text: string): string {
+  return text.split('\n').find((line) => line.trim())?.trim() ?? ''
+}
+
+function parseJsonStringField(text: string, field: string): string {
+  try {
+    const parsed = JSON.parse(text) as Record<string, unknown>
+    const value = parsed[field]
+    return typeof value === 'string' ? value.trim() : ''
+  } catch {
+    return ''
+  }
+}
+
+function formatPlanResultDetail(text: string): string {
+  const match = text.match(/Plan updated\. (\d+) requirement\(s\), (\d+) still unchecked\./)
+  if (!match) return 'Checklist updated'
+  const total = Number(match[1])
+  const remaining = Number(match[2])
+  const complete = Math.max(0, total - remaining)
+  return `${complete}/${total} requirements complete`
 }
 
 export default function ProjectBuilderPage() {
@@ -636,9 +705,11 @@ export default function ProjectBuilderPage() {
   const state = (location.state ?? {}) as ProjectRouteState
   const hasInitialPrompt = Boolean(state.prompt)
   const prompt = state.prompt || ''
+  const initialThinkingLevel = state.thinkingLevel ?? DEFAULT_THINKING_LEVEL
   const [title, setTitle] = useState('')
   const [projectFiles, setProjectFiles] = useState<AgentCodeFile[]>([])
   const [activeModel, setActiveModel] = useState<SelectedAgentModel | null>(state.selectedModel ?? null)
+  const [activeThinkingLevel, setActiveThinkingLevel] = useState<AgentThinkingLevel>(initialThinkingLevel)
   const [chatHistoryLoaded, setChatHistoryLoaded] = useState(false)
   const [messages, setMessages] = useState<ChatMessage[]>(() => {
     // Only create initial user message if we have a fresh prompt from dashboard
@@ -650,9 +721,8 @@ export default function ProjectBuilderPage() {
   })
   const [agentRunning, setAgentRunning] = useState(false)
   const [remoteGenerating, setRemoteGenerating] = useState(false)
-  const [remoteGeneratingBy, setRemoteGeneratingBy] = useState<string | null>(null)
   const remoteGeneratingPrevRef = useRef(false)
-  const handleAgentRequestRef = useRef<((prompt: string, model: unknown, options?: { reuseInitialUser?: boolean; mode?: 'create' | 'refine' }) => Promise<void>) | null>(null)
+  const handleAgentRequestRef = useRef<((request: string, selectedModel: SelectedAgentModel | null, thinkingLevel?: AgentThinkingLevel, options?: { reuseInitialUser?: boolean; mode?: 'create' | 'refine' }) => Promise<void>) | null>(null)
   const [agentStatus, setAgentStatus] = useState('')
   const [firstRunComplete, setFirstRunComplete] = useState(false)
   const [agentSuggestions, setAgentSuggestions] = useState<string[]>([])
@@ -701,10 +771,11 @@ export default function ProjectBuilderPage() {
   const githubInputRef = useRef<HTMLInputElement>(null)
   const initialAgentStartedRef = useRef(false)
   const agentAbortRef = useRef<AbortController | null>(null)
-  const pendingRequestRef = useRef<{ prompt: string; model: SelectedAgentModel | null } | null>(null)
+  const pendingRequestRef = useRef<{ prompt: string; model: SelectedAgentModel | null; thinkingLevel: AgentThinkingLevel } | null>(null)
   const [filesLoaded, setFilesLoaded] = useState(false)
   const promptRef = useRef(prompt)
   const selectedModelRef = useRef(state.selectedModel)
+  const thinkingLevelRef = useRef(initialThinkingLevel)
 
   const activeCodeFile = projectFiles.find((file) => file.path === activeFile) ?? projectFiles[0] ?? EMPTY_CODE_FILE
   const userInitial = user?.user_metadata?.full_name?.charAt(0).toUpperCase() ?? user?.email?.charAt(0).toUpperCase() ?? 'U'
@@ -900,9 +971,8 @@ export default function ProjectBuilderPage() {
     onChatUpdate: (chat) => {
       if (!agentRunning) setMessages(chat as ChatMessage[])
     },
-    onGeneratingChange: (generating, generatingBy) => {
+    onGeneratingChange: (generating) => {
       setRemoteGenerating(generating)
-      setRemoteGeneratingBy(generatingBy)
     },
   })
 
@@ -1328,13 +1398,14 @@ export default function ProjectBuilderPage() {
   const handleAgentRequest = useCallback(async (
     request: string,
     selectedModel: SelectedAgentModel | null,
+    thinkingLevel: AgentThinkingLevel = activeThinkingLevel,
     options: { reuseInitialUser?: boolean; mode?: 'create' | 'refine' } = {},
   ) => {
     if (!user || isViewOnly) return
 
     // Queue if agent is running locally or on another collaborator's client
     if (agentAbortRef.current || remoteGenerating) {
-      pendingRequestRef.current = { prompt: request, model: selectedModel }
+      pendingRequestRef.current = { prompt: request, model: selectedModel, thinkingLevel }
       setMessages((current) => [
         ...current,
         { id: `user-queued-${Date.now()}`, role: 'user' as const, content: request, timeline: [] },
@@ -1345,7 +1416,9 @@ export default function ProjectBuilderPage() {
     const runId = `${Date.now()}-${Math.random().toString(36).slice(2)}`
     const assistantId = `assistant-${runId}`
     const chosenModel = selectedModel ?? state.selectedModel ?? null
+    const chosenThinkingLevel = thinkingLevel
     setActiveModel(chosenModel)
+    setActiveThinkingLevel(chosenThinkingLevel)
     const timeline: TimelineEvent[] = []
     let eventCounter = 0
 
@@ -1375,6 +1448,14 @@ export default function ProjectBuilderPage() {
       }
       timeline.push(full)
       updateAssistantMessage(assistantId, { timeline: [...timeline] })
+    }
+
+    const pushStatus = (text: string, tone: TimelineEvent['statusTone'] = 'info') => {
+      const trimmed = text.trim()
+      if (!trimmed) return
+      const last = timeline[timeline.length - 1]
+      if (last?.type === 'status' && last.text === trimmed) return
+      pushTimeline({ type: 'status', text: trimmed, statusTone: tone })
     }
 
     // Find and update the last tool call event by label
@@ -1407,6 +1488,7 @@ export default function ProjectBuilderPage() {
         title,
         files: projectFiles.length > 0 ? projectFiles : codeFiles,
         selectedModel: chosenModel,
+        thinkingLevel: chosenThinkingLevel,
         mode: options.mode ?? 'refine',
         signal: controller.signal,
         onProgress: (event) => {
@@ -1424,6 +1506,7 @@ export default function ProjectBuilderPage() {
           // Title set by agent early in the run
           if (event.type === 'title' && event.text) {
             setTitle(event.text)
+            pushStatus(`Project title set to "${event.text}".`, 'success')
             if (user && projectId) {
               supabase.from('projects').update({ title: event.text }).eq('id', projectId).then(({ error }) => {
                 if (error) console.error('Failed to save project title:', error.message)
@@ -1466,7 +1549,7 @@ export default function ProjectBuilderPage() {
               const label = formatToolLabel(event.toolName, event.toolInput)
               updateLastToolCall(label, {
                 toolStatus: event.toolError ? 'error' : 'done',
-                toolDetail: event.toolResult?.slice(0, 120),
+                toolDetail: formatToolResultDetail(event.toolName, event.toolResult, event.toolError),
               })
             }
 
@@ -1491,6 +1574,7 @@ export default function ProjectBuilderPage() {
 
           if (event.type === 'status' && event.message) {
             setAgentStatus(event.message)
+            pushStatus(event.message)
           }
           if ((event.type === 'files' || event.type === 'done') && event.files) {
             setProjectFiles(event.files)
@@ -1511,7 +1595,7 @@ export default function ProjectBuilderPage() {
       }
 
       updateAssistantMessage(assistantId, {
-        title: 'Complete',
+        title: 'Project ready',
         timeline: [...timeline],
         files: result.files,
         turns: result.turns,
@@ -1547,10 +1631,10 @@ export default function ProjectBuilderPage() {
       const pending = pendingRequestRef.current
       if (pending) {
         pendingRequestRef.current = null
-        void handleAgentRequest(pending.prompt, pending.model)
+        void handleAgentRequest(pending.prompt, pending.model, pending.thinkingLevel)
       }
     }
-  }, [isViewOnly, projectFiles, state.selectedModel, title, updateAssistantMessage, user])
+  }, [activeThinkingLevel, isViewOnly, projectFiles, state.selectedModel, title, updateAssistantMessage, user])
 
   // Keep ref current so the queue effect can call it without stale-closure issues
   useEffect(() => {
@@ -1565,7 +1649,7 @@ export default function ProjectBuilderPage() {
       const pending = pendingRequestRef.current
       if (pending) {
         pendingRequestRef.current = null
-        void handleAgentRequestRef.current?.(pending.prompt, pending.model)
+        void handleAgentRequestRef.current?.(pending.prompt, pending.model, pending.thinkingLevel)
       }
     }
   }, [remoteGenerating, agentRunning])
@@ -1580,10 +1664,11 @@ export default function ProjectBuilderPage() {
     // Use refs to avoid stale closure issues
     const currentPrompt = promptRef.current
     const currentModel = selectedModelRef.current
+    const currentThinkingLevel = thinkingLevelRef.current
 
     // Small delay to ensure all state is settled before invoking the agent
     const timer = setTimeout(() => {
-      void handleAgentRequest(currentPrompt, currentModel ?? null, { reuseInitialUser: true, mode: 'create' })
+      void handleAgentRequest(currentPrompt, currentModel ?? null, currentThinkingLevel, { reuseInitialUser: true, mode: 'create' })
     }, 100)
 
     return () => clearTimeout(timer)
@@ -2085,6 +2170,17 @@ export default function ProjectBuilderPage() {
                         )
                       }
 
+                      if (event.type === 'status') {
+                        return (
+                          <div
+                            key={event.id}
+                            className={`${styles.timelineStatus} ${event.statusTone === 'success' ? styles.timelineStatusSuccess : ''}`}
+                          >
+                            {event.text}
+                          </div>
+                        )
+                      }
+
                       if (event.type === 'tool_call') {
                         return (
                           <div
@@ -2128,7 +2224,7 @@ export default function ProjectBuilderPage() {
                   {message.turns != null && message.turns > 0 && (
                     <div className={styles.completionBadge}>
                       Built {message.files?.length ?? 0} files in {message.turns} turn{message.turns === 1 ? '' : 's'}
-                      {message.providerName && ` • ${message.providerName}`}
+                      {message.providerName && ` - ${message.providerName}`}
                       {message.modelName && ` / ${message.modelName}`}
                     </div>
                   )}
@@ -2144,7 +2240,7 @@ export default function ProjectBuilderPage() {
                   key={suggestion}
                   type="button"
                   disabled={agentRunning}
-                  onClick={() => void handleAgentRequest(suggestion, state.selectedModel ?? null)}
+                  onClick={() => void handleAgentRequest(suggestion, state.selectedModel ?? null, activeThinkingLevel)}
                 >
                   {suggestion}
                 </button>
@@ -2163,6 +2259,7 @@ export default function ProjectBuilderPage() {
                 page="dashboard"
                 disableTyping
                 initialModel={activeModel}
+                initialThinkingLevel={activeThinkingLevel}
                 modelMenuPlacement="top"
                 placeholder={
                   agentRunning
@@ -2171,7 +2268,7 @@ export default function ProjectBuilderPage() {
                       ? 'A collaborator is generating…'
                       : 'Ask Florvia for a change...'
                 }
-                onSubmit={(nextPrompt, selectedModel) => handleAgentRequest(nextPrompt, selectedModel)}
+                onSubmit={(nextPrompt, selectedModel, thinkingLevel) => handleAgentRequest(nextPrompt, selectedModel, thinkingLevel)}
               />
             )}
           </div>

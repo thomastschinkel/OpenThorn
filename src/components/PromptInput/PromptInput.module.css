@@ -204,11 +204,13 @@
   display: flex;
   align-items: center;
   gap: 4px;
+  min-width: 0;
 }
 
 .actionRight {
   display: flex;
   align-items: center;
+  gap: 6px;
 }
 
 /* ===== Upload button (mini, in action bar) ===== */
@@ -251,6 +253,120 @@
 .uploadBtn:disabled:hover {
   background: transparent;
   border-color: transparent;
+}
+
+.thinkingMenuWrap {
+  position: relative;
+  display: inline-flex;
+  flex-shrink: 0;
+}
+
+.thinkingTrigger {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 6px;
+  height: 28px;
+  min-width: 78px;
+  max-width: 110px;
+  padding: 0 9px;
+  border: 1px solid rgba(255, 255, 255, 0.1);
+  border-radius: 8px;
+  background: rgba(255, 255, 255, 0.03);
+  color: var(--color-text-secondary);
+  font-family: var(--font-body);
+  font-size: 12px;
+  font-weight: 500;
+  letter-spacing: 0;
+  outline: none;
+  cursor: pointer;
+  transition: border-color 0.2s, background-color 0.2s, color 0.2s;
+}
+
+.thinkingTrigger span {
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.thinkingTrigger svg {
+  flex-shrink: 0;
+  opacity: 0.65;
+}
+
+.thinkingTrigger:hover {
+  border-color: rgba(255, 255, 255, 0.18);
+  background-color: rgba(255, 255, 255, 0.06);
+  color: var(--color-text);
+}
+
+.thinkingTrigger:focus-visible {
+  outline: 2px solid rgba(255, 255, 255, 0.25);
+  outline-offset: 2px;
+}
+
+.thinkingTrigger:disabled {
+  cursor: wait;
+  opacity: 0.58;
+}
+
+.thinkingMenu {
+  position: absolute;
+  right: 0;
+  top: calc(100% + 8px);
+  z-index: 1001;
+  width: 220px;
+  padding: 8px;
+  border: 1px solid rgba(255, 255, 255, 0.1);
+  border-radius: 14px;
+  background: var(--color-surface-raised);
+  box-shadow:
+    0 16px 48px rgba(0, 0, 0, 0.5),
+    0 0 0 1px rgba(255, 255, 255, 0.04) inset;
+  backdrop-filter: blur(20px);
+}
+
+.thinkingMenuTop {
+  top: auto;
+  bottom: calc(100% + 8px);
+}
+
+.thinkingOption {
+  display: flex;
+  align-items: center;
+  width: 100%;
+  padding: 9px 10px;
+  border: none;
+  border-radius: 9px;
+  background: transparent;
+  color: var(--color-text-secondary);
+  text-align: left;
+  font-family: var(--font-body);
+  cursor: pointer;
+  outline: none;
+  transition: background 0.15s, color 0.15s;
+}
+
+.thinkingOption:hover {
+  background: rgba(255, 255, 255, 0.06);
+  color: var(--color-text);
+}
+
+.thinkingOptionSelected {
+  background: rgba(139, 92, 246, 0.12);
+  color: var(--color-text);
+}
+
+.srOnly {
+  position: absolute;
+  width: 1px;
+  height: 1px;
+  padding: 0;
+  margin: -1px;
+  overflow: hidden;
+  clip: rect(0, 0, 0, 0);
+  white-space: nowrap;
+  border: 0;
 }
 
 /* ===== File badge ────────────────────────────────── */
@@ -357,4 +473,15 @@
 .small .uploadBtn svg {
   width: 13px;
   height: 13px;
+}
+
+.small .thinkingTrigger {
+  height: 26px;
+  min-width: 72px;
+  max-width: 100px;
+  font-size: 11.5px;
+}
+
+.small .thinkingMenu {
+  width: 210px;
 }

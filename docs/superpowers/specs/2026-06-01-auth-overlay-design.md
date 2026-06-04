@@ -28,7 +28,7 @@ main.tsx
 |---|---|
 | `SupabaseAuthProvider` | Wraps app, initializes Supabase client, exposes `useAuth()` hook |
 | `AuthModal` | Full-screen overlay with tab switching, social buttons, and form |
-| `AuthForm` | Email/password form with validation (child of AuthModal) |
+| `AuthForm` | Email/2 form with validation (child of AuthModal) |
 | `SocialButton` | Reusable OAuth provider button |
 | `Header` (updated) | Reads `useAuth()` to swap buttons for avatar |
 | `UserMenu` | Dropdown with user info + sign out (shown on avatar click) |
