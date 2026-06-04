@@ -15,6 +15,7 @@ interface Project {
   preview_url: string | null
   created_at: string
   starred: boolean
+  isShared?: boolean
 }
 
 const examplePrompts = [
@@ -56,7 +57,7 @@ export default function DashboardPage() {
       }, 100)
       return () => clearTimeout(timer)
     }
-  }, [])
+  }, [location.key])
 
   const firstName = user?.user_metadata?.full_name?.split(' ')[0] ?? user?.email?.split('@')[0] ?? 'there'
 
@@ -79,38 +80,76 @@ export default function DashboardPage() {
     }
   }, [user, authLoading, navigate])
 
-  // Fetch projects + real-time sync
+  // Fetch owned + shared projects with real-time sync
   useEffect(() => {
     if (!user) return
 
     const fetchProjects = async () => {
-      const { data, error } = await supabase
+      // Owned projects
+      const { data: owned } = await supabase
         .from('projects')
         .select('id, user_id, title, preview_url, created_at, starred')
         .eq('user_id', user.id)
         .order('created_at', { ascending: false })
 
-      if (!error && data) {
-        setProjects(data)
+      // Shared projects — look up via collaborator records
+      const { data: collabRows } = await supabase
+        .from('project_collaborators')
+        .select('project_id')
+        .eq('user_id', user.id)
+
+      let shared: Project[] = []
+      if (collabRows && collabRows.length > 0) {
+        const ids = collabRows.map((r) => r.project_id as string)
+        const { data: sharedData } = await supabase
+          .from('projects')
+          .select('id, user_id, title, preview_url, created_at, starred')
+          .in('id', ids)
+          .order('created_at', { ascending: false })
+        shared = (sharedData ?? []).map((p) => ({ ...p, isShared: true }))
       }
+
+      // Merge, deduplicate by id
+      const seen = new Set<string>()
+      const all: Project[] = []
+      for (const p of [...(owned ?? []), ...shared]) {
+        if (!seen.has(p.id)) {
+          seen.add(p.id)
+          all.push(p)
+        }
+      }
+      setProjects(all)
       setProjectsLoading(false)
     }
 
     fetchProjects()
 
-    const channel = supabase
-      .channel('projects_changes')
+    // Watch owned project changes
+    const ownedChannel = supabase
+      .channel('projects_owned')
       .on('postgres_changes', {
         event: '*',
         schema: 'public',
         table: 'projects',
         filter: `user_id=eq.${user.id}`,
-      }, () => {
-        fetchProjects()
-      })
+      }, () => { fetchProjects() })
       .subscribe()
 
-    return () => { supabase.removeChannel(channel) }
+    // Watch for new shares directed at this user
+    const sharedChannel = supabase
+      .channel('projects_shared')
+      .on('postgres_changes', {
+        event: 'INSERT',
+        schema: 'public',
+        table: 'project_collaborators',
+        filter: `user_id=eq.${user.id}`,
+      }, () => { fetchProjects() })
+      .subscribe()
+
+    return () => {
+      supabase.removeChannel(ownedChannel)
+      supabase.removeChannel(sharedChannel)
+    }
   }, [user])
 
   const handlePromptSubmit = useCallback(async (prompt: string, selectedModel: SelectedModel | null): Promise<boolean> => {
@@ -215,10 +254,15 @@ export default function DashboardPage() {
   const filteredProjects = projects.filter((p) => {
     if (activeFilter === 'starred') return p.starred
     if (activeFilter === 'mine') return p.user_id === user?.id
+    if (activeFilter === 'shared') return p.isShared === true
     return true
   })
 
-  const filterLabel = activeFilter === 'starred' ? 'Starred projects' : activeFilter === 'mine' ? 'Created by me' : 'Your projects'
+  const filterLabel =
+    activeFilter === 'starred' ? 'Starred projects'
+    : activeFilter === 'mine' ? 'Created by me'
+    : activeFilter === 'shared' ? 'Shared with me'
+    : 'Your projects'
 
   if (authLoading) return null
 
