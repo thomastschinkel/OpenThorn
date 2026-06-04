@@ -151,12 +151,14 @@ export default function DashboardSidebar({ projects = [], activeFilter = 'all', 
   useEffect(() => {
     if (location.pathname === '/providers') setActiveNav('Providers')
     else if (location.pathname === '/dashboard') setActiveNav('Home')
+    else if (location.pathname === '/templates') setActiveNav('Templates')
   }, [location.pathname])
 
   const handleNavClick = (label: string) => {
     setActiveNav(label)
     if (label === 'Providers') navigate('/providers')
     if (label === 'Home') navigate('/dashboard')
+    if (label === 'Templates') navigate('/templates')
   }
 
   const handleProjectFilterClick = (label: string) => {

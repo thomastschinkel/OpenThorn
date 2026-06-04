@@ -23,6 +23,9 @@ interface ProjectRouteState {
   title?: string
   selectedModel?: SelectedAgentModel | null
   thinkingLevel?: AgentThinkingLevel
+  templateFiles?: AgentCodeFile[]
+  isTemplate?: boolean
+  templateName?: string
 }
 
 const codeFiles: AgentCodeFile[] = [
@@ -809,6 +812,14 @@ export default function ProjectBuilderPage() {
     }
   }, [])
 
+  // Load template files immediately on mount so the preview renders before the agent runs
+  useEffect(() => {
+    if (!state.templateFiles?.length) return
+    setProjectFiles(state.templateFiles)
+    setFirstRunComplete(true)
+    initialAgentStartedRef.current = true
+  }, []) // eslint-disable-line react-hooks/exhaustive-deps
+
   useEffect(() => {
     setActiveFile((current) => (
       projectFiles.some((file) => file.path === current)
@@ -1523,9 +1534,14 @@ export default function ProjectBuilderPage() {
     }
 
     try {
+      const isFirstTemplateMessage = state.isTemplate && !messages.some(m => m.role === 'assistant')
+      const effectivePrompt = isFirstTemplateMessage
+        ? `<system-reminder>\nTEMPLATE MODE: This project was started from the "${state.templateName ?? 'template'}" template. The existing files are the template foundation — build upon them. Preserve the color system, component structure, and design language. Do not delete template files unless the user explicitly requests it.\n</system-reminder>\n\n${request}`
+        : request
+
       const result = await runFlorviaAgent({
         userId: user.id,
-        prompt: request,
+        prompt: effectivePrompt,
         title,
         files: projectFiles.length > 0 ? projectFiles : codeFiles,
         selectedModel: chosenModel,

@@ -1,0 +1,373 @@
+.root {
+  display: flex;
+  min-height: 100vh;
+  background: #0a0a12;
+}
+
+.main {
+  flex: 1;
+  padding: 3rem 3rem 4rem;
+  overflow-y: auto;
+  min-width: 0;
+}
+
+.header {
+  margin-bottom: 3rem;
+}
+
+.heading {
+  font-size: 1.75rem;
+  font-weight: 700;
+  letter-spacing: -0.03em;
+  color: #ededf5;
+  margin-bottom: 0.5rem;
+}
+
+.subheading {
+  font-size: 0.95rem;
+  color: #7474a0;
+}
+
+.grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(340px, 1fr));
+  gap: 1.75rem;
+}
+
+/* Template card */
+.card {
+  background: #0e0e1c;
+  border: 1px solid rgba(255, 255, 255, 0.07);
+  border-radius: 16px;
+  overflow: hidden;
+  cursor: pointer;
+  transition: transform 0.25s, border-color 0.25s, box-shadow 0.25s;
+  position: relative;
+}
+
+.card:hover {
+  transform: translateY(-4px);
+  border-color: rgba(255, 255, 255, 0.14);
+  box-shadow: 0 16px 48px rgba(0, 0, 0, 0.4);
+}
+
+.thumbnailWrapper {
+  position: relative;
+  height: 220px;
+  overflow: hidden;
+  background: #16162a;
+}
+
+.thumbnail {
+  border: none;
+  pointer-events: none;
+  transform: scale(0.5);
+  transform-origin: top left;
+  width: 200%;
+  height: 200%;
+  display: block;
+}
+
+.thumbnailLoading {
+  position: absolute;
+  inset: 0;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 0.8rem;
+  color: #7474a0;
+}
+
+.previewOverlay {
+  position: absolute;
+  inset: 0;
+  background: rgba(0, 0, 0, 0);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  opacity: 0;
+  transition: opacity 0.2s, background 0.2s;
+}
+
+.card:hover .previewOverlay {
+  opacity: 1;
+  background: rgba(0, 0, 0, 0.35);
+}
+
+.previewBtn {
+  padding: 0.5rem 1.25rem;
+  background: rgba(255, 255, 255, 0.95);
+  color: #0a0a12;
+  border-radius: 999px;
+  font-size: 0.8rem;
+  font-weight: 700;
+  letter-spacing: 0.02em;
+  transform: translateY(4px);
+  transition: transform 0.2s;
+  cursor: pointer;
+  border: none;
+}
+
+.card:hover .previewBtn {
+  transform: translateY(0);
+}
+
+.cardBody {
+  padding: 1.25rem 1.5rem 1.5rem;
+}
+
+.cardTop {
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: 0.75rem;
+  margin-bottom: 0.5rem;
+}
+
+.cardName {
+  font-size: 1rem;
+  font-weight: 700;
+  color: #ededf5;
+}
+
+.categoryBadge {
+  font-size: 0.65rem;
+  font-weight: 700;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+  padding: 0.2rem 0.6rem;
+  border-radius: 4px;
+  border: 1px solid;
+  flex-shrink: 0;
+  white-space: nowrap;
+}
+
+.cardDesc {
+  font-size: 0.85rem;
+  color: #7474a0;
+  line-height: 1.6;
+}
+
+/* Full-screen preview overlay */
+.overlayBackdrop {
+  position: fixed;
+  inset: 0;
+  background: rgba(0, 0, 0, 0.8);
+  z-index: 1000;
+  display: flex;
+  animation: backdropIn 0.2s ease;
+}
+
+@keyframes backdropIn {
+  from { opacity: 0; }
+  to { opacity: 1; }
+}
+
+.overlayContent {
+  display: flex;
+  width: 100%;
+  height: 100%;
+  animation: contentIn 0.25s ease;
+}
+
+@keyframes contentIn {
+  from { transform: translateY(8px); opacity: 0; }
+  to { transform: translateY(0); opacity: 1; }
+}
+
+.overlayPreview {
+  flex: 1;
+  position: relative;
+  background: #080810;
+  display: flex;
+  flex-direction: column;
+  min-width: 0;
+}
+
+.overlayTopbar {
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+  padding: 0.625rem 1rem;
+  background: rgba(255, 255, 255, 0.04);
+  border-bottom: 1px solid rgba(255, 255, 255, 0.06);
+  flex-shrink: 0;
+}
+
+.overlayClose {
+  width: 32px;
+  height: 32px;
+  border-radius: 8px;
+  display: grid;
+  place-items: center;
+  font-size: 0.9rem;
+  color: #7474a0;
+  background: rgba(255, 255, 255, 0.06);
+  transition: all 0.15s;
+  cursor: pointer;
+  border: none;
+  flex-shrink: 0;
+}
+
+.overlayClose:hover {
+  color: #ededf5;
+  background: rgba(255, 255, 255, 0.1);
+}
+
+.deviceBtns {
+  display: flex;
+  gap: 0.25rem;
+  margin-left: auto;
+}
+
+.deviceBtn {
+  padding: 0.3rem 0.625rem;
+  border-radius: 6px;
+  font-size: 0.75rem;
+  color: #7474a0;
+  transition: all 0.15s;
+  cursor: pointer;
+  border: none;
+  background: none;
+}
+
+.deviceBtn:hover {
+  background: rgba(255, 255, 255, 0.08);
+  color: #ededf5;
+}
+
+.deviceBtnActive {
+  background: rgba(255, 255, 255, 0.1);
+  color: #ededf5;
+}
+
+.overlayIframeWrapper {
+  flex: 1;
+  display: flex;
+  align-items: flex-start;
+  justify-content: center;
+  overflow: auto;
+  padding: 1.5rem;
+}
+
+.overlayIframe {
+  border: none;
+  border-radius: 8px;
+  background: #fff;
+  transition: width 0.3s ease;
+  height: 100%;
+  flex-shrink: 0;
+}
+
+/* Info panel */
+.overlayPanel {
+  width: 320px;
+  flex-shrink: 0;
+  background: #0e0e1c;
+  border-left: 1px solid rgba(255, 255, 255, 0.07);
+  display: flex;
+  flex-direction: column;
+  padding: 2rem 1.75rem;
+  overflow-y: auto;
+  gap: 0;
+}
+
+.overlayName {
+  font-size: 1.4rem;
+  font-weight: 800;
+  color: #ededf5;
+  letter-spacing: -0.03em;
+  margin: 0.75rem 0 0.5rem;
+}
+
+.overlayDesc {
+  font-size: 0.875rem;
+  color: #7474a0;
+  line-height: 1.65;
+  margin-bottom: 1.75rem;
+}
+
+.highlightsLabel {
+  font-size: 0.65rem;
+  font-weight: 700;
+  letter-spacing: 0.12em;
+  text-transform: uppercase;
+  color: #7474a0;
+  margin-bottom: 0.75rem;
+}
+
+.highlights {
+  display: flex;
+  flex-direction: column;
+  gap: 0.5rem;
+  margin-bottom: 2rem;
+}
+
+.highlightItem {
+  display: flex;
+  align-items: flex-start;
+  gap: 0.625rem;
+  font-size: 0.85rem;
+  color: #b0b0d0;
+  line-height: 1.5;
+}
+
+.highlightDot {
+  width: 5px;
+  height: 5px;
+  border-radius: 50%;
+  background: currentColor;
+  margin-top: 0.45rem;
+  flex-shrink: 0;
+}
+
+.modelSection {
+  margin-bottom: 1.5rem;
+}
+
+.modelLabel {
+  font-size: 0.75rem;
+  font-weight: 600;
+  color: #7474a0;
+  margin-bottom: 0.5rem;
+  display: block;
+}
+
+.spacer {
+  flex: 1;
+}
+
+.useBtn {
+  display: block;
+  width: 100%;
+  padding: 0.875rem;
+  border-radius: 12px;
+  font-weight: 700;
+  font-size: 0.95rem;
+  color: #fff;
+  text-align: center;
+  transition: all 0.2s;
+  cursor: pointer;
+  border: none;
+  margin-top: 1.5rem;
+}
+
+.useBtn:hover:not(:disabled) {
+  opacity: 0.9;
+  transform: translateY(-1px);
+}
+
+.useBtn:disabled {
+  opacity: 0.4;
+  cursor: not-allowed;
+  transform: none;
+}
+
+@media (max-width: 1100px) {
+  .overlayPanel { width: 280px; padding: 1.5rem; }
+}
+
+@media (max-width: 900px) {
+  .main { padding: 2rem 1.5rem; }
+  .grid { grid-template-columns: 1fr; }
+}

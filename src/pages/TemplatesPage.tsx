@@ -1,0 +1,254 @@
+import { useState, useEffect, useRef, useCallback } from 'react'
+import { useNavigate } from 'react-router-dom'
+import { useAuth } from '../lib/AuthContext'
+import { supabase } from '../lib/supabase'
+import { buildPreview } from '../lib/preview-bundle'
+import { TEMPLATES, type Template } from '../lib/templates'
+import DashboardSidebar from '../components/DashboardSidebar/DashboardSidebar'
+import ModelSelector, { type SelectedModel } from '../components/ModelSelector/ModelSelector'
+import styles from './TemplatesPage.module.css'
+
+type DeviceMode = 'desktop' | 'tablet' | 'phone'
+
+const DEVICE_WIDTHS: Record<DeviceMode, number> = {
+  desktop: 900,
+  tablet: 768,
+  phone: 390,
+}
+
+const CATEGORY_COLORS: Record<string, { bg: string; color: string; border: string }> = {
+  Portfolio:    { bg: 'rgba(124,106,247,.12)', color: '#9d89fb', border: 'rgba(124,106,247,.3)' },
+  SaaS:         { bg: 'rgba(37,99,235,.12)',   color: '#60a5fa', border: 'rgba(37,99,235,.3)'   },
+  'E-commerce': { bg: 'rgba(26,92,58,.18)',    color: '#4ade80', border: 'rgba(26,92,58,.4)'    },
+}
+
+export default function TemplatesPage() {
+  const { user, loading } = useAuth()
+  const navigate = useNavigate()
+  const [htmlMap, setHtmlMap] = useState<Record<string, string>>({})
+  const [selected, setSelected] = useState<Template | null>(null)
+  const [deviceMode, setDeviceMode] = useState<DeviceMode>('desktop')
+  const [selectedModel, setSelectedModel] = useState<SelectedModel | null>(null)
+  const [launching, setLaunching] = useState(false)
+  const overlayIframeRef = useRef<HTMLIFrameElement>(null)
+
+  useEffect(() => {
+    if (!loading && !user) navigate('/', { replace: true })
+  }, [loading, user, navigate])
+
+  // Build live previews for all templates
+  useEffect(() => {
+    for (const template of TEMPLATES) {
+      buildPreview(template.files.map(f => ({ path: f.path, content: f.code }))).then(result => {
+        if (!result.errors.length) {
+          setHtmlMap(prev => ({ ...prev, [template.id]: result.html }))
+        }
+      })
+    }
+  }, [])
+
+  // Write HTML into overlay iframe when selection or device mode changes
+  useEffect(() => {
+    if (!selected || !overlayIframeRef.current) return
+    const html = htmlMap[selected.id]
+    if (!html) return
+    const doc = overlayIframeRef.current.contentDocument
+    if (doc) {
+      doc.open()
+      doc.write(html)
+      doc.close()
+    }
+  }, [selected, htmlMap, deviceMode])
+
+  // Close on Escape
+  useEffect(() => {
+    const handler = (e: KeyboardEvent) => { if (e.key === 'Escape') setSelected(null) }
+    document.addEventListener('keydown', handler)
+    return () => document.removeEventListener('keydown', handler)
+  }, [])
+
+  const handleUseTemplate = useCallback(async () => {
+    if (!user || !selected || !selectedModel) return
+    setLaunching(true)
+    const projectId = crypto.randomUUID()
+    const { error } = await supabase.from('projects').upsert({
+      id: projectId,
+      user_id: user.id,
+      title: selected.name,
+      preview_url: null,
+      created_at: new Date().toISOString(),
+    }, { onConflict: 'id' })
+
+    if (error) {
+      console.error('Failed to create project:', error.message)
+      setLaunching(false)
+      return
+    }
+
+    navigate(`/projects/${projectId}`, {
+      state: {
+        title: selected.name,
+        templateFiles: selected.files,
+        isTemplate: true,
+        templateName: selected.name,
+        selectedModel,
+        thinkingLevel: 'auto',
+      },
+    })
+  }, [user, selected, selectedModel, navigate])
+
+  if (loading) return null
+
+  const iframeWidth = DEVICE_WIDTHS[deviceMode]
+
+  return (
+    <div className={styles.root}>
+      <DashboardSidebar />
+
+      <main className={styles.main}>
+        <div className={styles.header}>
+          <h1 className={styles.heading}>Start from a template</h1>
+          <p className={styles.subheading}>Production-quality starting points. Customize with AI.</p>
+        </div>
+
+        <div className={styles.grid}>
+          {TEMPLATES.map(template => {
+            const colors = CATEGORY_COLORS[template.category] ?? CATEGORY_COLORS['SaaS']
+            return (
+              <div
+                key={template.id}
+                className={styles.card}
+                onClick={() => { setSelected(template); setDeviceMode('desktop') }}
+                role="button"
+                tabIndex={0}
+                onKeyDown={e => { if (e.key === 'Enter') { setSelected(template); setDeviceMode('desktop') } }}
+              >
+                <div className={styles.thumbnailWrapper}>
+                  {htmlMap[template.id] ? (
+                    <iframe
+                      className={styles.thumbnail}
+                      srcDoc={htmlMap[template.id]}
+                      title={template.name}
+                      sandbox="allow-scripts"
+                    />
+                  ) : (
+                    <div className={styles.thumbnailLoading}>Rendering preview…</div>
+                  )}
+                  <div className={styles.previewOverlay}>
+                    <button className={styles.previewBtn} type="button" tabIndex={-1}>Preview</button>
+                  </div>
+                </div>
+                <div className={styles.cardBody}>
+                  <div className={styles.cardTop}>
+                    <h2 className={styles.cardName}>{template.name}</h2>
+                    <span
+                      className={styles.categoryBadge}
+                      style={{ background: colors.bg, color: colors.color, borderColor: colors.border }}
+                    >
+                      {template.category}
+                    </span>
+                  </div>
+                  <p className={styles.cardDesc}>{template.description}</p>
+                </div>
+              </div>
+            )
+          })}
+        </div>
+      </main>
+
+      {/* Full-screen preview overlay */}
+      {selected && (() => {
+        const colors = CATEGORY_COLORS[selected.category] ?? CATEGORY_COLORS['SaaS']
+        return (
+          <div
+            className={styles.overlayBackdrop}
+            onClick={e => { if (e.target === e.currentTarget) setSelected(null) }}
+          >
+            <div className={styles.overlayContent}>
+
+              {/* Live preview pane */}
+              <div className={styles.overlayPreview}>
+                <div className={styles.overlayTopbar}>
+                  <button
+                    className={styles.overlayClose}
+                    type="button"
+                    onClick={() => setSelected(null)}
+                    aria-label="Close preview"
+                  >
+                    ✕
+                  </button>
+                  <div className={styles.deviceBtns}>
+                    {(['desktop', 'tablet', 'phone'] as DeviceMode[]).map(d => (
+                      <button
+                        key={d}
+                        type="button"
+                        className={`${styles.deviceBtn} ${deviceMode === d ? styles.deviceBtnActive : ''}`}
+                        onClick={() => setDeviceMode(d)}
+                        title={d}
+                      >
+                        {d === 'desktop' ? '🖥' : d === 'tablet' ? '📱' : '📲'}
+                      </button>
+                    ))}
+                  </div>
+                </div>
+                <div className={styles.overlayIframeWrapper}>
+                  <iframe
+                    ref={overlayIframeRef}
+                    className={styles.overlayIframe}
+                    title={`${selected.name} preview`}
+                    sandbox="allow-scripts"
+                    style={{ width: iframeWidth }}
+                  />
+                </div>
+              </div>
+
+              {/* Info panel */}
+              <div className={styles.overlayPanel}>
+                <span
+                  className={styles.categoryBadge}
+                  style={{ background: colors.bg, color: colors.color, borderColor: colors.border, display: 'inline-block' }}
+                >
+                  {selected.category}
+                </span>
+                <h2 className={styles.overlayName}>{selected.name}</h2>
+                <p className={styles.overlayDesc}>{selected.description}</p>
+
+                <p className={styles.highlightsLabel}>What's included</p>
+                <div className={styles.highlights}>
+                  {selected.highlights.map(h => (
+                    <div key={h} className={styles.highlightItem}>
+                      <span className={styles.highlightDot} style={{ color: colors.color }} />
+                      {h}
+                    </div>
+                  ))}
+                </div>
+
+                <div className={styles.modelSection}>
+                  <span className={styles.modelLabel}>Select model to customize with</span>
+                  <ModelSelector
+                    page="dashboard"
+                    selectedModel={selectedModel}
+                    onModelSelect={setSelectedModel}
+                    placement="top"
+                  />
+                </div>
+
+                <div className={styles.spacer} />
+
+                <button
+                  className={styles.useBtn}
+                  type="button"
+                  onClick={handleUseTemplate}
+                  disabled={!selectedModel || launching}
+                  style={{ background: selected.accentColor }}
+                >
+                  {launching ? 'Starting…' : 'Use this template →'}
+                </button>
+              </div>
+            </div>
+          </div>
+        )
+      })()}
+    </div>
+  )
+}

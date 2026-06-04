@@ -12,6 +12,7 @@ import PricingPage from './pages/PricingPage'
 import DashboardPage from './pages/DashboardPage'
 import ProjectBuilderPage from './pages/ProjectBuilderPage'
 import ProvidersPage from './pages/ProvidersPage'
+import TemplatesPage from './pages/TemplatesPage'
 import NotFoundPage from './pages/NotFoundPage'
 import AuthModal from './components/AuthModal/AuthModal'
 import styles from './App.module.css'
@@ -68,6 +69,7 @@ export default function App() {
           <Route path="/pricing" element={<Layout><PricingPage /></Layout>} />
           <Route path="/dashboard" element={<DashboardPage />} />
           <Route path="/projects/:projectId" element={<ProjectBuilderPage />} />
+          <Route path="/templates" element={<TemplatesPage />} />
           <Route path="/providers" element={<ProvidersPage />} />
           <Route path="*" element={<NotFoundPage />} />
         </Routes>
