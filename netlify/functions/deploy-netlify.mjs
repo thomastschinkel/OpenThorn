@@ -26,12 +26,12 @@ async function netlifyFetch(token, path, options) {
 }
 
 async function createSite(token, projectId) {
-  const suffix = `${Date.now().toString(36)}-${Math.random().toString(36).slice(2, 8)}`
+  const suffix = Math.random().toString(36).slice(2, 8)
 
   const res = await netlifyFetch(token, '/sites', {
     method: 'POST',
     headers: { 'Content-Type': 'application/json' },
-    body: JSON.stringify({ name: `bloom-${projectId.slice(0, 8)}-${suffix}` }),
+    body: JSON.stringify({ name: `openthorn-${projectId.slice(0, 6)}-${suffix}` }),
   })
   const data = await res.json()
 
