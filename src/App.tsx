@@ -16,6 +16,7 @@ import TemplatesPage from './pages/TemplatesPage'
 import CommunityPage from './pages/CommunityPage'
 import NotFoundPage from './pages/NotFoundPage'
 import AuthModal from './components/AuthModal/AuthModal'
+import { useAnalytics } from './lib/useAnalytics'
 import styles from './App.module.css'
 
 function HomePage() {
@@ -62,6 +63,8 @@ function Layout({ children }: { children: React.ReactNode }) {
 }
 
 export default function App() {
+  useAnalytics()
+
   return (
     <ErrorBoundary>
       <div className={styles.app}>
