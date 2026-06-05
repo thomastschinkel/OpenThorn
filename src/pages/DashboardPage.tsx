@@ -397,7 +397,8 @@ export default function DashboardPage() {
   const hasProjects = !projectsLoading && projects.length > 0
 
   return (
-    <div className={styles.root}>
+    <>
+      <div className={styles.root}>
       <FloatingParticles
         particleCount={30}
         particleSize={2}
@@ -781,8 +782,10 @@ export default function DashboardPage() {
         </div>
       </main>
 
-      {/* Publish to Community modal */}
-      {publishingProject && (
+    </div>
+
+    {/* Publish to Community modal — outside root to avoid overflow:hidden stacking context */}
+    {publishingProject && (
         <div className={styles.publishBackdrop} onClick={(e) => { if (e.target === e.currentTarget) setPublishingProject(null) }}>
           <div className={styles.publishModal}>
             <button className={styles.publishClose} type="button" onClick={() => setPublishingProject(null)} aria-label="Close">
@@ -822,6 +825,6 @@ export default function DashboardPage() {
           "{publishSuccess}" published to Community
         </div>
       )}
-    </div>
+    </>
   )
 }

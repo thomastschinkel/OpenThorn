@@ -2019,7 +2019,8 @@ export default function ProjectBuilderPage() {
   if (loading) return null
 
   return (
-    <div className={styles.root}>
+    <>
+      <div className={styles.root}>
       <header className={styles.topbar}>
         <div className={styles.topbarLeft}>
           <button className={styles.backBtn} type="button" onClick={() => navigate('/dashboard')} aria-label="Back to dashboard">
@@ -2867,8 +2868,10 @@ export default function ProjectBuilderPage() {
         </section>
       </main>
 
-      {/* Publish to Community modal */}
-      {publishModalOpen && (
+    </div>
+
+    {/* Publish to Community modal — outside root to avoid stacking context issues */}
+    {publishModalOpen && (
         <div className={styles.publishBackdrop} onClick={(e) => { if (e.target === e.currentTarget) setPublishModalOpen(false) }}>
           <div className={styles.publishModal}>
             <button className={styles.publishClose} type="button" onClick={() => setPublishModalOpen(false)} aria-label="Close">
@@ -2908,7 +2911,7 @@ export default function ProjectBuilderPage() {
           Published to Community
         </div>
       )}
-    </div>
+    </>
   )
 }
 
