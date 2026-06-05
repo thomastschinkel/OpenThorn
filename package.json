@@ -11,11 +11,13 @@
     "test": "vitest run"
   },
   "dependencies": {
+    "@sentry/react": "^10.56.0",
     "@supabase/supabase-js": "^2.106.2",
     "esbuild-wasm": "^0.28.0",
     "framer-motion": "^12.12.1",
     "html2canvas": "^1.4.1",
     "jszip": "^3.10.1",
+    "posthog-js": "^1.381.0",
     "react": "^19.2.6",
     "react-dom": "^19.2.6",
     "react-markdown": "^10.1.0",
