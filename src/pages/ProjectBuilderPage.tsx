@@ -723,6 +723,7 @@ export default function ProjectBuilderPage() {
     return []
   })
   const [agentRunning, setAgentRunning] = useState(false)
+  const [reconnecting, setReconnecting] = useState(false)
   const [remoteGenerating, setRemoteGenerating] = useState(false)
   const remoteGeneratingPrevRef = useRef(false)
   const handleAgentRequestRef = useRef<((request: string, selectedModel: SelectedAgentModel | null, thinkingLevel?: AgentThinkingLevel, options?: { reuseInitialUser?: boolean; mode?: 'create' | 'refine' }) => Promise<void>) | null>(null)
@@ -778,6 +779,7 @@ export default function ProjectBuilderPage() {
   const titleShouldSaveRef = useRef(true)
   const initialAgentStartedRef = useRef(false)
   const agentAbortRef = useRef<AbortController | null>(null)
+  const isResumingRef = useRef(false)
   const pendingRequestRef = useRef<{ prompt: string; model: SelectedAgentModel | null; thinkingLevel: AgentThinkingLevel } | null>(null)
   const [filesLoaded, setFilesLoaded] = useState(false)
   const promptRef = useRef(prompt)
@@ -923,6 +925,8 @@ export default function ProjectBuilderPage() {
             : savedChat
           setMessages(cleaned)
           resumePromptRef.current = lastUserMsg.content as string
+          isResumingRef.current = true
+          setReconnecting(true)
           initialAgentStartedRef.current = true // block auto-start from racing with resume
           // Clear the flag so a second reload doesn't attempt resume again
           void supabase.from('projects').update({ generating: false, generating_by: null }).eq('id', projectId)
@@ -1022,7 +1026,7 @@ export default function ProjectBuilderPage() {
       }
     },
     onChatUpdate: (chat) => {
-      if (!agentRunning) setMessages(chat as ChatMessage[])
+      if (!agentRunning && !isResumingRef.current) setMessages(chat as ChatMessage[])
     },
     onGeneratingChange: (generating, generatingBy) => {
       // Ignore own agent's generating state — only track remote collaborators
@@ -1733,6 +1737,8 @@ export default function ProjectBuilderPage() {
     const pending = resumePromptRef.current
     if (!pending || !filesLoaded || !chatHistoryLoaded || !user || isViewOnly) return
     resumePromptRef.current = null
+    isResumingRef.current = false
+    setReconnecting(false)
     const timer = setTimeout(() => {
       void handleAgentRequestRef.current?.(pending, activeModel, activeThinkingLevel, { reuseInitialUser: true })
     }, 100)
@@ -2379,11 +2385,13 @@ export default function ProjectBuilderPage() {
                 initialThinkingLevel={activeThinkingLevel}
                 modelMenuPlacement="top"
                 placeholder={
-                  agentRunning
-                    ? agentStatus || 'Florvia is working...'
-                    : remoteGenerating
-                      ? 'A collaborator is generating…'
-                      : 'Ask Florvia for a change...'
+                  reconnecting
+                    ? 'Reconnected — resuming your last request...'
+                    : agentRunning
+                      ? agentStatus || 'Florvia is working...'
+                      : remoteGenerating
+                        ? 'A collaborator is generating…'
+                        : 'Ask Florvia for a change...'
                 }
                 onSubmit={(nextPrompt, selectedModel, thinkingLevel) => handleAgentRequest(nextPrompt, selectedModel, thinkingLevel)}
               />
