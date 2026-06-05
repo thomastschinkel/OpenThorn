@@ -8,8 +8,10 @@
 
 .main {
   flex: 1;
+  margin-left: 248px;
   padding: 48px 48px 64px;
   overflow-y: auto;
+  min-width: 0;
 }
 
 /* Header */
@@ -553,17 +555,17 @@
 }
 
 .modelSection {
-  display: flex;
-  flex-direction: column;
-  gap: 8px;
+  margin-bottom: 4px;
 }
 
 .modelLabel {
+  display: block;
   font-size: 12px;
   font-weight: 600;
   color: rgba(255, 255, 255, 0.45);
   text-transform: uppercase;
   letter-spacing: 0.06em;
+  margin-bottom: 8px;
 }
 
 .spacer { flex: 1; }
