@@ -1,4 +1,5 @@
 import { Component, type ErrorInfo, type ReactNode } from 'react'
+import { captureException } from '../../lib/sentry'
 import styles from './ErrorBoundary.module.css'
 
 interface Props {
@@ -22,7 +23,7 @@ export default class ErrorBoundary extends Component<Props, State> {
 
   componentDidCatch(error: Error, info: ErrorInfo) {
     console.error('[ErrorBoundary]', error, info.componentStack)
-    // Future: send to error reporting service (Sentry, etc.)
+    captureException(error, { componentStack: info.componentStack ?? undefined })
   }
 
   handleReset = () => {
