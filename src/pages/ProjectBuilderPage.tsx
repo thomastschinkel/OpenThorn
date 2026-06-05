@@ -699,6 +699,34 @@ function formatPlanResultDetail(text: string): string {
   return `${complete}/${total} requirements complete`
 }
 
+/** True when the chat's last assistant turn is mid-run (a tool call left spinning). */
+function chatHasRunningTimeline(chat: ChatMessage[]): boolean {
+  const lastAssistant = [...chat].reverse().find((m) => m.role === 'assistant')
+  return Boolean(
+    lastAssistant?.timeline?.some((e) => e.type === 'tool_call' && e.toolStatus === 'running'),
+  )
+}
+
+/** Resolve any "running" tool calls to "done" so stale spinners don't spin forever. */
+function sanitizeChatTimelines(chat: ChatMessage[]): ChatMessage[] {
+  return chat.map((message) => {
+    if (
+      message.role !== 'assistant' ||
+      !message.timeline?.some((e) => e.type === 'tool_call' && e.toolStatus === 'running')
+    ) {
+      return message
+    }
+    return {
+      ...message,
+      timeline: message.timeline.map((e) =>
+        e.type === 'tool_call' && e.toolStatus === 'running'
+          ? { ...e, toolStatus: 'done' as const }
+          : e,
+      ),
+    }
+  })
+}
+
 export default function ProjectBuilderPage() {
   const { user, loading } = useAuth()
   const navigate = useNavigate()
@@ -709,7 +737,7 @@ export default function ProjectBuilderPage() {
   const [hasInitialPrompt] = useState(Boolean(state.prompt))
   const prompt = state.prompt || ''
   const initialThinkingLevel = normalizeThinkingLevel(state.thinkingLevel)
-  const [title, setTitle] = useState('')
+  const [title, setTitle] = useState(state.title ?? '')
   const [projectFiles, setProjectFiles] = useState<AgentCodeFile[]>([])
   const [activeModel, setActiveModel] = useState<SelectedAgentModel | null>(state.selectedModel ?? null)
   const [activeThinkingLevel, setActiveThinkingLevel] = useState<AgentThinkingLevel>(initialThinkingLevel)
@@ -780,6 +808,9 @@ export default function ProjectBuilderPage() {
   const initialAgentStartedRef = useRef(false)
   const agentAbortRef = useRef<AbortController | null>(null)
   const isResumingRef = useRef(false)
+  // Tracks whether the agent has already produced a turn for this project. The agent may
+  // auto-name the project only on its very first run; after that the title is "owned".
+  const agentHasRunRef = useRef(false)
   const pendingRequestRef = useRef<{ prompt: string; model: SelectedAgentModel | null; thinkingLevel: AgentThinkingLevel } | null>(null)
   const [filesLoaded, setFilesLoaded] = useState(false)
   const promptRef = useRef(prompt)
@@ -886,7 +917,9 @@ export default function ProjectBuilderPage() {
         }
 
         if (Array.isArray(existing.chat_history) && (existing.chat_history as ChatMessage[]).length > 0) {
-          setMessages(existing.chat_history as ChatMessage[])
+          const collaboratorChat = existing.chat_history as ChatMessage[]
+          setMessages(sanitizeChatTimelines(collaboratorChat))
+          if (collaboratorChat.some((m) => m.role === 'assistant')) agentHasRunRef.current = true
         }
         setChatHistoryLoaded(true)
 
@@ -914,8 +947,15 @@ export default function ProjectBuilderPage() {
         ? existing.chat_history as ChatMessage[]
         : null
 
-      // Detect generation interrupted by a page reload
-      const wasInterrupted = Boolean(existing?.generating && existing?.generating_by === user.id)
+      // Detect generation interrupted by a page reload. Trust either the DB flag (set when
+      // our run started) OR a saved chat whose last assistant turn is still mid-run — the
+      // latter catches cases where the `generating` flag never persisted before the reload.
+      const flaggedGenerating = Boolean(existing?.generating && existing?.generating_by === user.id)
+      const looksInterrupted = Boolean(savedChat && chatHasRunningTimeline(savedChat))
+      const wasInterrupted = flaggedGenerating || looksInterrupted
+
+      if (savedChat?.some((m) => m.role === 'assistant')) agentHasRunRef.current = true
+
       if (wasInterrupted && savedChat) {
         const lastUserMsg = [...savedChat].reverse().find(m => m.role === 'user')
         if (lastUserMsg) {
@@ -928,11 +968,14 @@ export default function ProjectBuilderPage() {
           isResumingRef.current = true
           setReconnecting(true)
           initialAgentStartedRef.current = true // block auto-start from racing with resume
-          // Clear the flag so a second reload doesn't attempt resume again
-          void supabase.from('projects').update({ generating: false, generating_by: null }).eq('id', projectId)
+        } else {
+          // Nothing to resume from — at least clear the stuck spinners so nothing spins forever.
+          setMessages(sanitizeChatTimelines(savedChat))
         }
+        // Clear the flag so a second reload doesn't attempt resume again
+        void supabase.from('projects').update({ generating: false, generating_by: null }).eq('id', projectId)
       } else if (savedChat) {
-        setMessages(savedChat)
+        setMessages(sanitizeChatTimelines(savedChat))
       }
       setChatHistoryLoaded(true)
 
@@ -1488,6 +1531,8 @@ export default function ProjectBuilderPage() {
   ) => {
     if (!user || isViewOnly) return
 
+    setReconnecting(false)
+
     // Queue if agent is running locally or on another collaborator's client
     if (agentAbortRef.current || remoteGenerating) {
       pendingRequestRef.current = { prompt: request, model: selectedModel, thinkingLevel }
@@ -1508,7 +1553,9 @@ export default function ProjectBuilderPage() {
     let eventCounter = 0
 
     setAgentSuggestions([])
-    const hadTitle = Boolean(title) && messages.some(m => m.role === 'assistant')
+    // The agent may auto-name the project only on its first run. After any prior run the
+    // title is considered owned (by the agent's earlier choice or a manual rename).
+    const hadTitle = agentHasRunRef.current
 
     setMessages((current) => {
       const withUser = options.reuseInitialUser
@@ -1557,6 +1604,7 @@ export default function ProjectBuilderPage() {
 
     const controller = new AbortController()
     agentAbortRef.current = controller
+    agentHasRunRef.current = true
     setAgentRunning(true)
     setAgentStatus('Connecting...')
 
@@ -1722,7 +1770,7 @@ export default function ProjectBuilderPage() {
       const pending = pendingRequestRef.current
       if (pending) {
         pendingRequestRef.current = null
-        void handleAgentRequest(pending.prompt, pending.model, pending.thinkingLevel)
+        void handleAgentRequest(pending.prompt, pending.model, pending.thinkingLevel, { reuseInitialUser: true })
       }
     }
   }, [activeThinkingLevel, isViewOnly, projectFiles, state.selectedModel, title, updateAssistantMessage, user])
@@ -1738,7 +1786,8 @@ export default function ProjectBuilderPage() {
     if (!pending || !filesLoaded || !chatHistoryLoaded || !user || isViewOnly) return
     resumePromptRef.current = null
     isResumingRef.current = false
-    setReconnecting(false)
+    // Keep `reconnecting` true until handleAgentRequest flips agentRunning on, so the UI
+    // shows "Reconnecting…" continuously instead of flickering back to the idle prompt.
     const timer = setTimeout(() => {
       void handleAgentRequestRef.current?.(pending, activeModel, activeThinkingLevel, { reuseInitialUser: true })
     }, 100)
@@ -1754,7 +1803,7 @@ export default function ProjectBuilderPage() {
       const pending = pendingRequestRef.current
       if (pending) {
         pendingRequestRef.current = null
-        void handleAgentRequestRef.current?.(pending.prompt, pending.model, pending.thinkingLevel)
+        void handleAgentRequestRef.current?.(pending.prompt, pending.model, pending.thinkingLevel, { reuseInitialUser: true })
       }
     }
   }, [remoteGenerating, agentRunning])
@@ -2386,7 +2435,7 @@ export default function ProjectBuilderPage() {
                 modelMenuPlacement="top"
                 placeholder={
                   reconnecting
-                    ? 'Reconnected — resuming your last request...'
+                    ? `Reconnecting to ${activeModel?.model_name ?? 'the model'} — resuming your work…`
                     : agentRunning
                       ? agentStatus || 'Florvia is working...'
                       : remoteGenerating
@@ -2467,7 +2516,7 @@ export default function ProjectBuilderPage() {
                       <span />
                     </div>
                     <span className={styles.previewState}>
-                      {!firstRunComplete ? (agentRunning ? 'Agent working' : 'Waiting for build') : previewStatus === 'building' ? 'Building...' : previewStatus === 'error' ? 'Build failed' : previewStatus === 'ready' ? 'Live preview' : 'Waiting for build'}
+                      {!firstRunComplete ? (reconnecting ? 'Reconnecting…' : agentRunning ? 'Agent working' : 'Waiting for build') : previewStatus === 'building' ? 'Building...' : previewStatus === 'error' ? 'Build failed' : previewStatus === 'ready' ? 'Live preview' : 'Waiting for build'}
                     </span>
                   </div>
 
@@ -2476,12 +2525,12 @@ export default function ProjectBuilderPage() {
                       <div className={styles.previewMark}>
                         <img src="/assets/logo.png" alt="" />
                       </div>
-                      <h2>{agentRunning ? 'Florvia is building...' : 'Ready when you are'}</h2>
+                      <h2>{reconnecting ? `Reconnecting to ${activeModel?.model_name ?? 'the model'}…` : agentRunning ? 'Florvia is building...' : 'Ready when you are'}</h2>
                       <p>{prompt}</p>
-                      {agentRunning && (
+                      {(agentRunning || reconnecting) && (
                         <div className={styles.previewChecklist}>
                           <span><CheckIcon /> Prompt captured</span>
-                          <span><span className={styles.spinnerSmall} /> {agentStatus || 'Generating project'}</span>
+                          <span><span className={styles.spinnerSmall} /> {reconnecting ? 'Resuming your last request…' : agentStatus || 'Generating project'}</span>
                         </div>
                       )}
                     </div>

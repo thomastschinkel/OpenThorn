@@ -993,7 +993,7 @@ export async function runFlorviaAgent(input: AgentRunInput): Promise<AgentRunRes
   let runtimeRejectCount = 0
   const MAX_RUNTIME_REJECTS =
     thinkingProfile.finalReviewDepth === 'basic' ? 2 :
-      thinkingProfile.finalReviewDepth === 'deep' ? 6 : 4
+      thinkingProfile.finalReviewDepth === 'deep' ? 6 : 3
 
   const goal = input.prompt
   const loopDetector = new LoopDetector()
@@ -1334,8 +1334,8 @@ async function runFinalReview(params: {
     }
   }
 
-  // ── Stage 5: visual review (#1), once ───────────────────────
-  if (!reviewState.visualReviewed) {
+  // ── Stage 5: visual review (#1), once — high/extra-high only ─
+  if (reviewDepth === 'deep' && !reviewState.visualReviewed) {
     reviewState.visualReviewed = true
     const feedback = await runVisualReview(provider, goal, html, signal, onProgress)
     if (feedback) {
@@ -1343,8 +1343,8 @@ async function runFinalReview(params: {
     }
   }
 
-  // ── Stage 6: fresh-eyes self-review (#4), once ──────────────
-  if (!reviewState.selfReviewed) {
+  // ── Stage 6: fresh-eyes self-review (#4), once — high/extra-high only ─
+  if (reviewDepth === 'deep' && !reviewState.selfReviewed) {
     reviewState.selfReviewed = true
     const feedback = await runSelfReview(provider, goal, currentFiles, signal, onProgress)
     if (feedback) {

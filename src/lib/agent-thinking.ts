@@ -31,7 +31,7 @@ export const AGENT_THINKING_PROFILES: Record<AgentThinkingLevel, AgentThinkingPr
   high: {
     label: 'High',
     shortLabel: 'High',
-    description: 'More deliberate planning and extra room for fixes.',
+    description: 'More deliberate planning with visual and self-review passes.',
     maxTurns: 40,
     budgetMultiplier: 1.45,
     finalReviewDepth: 'deep',

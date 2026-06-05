@@ -49,7 +49,9 @@ export const AGENT_TOOLS: ToolDefinition[] = [
       'undefined variable), or render crashes — things a plain transpile cannot ' +
       'catch. Always call this after writing or editing files. If errors are ' +
       'returned, read the affected files and fix them. A "build succeeded but ' +
-      'crashes at runtime" result is a FAILURE — the app does not work yet.',
+      'crashes at runtime" result is a FAILURE — the app does not work yet. ' +
+      'Do NOT call compile again if no files were changed since the last passing ' +
+      'compile — the result will be identical.',
     input_schema: {
       type: 'object',
       properties: {},
@@ -173,6 +175,8 @@ export const AGENT_TOOLS: ToolDefinition[] = [
     description:
       'Read the content of a file in the virtual project. Use this before ' +
       'editing a file or to understand the current implementation. ' +
+      'Do NOT re-read a file you just successfully wrote or edited — ' +
+      'the write/edit tool already confirms the change was applied. ' +
       'For large files, specify offset and limit to read a range of lines.',
     input_schema: {
       type: 'object',
@@ -412,9 +416,9 @@ Work like a senior engineer, scaled to the task. A small tweak needs no ceremony
 - **write_file** — new files or full rewrites. Always complete code.
 - **edit_file** — one targeted change. **multi_edit** — several changes to ONE file at once (atomic; preferred over repeated edit_file on the same file).
 - **delete_file** — remove dead/unused files so the project stays clean.
-- **read_file / list_files / search_files** — understand before you change. search_files finds usages, imports, and patterns without reading everything.
+- **read_file / list_files / search_files** — understand before you change. search_files finds usages, imports, and patterns without reading everything. Do NOT re-read a file you just successfully edited — the tool confirms the change was applied. Do not read the same file multiple times without an intervening edit.
 - **set_title** — call once at the very start of a new project (create mode) with a 3-6 word title.
-- **compile** — the source of truth for "does it work". Run it often.
+- **compile** — the source of truth for "does it work". Run it after writing or editing files. Do NOT compile again if no files changed since the last passing compile — the result will be identical.
 - **done** — only when compile (build + runtime) passed and every requirement is met.
 </tool-guidance>
 
@@ -424,6 +428,8 @@ Work like a senior engineer, scaled to the task. A small tweak needs no ceremony
 - Valid TypeScript; avoid \`any\`. One default export per component file. All files under src/.
 - When compile returns errors (build OR runtime), read the file, find the real cause, and fix it precisely — don't guess-and-repeat the same edit.
 - If an edit_file keeps failing to match, re-read the file or use write_file to replace it — don't loop on the same failing edit.
+- Do not re-read a file you just successfully edited — the tool confirms the change was applied. One read before an edit is enough.
+- Do not compile twice in a row without a file change between them — the result is identical.
 - The last action before done must be a compile that passed both build and runtime checks.
 </rules>
 
@@ -553,13 +559,17 @@ export function getReasoningParams(
 
 /** Injected when the agent repeats a failing action — breaks it out of the rut. */
 export function loopBreakPrompt(detail: string): string {
+  const isReadLoop = detail.includes('read_file')
+  const readLoopGuidance = isReadLoop
+    ? `- You are re-reading the same file without making any changes. Stop. Reading it again will not reveal anything new. Either make a targeted edit_file fix right now, or if the build passes and the logic is correct, call done immediately — reading more will not help.\n`
+    : ''
   return `<system-reminder>
 ## You appear to be stuck
 
 ${detail}
 
 Repeating the same action will not work. Change strategy now:
-- If an edit keeps failing to match → re-read the file with read_file, or use write_file to replace the whole file.
+${readLoopGuidance}- If an edit keeps failing to match → re-read the file with read_file, or use write_file to replace the whole file.
 - If the same compile/runtime error keeps returning → read the actual file around the error line and fix the real cause; do not re-apply the same change.
 - If you are unsure → use think to reconsider the approach before acting.
 </system-reminder>`
