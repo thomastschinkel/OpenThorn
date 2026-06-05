@@ -17,6 +17,7 @@ import {
 } from '../lib/agent-thinking'
 import PromptInput from '../components/PromptInput/PromptInput'
 import { useCollaboration, type CollaboratorPresence } from '../lib/useCollaboration'
+import { trackEvent } from '../lib/analytics'
 import styles from './ProjectBuilderPage.module.css'
 
 interface ProjectRouteState {
@@ -1366,6 +1367,7 @@ export default function ProjectBuilderPage() {
     if (!error) {
       setPublishModalOpen(false)
       setPublishDescription('')
+      trackEvent('project_published', { projectId, title: title || 'Untitled project' })
       setPublishSuccess(true)
       setTimeout(() => setPublishSuccess(false), 3000)
     } else {
@@ -1404,6 +1406,7 @@ export default function ProjectBuilderPage() {
 
         setNetlifySiteId(deploy.siteId)
       }
+      trackEvent('project_deployed', { projectId })
       setDeployState('deployed')
     } catch (err) {
       setDeployError(err instanceof Error ? err.message : 'Deploy failed')

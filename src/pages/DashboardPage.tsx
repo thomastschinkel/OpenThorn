@@ -8,6 +8,7 @@ import DashboardSidebar, { type ProjectFilter, type SidebarNotification } from '
 import PromptInput from '../components/PromptInput/PromptInput'
 import FloatingParticles from '../components/FloatingParticles/FloatingParticles'
 import type { SelectedModel } from '../components/ModelSelector/ModelSelector'
+import { trackEvent } from '../lib/analytics'
 import styles from './DashboardPage.module.css'
 
 interface Project {
@@ -261,6 +262,7 @@ export default function DashboardPage() {
       }
     }
 
+    trackEvent('project_created', { projectId, title })
     navigate(`/projects/${projectId}`, {
       state: { prompt, title, selectedModel, thinkingLevel },
     })
@@ -347,6 +349,7 @@ export default function DashboardPage() {
       console.error('Failed to publish:', error.message)
       return
     }
+    trackEvent('project_published', { projectId: publishingProject.id, title: publishingProject.title })
     setPublishingProject(null)
     setPublishSuccess(publishingProject.title)
     setTimeout(() => setPublishSuccess(null), 3000)
