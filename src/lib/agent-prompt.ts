@@ -79,10 +79,11 @@ export const AGENT_TOOLS: ToolDefinition[] = [
   {
     name: 'done',
     description:
-      'Mark the project as complete. Only call this when the latest compile ' +
-      'passed BOTH the build and the runtime check (no errors, the app renders), ' +
-      'and all requested features are implemented. Calling done runs a final ' +
-      'runtime check — if the app crashes, done is rejected and you must fix it. ' +
+      'Mark the project as complete. Only call this when your most recent ' +
+      'compile passed BOTH the build and the runtime check (no errors, the app ' +
+      'renders) and every requested feature is implemented and working. There is ' +
+      'no separate reviewer after this — you are responsible for the result, so ' +
+      'compile right before finishing and self-check each requirement in PLAN.md. ' +
       'Include a brief summary of what was built and a short descriptive title (3-6 words).',
     input_schema: {
       type: 'object',
@@ -242,7 +243,7 @@ export const AGENT_TOOLS: ToolDefinition[] = [
       'the requirements derived from the user\'s request (set_requirements), add a ' +
       'newly-discovered requirement (add_requirements), check items off as you ' +
       'complete them (check), or record design decisions (notes). Check items off ' +
-      'as you finish them — the done gate verifies every requirement is checked.',
+      'as you finish them so the plan reflects real progress before you finish.',
     input_schema: {
       type: 'object',
       properties: {
@@ -407,7 +408,7 @@ Work like a senior engineer, scaled to the task. A small tweak needs no ceremony
 2. **Plan (for non-trivial new work).** Use think to decide the component tree, routes, color system, and the file list — then build to that plan.
 3. **Build.** Create files in dependency order: theme.css → App.tsx → pages → components. Write complete files. Keep components focused.
 4. **Verify continuously.** compile after every few files (it builds AND runs the app). Fix every build and runtime error before moving on. Delete files you no longer use.
-5. **Finish.** Before done, make sure the LAST compile passed build + runtime, every requested feature exists and works, and the result is responsive and polished.
+5. **Finish.** There is no automated reviewer after you — verify your own work. Before done, make sure the LAST compile passed build + runtime, every requested feature exists and works, every PLAN.md item is checked off, and the result is responsive and polished. Then call done once and stop — do not keep polishing or re-compiling after a clean pass.
 </approach>
 
 <tool-guidance>
@@ -416,7 +417,7 @@ Work like a senior engineer, scaled to the task. A small tweak needs no ceremony
 - **write_file** — new files or full rewrites. Always complete code.
 - **edit_file** — one targeted change. **multi_edit** — several changes to ONE file at once (atomic; preferred over repeated edit_file on the same file).
 - **delete_file** — remove dead/unused files so the project stays clean.
-- **read_file / list_files / search_files** — understand before you change. search_files finds usages, imports, and patterns without reading everything. Do NOT re-read a file you just successfully edited — the tool confirms the change was applied. Do not read the same file multiple times without an intervening edit.
+- **read_file / list_files / search_files** — understand before you change. Read each file ONCE: extract everything you need in that single read, then plan all changes with think, then apply them all with multi_edit. Do NOT re-read after an edit — the tool confirms success. Do NOT re-read to "verify the current state" — use search_files with context_lines to look up a specific section instead. Reading the same file again without editing it first is wasted tokens and a sign of drift.
 - **set_title** — call once at the very start of a new project (create mode) with a 3-6 word title.
 - **compile** — the source of truth for "does it work". Run it after writing or editing files. Do NOT compile again if no files changed since the last passing compile — the result will be identical.
 - **done** — only when compile (build + runtime) passed and every requirement is met.
@@ -431,6 +432,12 @@ Work like a senior engineer, scaled to the task. A small tweak needs no ceremony
 - Do not re-read a file you just successfully edited — the tool confirms the change was applied. One read before an edit is enough.
 - Do not compile twice in a row without a file change between them — the result is identical.
 - The last action before done must be a compile that passed both build and runtime checks.
+- **Read each file at most once per turn.** Do not re-read to "check" or "verify" after edits. If you need a specific section, use search_files with context_lines, not another read_file.
+- **Only read files you will actually edit.** Do not read App.tsx and theme.css before editing Game.tsx — read only the file(s) you are about to change.
+- **For any numeric parameter (speeds, gaps, timers, animation rates), calculate the real-world value before picking a number.** State the math explicitly: "At speed 6px/frame × 60fps, gap=300px → 0.83s between obstacles — is that enough?" Doubling a number without calculating is guessing.
+- **When a visual behavior is wrong, use think to trace the full pipeline before touching code.** What value drives this behavior? What does that value produce at runtime? What should it produce? Only after answering all three should you edit.
+- **Batch file operations — don't spend one turn per file.** When clearing starter/boilerplate, issue all the delete_file calls together in a single turn and overwrite App.tsx/theme.css with write_file; you do not need to read a file you are going to fully replace or delete. Compile once after the batch, not after every file.
+- **Stop when it works.** Once compile passes build + runtime and every requirement is met, call done. Do not re-read files, re-compile unchanged code, or add unrequested "polish" loops — that wastes turns and risks breaking a working build.
 </rules>
 
 <examples>
@@ -465,11 +472,13 @@ Before writing any code, spend 1-2 turns planning:
    - Any routing needed? (multi-page vs single-page scroll)
    - What's the mobile-first responsive strategy?
 
-2. Use **think** to outline the file plan:
+2. **Define the requirements.** Call update_plan with set_requirements listing the concrete, checkable features you will build — one per feature, specific enough to verify later (e.g. "4 colored tiles that flash in sequence", "sequence grows by one each round", "score + best-score persisted", "game-over screen with restart button"). If the request is open-ended (e.g. "build any game you want"), DECIDE what you're building and list ITS features. Never leave the checklist empty or vague — it is the spec you build and self-check against. Check each item off with update_plan as you finish it.
+
+3. Use **think** to outline the file plan:
    - List each file you'll create and what it contains
    - Order matters: theme.css first, then App.tsx, then pages, then components
 
-After planning, start building. Create files one at a time. Compile often.
+After planning, start building. Compile after a sensible batch of files, not after every one.
 </system-reminder>`
 
 // ─── Adaptive Thinking Config ──────────────────────────────────────────────

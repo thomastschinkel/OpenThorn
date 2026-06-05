@@ -1770,7 +1770,7 @@ export default function ProjectBuilderPage() {
       const pending = pendingRequestRef.current
       if (pending) {
         pendingRequestRef.current = null
-        void handleAgentRequest(pending.prompt, pending.model, pending.thinkingLevel, { reuseInitialUser: true })
+        void handleAgentRequestRef.current?.(pending.prompt, pending.model, pending.thinkingLevel, { reuseInitialUser: true })
       }
     }
   }, [activeThinkingLevel, isViewOnly, projectFiles, state.selectedModel, title, updateAssistantMessage, user])

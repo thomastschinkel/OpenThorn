@@ -6,7 +6,6 @@ export interface AgentThinkingProfile {
   description: string
   maxTurns: number
   budgetMultiplier: number
-  finalReviewDepth: 'basic' | 'standard' | 'deep'
 }
 
 export const DEFAULT_THINKING_LEVEL: AgentThinkingLevel = 'medium'
@@ -18,7 +17,6 @@ export const AGENT_THINKING_PROFILES: Record<AgentThinkingLevel, AgentThinkingPr
     description: 'Faster run with concise planning and essential checks.',
     maxTurns: 16,
     budgetMultiplier: 0.45,
-    finalReviewDepth: 'basic',
   },
   medium: {
     label: 'Medium',
@@ -26,15 +24,13 @@ export const AGENT_THINKING_PROFILES: Record<AgentThinkingLevel, AgentThinkingPr
     description: 'Balanced planning, building, and verification.',
     maxTurns: 30,
     budgetMultiplier: 1,
-    finalReviewDepth: 'standard',
   },
   high: {
     label: 'High',
     shortLabel: 'High',
-    description: 'More deliberate planning with visual and self-review passes.',
+    description: 'More deliberate planning with extra attention to polish and edge cases.',
     maxTurns: 40,
     budgetMultiplier: 1.45,
-    finalReviewDepth: 'deep',
   },
   'extra-high': {
     label: 'Extra High',
@@ -42,7 +38,6 @@ export const AGENT_THINKING_PROFILES: Record<AgentThinkingLevel, AgentThinkingPr
     description: 'Maximum planning and verification for complex builds.',
     maxTurns: 55,
     budgetMultiplier: 2,
-    finalReviewDepth: 'deep',
   },
 }
 

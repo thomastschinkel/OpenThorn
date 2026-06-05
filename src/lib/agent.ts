@@ -19,18 +19,8 @@ import {
 import { buildPreview } from './preview-bundle'
 import {
   runtimeSmokeTest,
-  interactiveSmokeTest,
   formatRuntimeReport,
 } from './preview-runtime-check'
-import { captureResponsiveViews } from './preview-screenshot'
-import {
-  VISUAL_REVIEW_SYSTEM,
-  buildVisualReviewPrompt,
-  viewsToVisionImages,
-  parseVisualReview,
-  formatVisualFeedback,
-} from './agent-vision'
-import { typeCheckProject, formatTypeErrors } from './typecheck'
 import {
   PLAN_PATH,
   createPlan,
@@ -662,27 +652,6 @@ function generateProgressSummary(
   return parts.join('\n')
 }
 
-// ─── Model Routing (#7) ─────────────────────────────────────────────────────
-
-/** Model-id fragments that indicate a smaller/cheaper/faster model. */
-const FAST_MODEL_HINTS = ['mini', 'flash', 'haiku', 'lite', 'small', 'nano', 'fast', '8b', 'turbo']
-
-/**
- * Pick a model for a given workload tier from the provider's available models.
- * 'strong' → the selected model (best reasoning, used for planning + visual
- * review). 'fast' → a cheaper sibling when one exists (used for the auxiliary
- * text self-review), else falls back to the selected model.
- */
-function pickModel(provider: ResolvedProvider, tier: 'strong' | 'fast'): ModelInfo {
-  if (tier === 'strong') return provider.model
-  const fast = provider.models.find(
-    (m) =>
-      m.id !== provider.model.id &&
-      FAST_MODEL_HINTS.some((h) => m.id.toLowerCase().includes(h)),
-  )
-  return fast ?? provider.model
-}
-
 // ─── Loop / Stuck Detection (#9) ────────────────────────────────────────────
 
 /**
@@ -697,6 +666,8 @@ class LoopDetector {
 
   /** Fingerprint of a tool call: name + a hash of its key inputs. */
   private fingerprint(name: string, input: Record<string, unknown>): string {
+    // read_file: track by path only — different offset/limit is still the same file
+    if (name === 'read_file') return `${name}:${String(input.path ?? '')}`
     const key = name === 'edit_file' || name === 'multi_edit' || name === 'write_file'
       ? String(input.path ?? '') + '|' + String(input.old_string ?? '').slice(0, 80)
       : JSON.stringify(input).slice(0, 120)
@@ -738,140 +709,6 @@ class LoopDetector {
       return `The same error keeps occurring: "${repeatedError[0]}".`
     }
 
-    return null
-  }
-}
-
-// ─── Auxiliary review model calls (#1 vision, #4 self-review) ───────────────
-
-/** Call a model for plain text (no tools), used by the review stages. */
-async function callReviewModel(
-  provider: ResolvedProvider,
-  model: ModelInfo,
-  system: string,
-  content: LlmContentBlock[] | string,
-  signal: AbortSignal | undefined,
-): Promise<string> {
-  const { text } = await callModelWithTools({
-    providerId: provider.key.provider_id,
-    baseUrl: provider.baseUrl,
-    apiKey: provider.key.api_key,
-    modelId: model.id,
-    system,
-    tools: [],
-    messages: [{ role: 'user', content }],
-    signal,
-    onText: () => {},
-    thinkingBudget: 0,
-  })
-  return text
-}
-
-/**
- * Visual review (#1): screenshot the built app and ask a vision model to
- * critique it against the goal. Returns null (skip, don't block) when no DOM,
- * no screenshot, or the call fails — visual review never blocks on infra.
- */
-async function runVisualReview(
-  provider: ResolvedProvider,
-  goal: string,
-  html: string,
-  signal: AbortSignal | undefined,
-  onProgress?: (event: AgentProgressEvent) => void,
-): Promise<string | null> {
-  try {
-    onProgress?.({ type: 'status', message: 'Looking at the rendered design...' })
-    const views = await captureResponsiveViews(html)
-    if (views.length === 0) return null
-
-    const images = viewsToVisionImages(views)
-    const content: LlmContentBlock[] = [
-      { type: 'text', text: buildVisualReviewPrompt(goal, views) },
-      ...images.map(
-        (img): LlmContentBlock => ({
-          type: 'image',
-          image: { base64: img.base64, mediaType: img.mediaType },
-        }),
-      ),
-    ]
-    const model = pickModel(provider, 'strong')
-    const raw = await callReviewModel(provider, model, VISUAL_REVIEW_SYSTEM, content, signal)
-    const verdict = parseVisualReview(raw)
-    if (verdict.verdict === 'revise' && verdict.issues.length > 0) {
-      return formatVisualFeedback(verdict)
-    }
-    return null
-  } catch {
-    return null
-  }
-}
-
-const SELF_REVIEW_SYSTEM = `You are a strict senior engineer reviewing a project a colleague says is finished. You did NOT write it, so you have fresh eyes. Given the original request and the project's files, find requirements that are UNMET or features that are clearly broken/missing in the code.
-
-Respond in EXACTLY this format:
-VERDICT: pass OR revise
-ISSUES:
-- <specific unmet requirement or broken thing, referencing a file where possible>
-(If everything is implemented, write "ISSUES:" then "- none".)`
-
-/**
- * Fresh-context self-review (#4): a second model pass, with no memory of the
- * build, checks the final files against the original request. Returns feedback
- * to fix, or null to pass. Best-effort — never blocks on failure.
- */
-async function runSelfReview(
-  provider: ResolvedProvider,
-  goal: string,
-  files: AgentCodeFile[],
-  signal: AbortSignal | undefined,
-  onProgress?: (event: AgentProgressEvent) => void,
-): Promise<string | null> {
-  try {
-    onProgress?.({ type: 'status', message: 'Reviewing the build against your request...' })
-    // Build a compact, bounded view of the project: file list + truncated code.
-    const fileList = files.map((f) => `- ${f.path} (${f.code.split('\n').length} lines)`).join('\n')
-    const codeBudgetPerFile = 120
-    const codeBlocks = files
-      .filter((f) => /\.(tsx?|jsx?)$/.test(f.path))
-      .slice(0, 12)
-      .map((f) => {
-        const lines = f.code.split('\n').slice(0, codeBudgetPerFile)
-        return `### ${f.path}\n${lines.join('\n')}`
-      })
-      .join('\n\n')
-
-    const prompt = [
-      `Original request: "${goal.trim()}"`,
-      '',
-      `Project files:\n${fileList}`,
-      '',
-      `Source (truncated):\n${codeBlocks}`,
-      '',
-      'Report unmet requirements or broken/missing features in the required format.',
-    ].join('\n')
-
-    const model = pickModel(provider, 'fast')
-    const raw = await callReviewModel(provider, model, SELF_REVIEW_SYSTEM, prompt, signal)
-
-    const verdictMatch = raw.match(/verdict\s*:\s*(pass|revise|fail)/i)
-    const isRevise = verdictMatch && /revise|fail/i.test(verdictMatch[1])
-    const issues: string[] = []
-    const section = raw.split(/issues\s*:/i)[1] ?? ''
-    for (const line of section.split('\n')) {
-      const m = line.match(/^\s*[-*•]\s*(.+)$/)
-      if (m && !/^none\b/i.test(m[1].trim())) issues.push(m[1].trim())
-    }
-    if (isRevise && issues.length > 0) {
-      return [
-        '## Self-review found unmet requirements (fresh-eyes pass over your code)',
-        '',
-        ...issues.map((s, i) => `  ${i + 1}. ${s}`),
-        '',
-        'Implement these, compile, then finish again.',
-      ].join('\n')
-    }
-    return null
-  } catch {
     return null
   }
 }
@@ -990,20 +827,11 @@ export async function runFlorviaAgent(input: AgentRunInput): Promise<AgentRunRes
 
   let turnCount = 0
   let lastSummaryTurn = 0
-  let runtimeRejectCount = 0
-  const MAX_RUNTIME_REJECTS =
-    thinkingProfile.finalReviewDepth === 'basic' ? 2 :
-      thinkingProfile.finalReviewDepth === 'deep' ? 6 : 3
 
-  const goal = input.prompt
   const loopDetector = new LoopDetector()
-  // Single-shot flags so the expensive/subjective review stages run at most
-  // once and the agent isn't trapped re-revising forever.
-  const reviewState = {
-    requirementsEnforced: false,
-    visualReviewed: false,
-    selfReviewed: false,
-  }
+  // Per-run state for tool execution: tracks reads (to short-circuit redundant
+  // re-reads of unchanged files) and the mode (to ignore set_title on refine).
+  const runCtx: RunContext = { mode, turn: 0, reads: new Map() }
 
   // Track session details for changelog
   const sessionFilesCreated: string[] = []
@@ -1067,12 +895,14 @@ export async function runFlorviaAgent(input: AgentRunInput): Promise<AgentRunRes
     }
 
     // ── Execute tools with parallelism ──────────────────────────
+    runCtx.turn = turnCount
     const toolResults = await executeToolsParallel(
       toolCalls,
       currentFiles,
       input.signal,
       input.onProgress,
       provider,
+      runCtx,
     )
 
     // Track file operations for changelog
@@ -1095,57 +925,26 @@ export async function runFlorviaAgent(input: AgentRunInput): Promise<AgentRunRes
       const result = toolResults[i]
       if (result.files) currentFiles = result.files
 
-      // ── Final review gate: intercept done calls ──────────────
+      // done is accepted as soon as the agent calls it — the agent is
+      // responsible for compiling (build + runtime) before finishing. The
+      // final done result is pushed once, after this loop.
       if (tc.name === 'done') {
-        // A multi-stage gate that actually verifies the app before accepting
-        // done: build + interactive runtime + type-check + requirement
-        // coverage + visual review + fresh-eyes self-review. Each catches a
-        // different failure class the model and esbuild miss.
-        if (runtimeRejectCount < MAX_RUNTIME_REJECTS) {
-          const gate = await runFinalReview({
-            provider,
-            goal,
-            currentFiles,
-            reviewState,
-            reviewDepth: thinkingProfile.finalReviewDepth,
-            signal: input.signal,
-            onProgress: input.onProgress,
-          })
-          if (!gate.ok) {
-            runtimeRejectCount++
-            input.onProgress?.({
-              type: 'status',
-              message: `Review ${runtimeRejectCount}/${MAX_RUNTIME_REJECTS} (${gate.stage}): not done yet.`,
-            })
-            messages.push({
-              role: 'user',
-              content: [
-                { type: 'tool_result', tool_use_id: tc.id, content: gate.feedback, is_error: true },
-              ],
-            })
-            // Reject done — keep building.
-            continue
-          }
-        }
-
         hasDone = true
         doneResult = result
+        continue
       }
 
-      // Push normal tool result
-      if (!hasDone || tc.name !== 'done') {
-        messages.push({
-          role: 'user',
-          content: [
-            {
-              type: 'tool_result',
-              tool_use_id: tc.id,
-              content: tc.name === 'done' && hasDone ? result.content : result.content,
-              is_error: result.isError,
-            },
-          ],
-        })
-      }
+      messages.push({
+        role: 'user',
+        content: [
+          {
+            type: 'tool_result',
+            tool_use_id: tc.id,
+            content: result.content,
+            is_error: result.isError,
+          },
+        ],
+      })
     }
 
     // ── Plan re-injection (#5) ──────────────────────────────────
@@ -1221,141 +1020,6 @@ export async function runFlorviaAgent(input: AgentRunInput): Promise<AgentRunRes
   input.onProgress?.({ type: 'done', files: currentFiles })
   return { files: currentFiles, turns: turnCount, providerName, modelName }
 }
-
-// ─── Final Review Gate (multi-stage, #1/#2/#3/#4/#5) ────────────────────────
-
-interface FinalReviewResult {
-  ok: boolean
-  feedback: string
-  stage: string
-}
-
-/**
- * The full pre-`done` verification pipeline. Runs cheap deterministic checks
- * first (fail fast) and the expensive/subjective model reviews last, each at
- * most once. Any single failure rejects `done` with targeted feedback.
- *
- * Stages: build → interactive runtime → type-check → requirement coverage →
- * visual (vision) review → fresh-eyes self-review.
- */
-async function runFinalReview(params: {
-  provider: ResolvedProvider
-  goal: string
-  currentFiles: AgentCodeFile[]
-  reviewState: { requirementsEnforced: boolean; visualReviewed: boolean; selfReviewed: boolean }
-  reviewDepth: 'basic' | 'standard' | 'deep'
-  signal?: AbortSignal
-  onProgress?: (event: AgentProgressEvent) => void
-}): Promise<FinalReviewResult> {
-  const { provider, goal, currentFiles, reviewState, reviewDepth, signal, onProgress } = params
-
-  // ── Stage 1: build ──────────────────────────────────────────
-  let html = ''
-  try {
-    onProgress?.({ type: 'status', message: 'Final review: building...' })
-    const preview = await buildPreview(currentFiles.map((f) => ({ path: f.path, content: f.code })))
-    if (preview.errors.length > 0) {
-      const unique = [...new Set(preview.errors)].slice(0, COMPILE_MAX_ERRORS)
-      return {
-        ok: false,
-        stage: 'build',
-        feedback:
-          `Cannot finish — the project does not compile (${preview.errors.length} error(s)):\n` +
-          unique.map((e, i) => `  ${i + 1}. ${e}`).join('\n') +
-          `\n\nFix these with edit_file, compile to confirm, then call done again.`,
-      }
-    }
-    html = preview.html
-  } catch {
-    // Build infra failure — don't block.
-    return { ok: true, feedback: '', stage: 'build' }
-  }
-
-  // ── Stage 2: interactive runtime (#2) ───────────────────────
-  try {
-    onProgress?.({ type: 'status', message: 'Final review: running and clicking through the app...' })
-    const runtime = await interactiveSmokeTest(html)
-    if (runtime.ran && !runtime.ok) {
-      const report = formatRuntimeReport(runtime) ?? 'The app failed when exercised.'
-      return {
-        ok: false,
-        stage: 'runtime',
-        feedback:
-          `## Not done — the app breaks when run or used\n\n${report}\n\n` +
-          `Fix the error above, then compile (build + runtime) to confirm before finishing.`,
-      }
-    }
-  } catch {
-    /* runtime infra failure — continue */
-  }
-
-  // ── Stage 3: type-check (#3) ────────────────────────────────
-  try {
-    onProgress?.({ type: 'status', message: 'Final review: type-checking...' })
-    const typeResult = await typeCheckProject(
-      currentFiles.map((f) => ({ path: f.path, code: f.code })),
-    )
-    const report = formatTypeErrors(typeResult)
-    if (typeResult.ran && !typeResult.ok && report) {
-      return {
-        ok: false,
-        stage: 'typecheck',
-        feedback:
-          `## Not done — there are TypeScript type errors\n\n${report}`,
-      }
-    }
-  } catch {
-    /* typecheck unavailable — continue */
-  }
-
-  // ── Stage 4: requirement coverage (#5), once ────────────────
-  if (reviewDepth === 'basic') {
-    return { ok: true, feedback: '', stage: 'complete' }
-  }
-
-  if (!reviewState.requirementsEnforced) {
-    const planFile = currentFiles.find((f) => f.path === PLAN_PATH)
-    if (planFile) {
-      const plan = parsePlan(planFile.code)
-      const unmet = unmetRequirements(plan)
-      if (plan.items.length > 0 && unmet.length > 0) {
-        reviewState.requirementsEnforced = true
-        return {
-          ok: false,
-          stage: 'requirements',
-          feedback:
-            `## Not done — ${unmet.length} requirement(s) are still unchecked in PLAN.md\n\n` +
-            unmet.map((it) => `  [ ] ${it.id}. ${it.text}`).join('\n') +
-            `\n\nEither implement each remaining requirement (then update_plan to check it off), ` +
-            `or, if a requirement is already done, call update_plan with check:[ids] to mark it. ` +
-            `Then call done again.`,
-        }
-      }
-    }
-  }
-
-  // ── Stage 5: visual review (#1), once — high/extra-high only ─
-  if (reviewDepth === 'deep' && !reviewState.visualReviewed) {
-    reviewState.visualReviewed = true
-    const feedback = await runVisualReview(provider, goal, html, signal, onProgress)
-    if (feedback) {
-      return { ok: false, stage: 'visual', feedback }
-    }
-  }
-
-  // ── Stage 6: fresh-eyes self-review (#4), once — high/extra-high only ─
-  if (reviewDepth === 'deep' && !reviewState.selfReviewed) {
-    reviewState.selfReviewed = true
-    const feedback = await runSelfReview(provider, goal, currentFiles, signal, onProgress)
-    if (feedback) {
-      return { ok: false, stage: 'self-review', feedback }
-    }
-  }
-
-  return { ok: true, feedback: '', stage: 'complete' }
-}
-
-
 
 // ─── Memory Management ──────────────────────────────────────────────────────
 
@@ -1459,12 +1123,22 @@ export function recordLesson(
 
 // ─── Parallel Tool Execution ────────────────────────────────────────────────
 
+/** Per-run state shared with executeTool across the whole agent run. */
+interface RunContext {
+  mode: 'create' | 'refine'
+  /** The current turn number (updated each loop iteration). */
+  turn: number
+  /** path|offset|limit → snapshot + turn it was last served, to skip re-reads. */
+  reads: Map<string, { snap: string; turn: number }>
+}
+
 async function executeToolsParallel(
   toolCalls: ToolCall[],
   currentFiles: AgentCodeFile[],
   signal: AbortSignal | undefined,
   onProgress: ((event: AgentProgressEvent) => void) | undefined,
   provider: ResolvedProvider,
+  runCtx: RunContext,
 ): Promise<ToolResult[]> {
   if (toolCalls.length === 0) return []
 
@@ -1492,7 +1166,7 @@ async function executeToolsParallel(
     const parallelResults = await Promise.all(
       parallelTasks.map(({ index, call }) => {
         onProgress?.({ type: 'tool_start', toolName: call.name, toolInput: call.input })
-        return executeTool(call, currentFiles, signal, provider, onProgress).then((result) => {
+        return executeTool(call, currentFiles, signal, provider, onProgress, runCtx).then((result) => {
           onProgress?.({ type: 'tool_result', toolName: call.name, toolResult: result.content, toolError: result.isError, files: result.files })
           return { index, result }
         })
@@ -1507,7 +1181,7 @@ async function executeToolsParallel(
   // Phase 2: Writes sequentially
   for (const { index, call } of writes) {
     onProgress?.({ type: 'tool_start', toolName: call.name, toolInput: call.input })
-    const result = await executeTool(call, currentFiles, signal, provider, onProgress)
+    const result = await executeTool(call, currentFiles, signal, provider, onProgress, runCtx)
     onProgress?.({ type: 'tool_result', toolName: call.name, toolResult: result.content, toolError: result.isError, files: result.files })
     results[index] = result
     if (result.files) currentFiles = result.files
@@ -1517,7 +1191,7 @@ async function executeToolsParallel(
   if (compileCall) {
     const { index, call } = compileCall
     onProgress?.({ type: 'tool_start', toolName: call.name, toolInput: call.input })
-    const result = await executeTool(call, currentFiles, signal, provider, onProgress)
+    const result = await executeTool(call, currentFiles, signal, provider, onProgress, runCtx)
     onProgress?.({ type: 'tool_result', toolName: call.name, toolResult: result.content, toolError: result.isError, files: result.files })
     results[index] = result
     if (result.files) currentFiles = result.files
@@ -1527,7 +1201,7 @@ async function executeToolsParallel(
   if (doneCall) {
     const { index, call } = doneCall
     onProgress?.({ type: 'tool_start', toolName: call.name, toolInput: call.input })
-    const result = await executeTool(call, currentFiles, signal, provider, onProgress)
+    const result = await executeTool(call, currentFiles, signal, provider, onProgress, runCtx)
     onProgress?.({ type: 'tool_result', toolName: call.name, toolResult: result.content, toolError: result.isError, files: result.files })
     results[index] = result
     if (result.files) currentFiles = result.files
@@ -1544,6 +1218,7 @@ async function executeTool(
   signal: AbortSignal | undefined,
   _provider: ResolvedProvider,
   onProgress?: (event: AgentProgressEvent) => void,
+  runCtx?: RunContext,
 ): Promise<ToolResult> {
   throwIfAborted(signal)
 
@@ -1626,6 +1301,25 @@ async function executeTool(
           isError: true,
         }
       }
+      // Short-circuit a redundant re-read: same path+range, unchanged content,
+      // read within the last couple of turns (so the earlier output is still in
+      // context, not yet compacted away). Saves tokens and breaks read loops.
+      const snap = `${file.code.length}:${file.code.slice(0, 80)}`
+      if (runCtx) {
+        const key = `${path}|${offset}|${limit}`
+        const prev = runCtx.reads.get(key)
+        if (prev && prev.snap === snap && runCtx.turn - prev.turn <= 2) {
+          return {
+            content:
+              `You already read ${path} a moment ago and it has not changed since. ` +
+              `Its content is still shown above — do not read it again. Make your edit now ` +
+              `(or use search_files to jump to a specific section).`,
+            isError: false,
+          }
+        }
+        runCtx.reads.set(key, { snap, turn: runCtx.turn })
+      }
+
       const allLines = file.code.split('\n')
       const startIdx = offset - 1
       const endIdx = Math.min(startIdx + limit, allLines.length)
@@ -2028,6 +1722,17 @@ async function executeTool(
     // ── set_title ────────────────────────────────────────────────
     case 'set_title': {
       const titleValue = typeof toolCall.input.title === 'string' ? toolCall.input.title.trim() : ''
+      // set_title is for new projects only. On a refine run the project already
+      // has a name, so ignore it instead of re-naming an existing project.
+      if (runCtx && runCtx.mode === 'refine') {
+        return {
+          content: JSON.stringify({
+            ok: false,
+            skipped: 'set_title is only for new projects; the existing title was kept.',
+          }),
+          isError: false,
+        }
+      }
       if (titleValue) {
         onProgress?.({ type: 'title', text: titleValue })
       }
@@ -2037,7 +1742,13 @@ async function executeTool(
     // ── done ────────────────────────────────────────────────────
     case 'done': {
       const summary = String(toolCall.input.summary ?? 'Project complete.')
-      const title = typeof toolCall.input.title === 'string' ? toolCall.input.title.trim() : ''
+      // Only carry a title for new projects — refine runs keep the existing name.
+      const title =
+        runCtx?.mode === 'refine'
+          ? ''
+          : typeof toolCall.input.title === 'string'
+            ? toolCall.input.title.trim()
+            : ''
       const nextSuggestions = Array.isArray(toolCall.input.nextSuggestions)
         ? toolCall.input.nextSuggestions.filter((s: unknown) => typeof s === 'string')
         : []
