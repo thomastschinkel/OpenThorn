@@ -939,15 +939,15 @@ export default function ProjectBuilderPage() {
 
       setNetlifySiteId(typeof existing?.netlify_site_id === 'string' ? existing.netlify_site_id : null)
 
-      // Upsert project metadata (don't overwrite files or title on updates)
+      // Upsert project metadata (preserve existing title; files are not included so they're never overwritten)
       const { error } = await supabase
         .from('projects')
         .upsert({
           id: projectId,
           user_id: user.id,
+          title: existing?.title ?? 'Untitled project',
           preview_url: null,
           created_at: new Date().toISOString(),
-          ...(!existing && { title: 'Untitled project' }),
         }, { onConflict: 'id' })
 
       if (error) {
