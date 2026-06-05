@@ -2512,10 +2512,11 @@
 
 /* Publish button in topbar */
 .publishBtn {
-  display: flex;
+  height: 38px;
+  display: inline-flex;
   align-items: center;
   gap: 6px;
-  padding: 7px 14px;
+  padding: 0 14px;
   background: rgba(124, 106, 247, 0.15);
   border: 1px solid rgba(124, 106, 247, 0.3);
   border-radius: 8px;
