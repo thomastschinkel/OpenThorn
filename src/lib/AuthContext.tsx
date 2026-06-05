@@ -1,6 +1,8 @@
 import { createContext, useContext, useEffect, useState, type ReactNode } from 'react'
 import type { User, Session } from '@supabase/supabase-js'
 import { supabase } from './supabase'
+import { identifyUser, resetAnalytics, trackEvent } from './analytics'
+import { setSentryUser } from './sentry'
 
 interface AuthContextValue {
   user: User | null
@@ -34,6 +36,14 @@ export function SupabaseAuthProvider({ children }: { children: ReactNode }) {
       setSession(session)
       setUser(session?.user ?? null)
       setLoading(false)
+
+      if (session?.user) {
+        identifyUser(session.user.id, session.user.email)
+        setSentryUser({ id: session.user.id, email: session.user.email })
+      } else {
+        resetAnalytics()
+        setSentryUser(null)
+      }
     })
 
     return () => subscription.unsubscribe()
@@ -42,6 +52,7 @@ export function SupabaseAuthProvider({ children }: { children: ReactNode }) {
   const signIn = async (email: string, password: string): Promise<{ error?: string }> => {
     const { error } = await supabase.auth.signInWithPassword({ email, password })
     if (error) return { error: error.message }
+    trackEvent('sign_in', { method: 'email' })
     return {}
   }
 
@@ -52,6 +63,7 @@ export function SupabaseAuthProvider({ children }: { children: ReactNode }) {
       options: { data: { full_name: name } },
     })
     if (error) return { error: error.message }
+    trackEvent('sign_up', { method: 'email' })
     // If no session returned, email confirmation is required
     if (!data.session) return { needsConfirmation: true }
     return {}
