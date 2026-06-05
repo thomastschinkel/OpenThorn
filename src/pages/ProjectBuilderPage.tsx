@@ -1508,7 +1508,7 @@ export default function ProjectBuilderPage() {
     let eventCounter = 0
 
     setAgentSuggestions([])
-    const hadTitle = Boolean(title)
+    const hadTitle = Boolean(title) && messages.some(m => m.role === 'assistant')
 
     setMessages((current) => {
       const withUser = options.reuseInitialUser
