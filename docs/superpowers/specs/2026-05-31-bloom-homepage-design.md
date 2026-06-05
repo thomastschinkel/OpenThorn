@@ -1,4 +1,4 @@
-# Bloom Homepage Design Spec
+# OpenThorn Homepage Design Spec
 
 **Date**: 2026-05-31
 **Status**: Approved
@@ -8,7 +8,7 @@
 
 ## Overview
 
-Build the Bloom marketing homepage — a BYOK (Bring Your Own Key) AI website builder. The page communicates Bloom's value proposition through a warm, organic-modern aesthetic centered on a purple/blue flower brand identity.
+Build the OpenThorn marketing homepage — a BYOK (Bring Your Own Key) AI website builder. The page communicates OpenThorn's value proposition through a warm, organic-modern aesthetic centered on a purple/blue flower brand identity.
 
 ---
 
@@ -18,9 +18,9 @@ Build the Bloom marketing homepage — a BYOK (Bring Your Own Key) AI website bu
 
 | Token | Hex | Role |
 |-------|-----|------|
-| Bloom Primary | `#7C3AED` | Primary buttons, accents, active states |
-| Bloom Deep | `#4C1D95` | Headings, strong emphasis |
-| Bloom Petal Blue | `#6366F1` | Secondary accent, links, icon highlights |
+| OpenThorn Primary | `#7C3AED` | Primary buttons, accents, active states |
+| OpenThorn Deep | `#4C1D95` | Headings, strong emphasis |
+| OpenThorn Petal Blue | `#6366F1` | Secondary accent, links, icon highlights |
 | Surface Warm | `#FCFAF7` | Page background — warm off-white |
 | Surface Card | `#FFFFFF` | Cards, elevated surfaces |
 | Surface Muted | `#F5F0EB` | Subtle section backgrounds |
@@ -48,7 +48,7 @@ Build the Bloom marketing homepage — a BYOK (Bring Your Own Key) AI website bu
 - Background: Warm white with subtle radial purple glow (top-right)
 - Cards: White + 1px warm border + soft shadow, hover lifts 4-6px with purple halo
 - Input: rounded-2xl, subtle inner glow on focus
-- Buttons: Gradient from Bloom Primary → Petal Blue, spring-scale on hover
+- Buttons: Gradient from OpenThorn Primary → Petal Blue, spring-scale on hover
 - Decorative: Low-opacity organic blob shapes as background elements
 
 ### Motion Strategy
@@ -56,7 +56,7 @@ Build the Bloom marketing homepage — a BYOK (Bring Your Own Key) AI website bu
 - Hero: Staggered reveal (headline → subtitle → input → trust bar, 50ms delays)
 - Scroll reveals: Fade-slide-up on viewport entry
 - Input focus: Scale 1.01 + glow expansion (spring physics)
-- Meet Bloom: Cards stagger 150ms, connector lines draw on scroll (SVG stroke-dashoffset), icons float gently
+- Meet OpenThorn: Cards stagger 150ms, connector lines draw on scroll (SVG stroke-dashoffset), icons float gently
 - Hover: Buttons lift 2px, cards lift 6px with shadow deepen
 - All animations respect `prefers-reduced-motion` → collapse to opacity fades
 
@@ -67,14 +67,14 @@ Build the Bloom marketing homepage — a BYOK (Bring Your Own Key) AI website bu
 ### 1. Header
 
 Fixed glass-morphism header with backdrop-blur:
-- Left: Bloom logo + flower icon
+- Left: OpenThorn logo + flower icon
 - Nav: Solutions▾ (For Designers, For Developers, For Startups, For Agencies), GitHub, Resources▾ (Documentation, API Reference, Templates, Blog)
 - Right: "Login" (ghost text) + "Get Started" (purple gradient pill)
 - Semi-transparent background, content scrolls behind
 
 ### 2. Hero Section
 
-- **Headline**: "Build with Bloom" — Fraunces 800, ~72px, deep purple (#4C1D95)
+- **Headline**: "Build with OpenThorn" — Fraunces 800, ~72px, deep purple (#4C1D95)
 - **Subtitle**: "Create beautiful websites just by talking to AI. No coding required." — DM Sans 400, 20px, Ink Soft
 - **Input Box**: Large rounded-2xl white card with:
   - Sparkle icon (left) + paperclip icon (right)
@@ -83,9 +83,9 @@ Fixed glass-morphism header with backdrop-blur:
   - Text-shimmer animation on placeholder
 - **Trust Bar**: Three pills below input — "Configure your own API keys", "No hidden costs, no ads", "Full control, full privacy" — each with icon
 
-### 3. Meet Bloom Section
+### 3. Meet OpenThorn Section
 
-Section title "✦ Meet Bloom ✦" centered.
+Section title "✦ Meet OpenThorn ✦" centered.
 
 Three-step horizontal flow with animated connectors:
 
@@ -196,7 +196,7 @@ HomePage
 - All animations and interactions
 - Dropdown menus (Solutions, Resources)
 - Glass-morphism header
-- Animated Meet Bloom connector lines
+- Animated Meet OpenThorn connector lines
 - Trust badges and BYOK messaging
 - Footer
 

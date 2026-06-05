@@ -1,8 +1,8 @@
 import { motion } from 'framer-motion'
 import ReelCarousel from '../ReelCarousel/ReelCarousel'
-import styles from './MeetFlorviaSection.module.css'
+import styles from './MeetOpenThornSection.module.css'
 
-export default function MeetFlorviaSection() {
+export default function MeetOpenThornSection() {
   return (
     <section className={styles.section}>
       <motion.div
@@ -11,7 +11,7 @@ export default function MeetFlorviaSection() {
         viewport={{ once: true, margin: '-60px' }}
         transition={{ duration: 0.5, ease: [0.19, 1, 0.22, 1] }}
       >
-        <div className={styles.kicker}>How Florvia works</div>
+        <div className={styles.kicker}>How OpenThorn works</div>
         <h2 className={styles.title}>
           From <span className={styles.titleItalic}>prompt</span> to{' '}
           <span className={styles.titleItalic}>production</span>

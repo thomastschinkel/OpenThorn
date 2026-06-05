@@ -2,7 +2,7 @@
 
 > **For agentic workers:** REQUIRED SUB-SKILL: Use superpowers:subagent-driven-development (recommended) or superpowers:executing-plans to implement this plan task-by-task. Steps use checkbox (`- [ ]`) syntax for tracking.
 
-**Goal:** Add a `/templates` route to the Florvia dashboard where users can browse 3 professional starter templates, preview them live, and launch a new project with template files pre-loaded and immediately rendered.
+**Goal:** Add a `/templates` route to the OpenThorn dashboard where users can browse 3 professional starter templates, preview them live, and launch a new project with template files pre-loaded and immediately rendered.
 
 **Architecture:** Static template definitions in `src/lib/templates.ts` as `AgentCodeFile[]` arrays. A new `TemplatesPage` shares the dashboard sidebar layout. On "Use this template," a Supabase project row is created and the user navigates to `ProjectBuilderPage` with `templateFiles` in route state — the builder bootstraps the preview immediately without waiting for the agent, and prepends a system-reminder to the agent's first user message.
 
@@ -1256,7 +1256,7 @@ export default function CartDrawer({ items, onClose, onUpdateQty }: CartDrawerPr
 - [ ] **Step 2: Verify the file compiles (TypeScript check)**
 
 ```bash
-cd "C:/Users/Thoma/OneDrive/Dokumente/Informatik/Bloom"
+cd "C:/Users/Thoma/OneDrive/Dokumente/Informatik/OpenThorn"
 npx tsc --noEmit 2>&1 | head -30
 ```
 
@@ -1994,9 +1994,9 @@ useEffect(() => {
 
 - [ ] **Step 3: Inject template system-reminder in `handleAgentRequest`**
 
-Find `handleAgentRequest` (around line 1439). Locate where `runFlorviaAgent` is called:
+Find `handleAgentRequest` (around line 1439). Locate where `runOpenThornAgent` is called:
 ```tsx
-const result = await runFlorviaAgent({
+const result = await runOpenThornAgent({
   userId: user.id,
   prompt: request,
   ...

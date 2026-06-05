@@ -21,7 +21,7 @@ export default function BottomCTA() {
           <p className={styles.subtitle}>
             Skip the platform tax and keep momentum: bring your model keys, generate real code, and ship from your own repo.
           </p>
-          <div className={styles.proofRow} aria-label="Florvia advantages">
+          <div className={styles.proofRow} aria-label="OpenThorn advantages">
             <span>BYOK pricing</span>
             <span>GitHub export</span>
             <span>No subscription wall</span>

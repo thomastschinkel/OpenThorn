@@ -2,7 +2,7 @@
 
 > **For agentic workers:** REQUIRED SUB-SKILL: Use superpowers:subagent-driven-development (recommended) or superpowers:executing-plans to implement this plan task-by-task. Steps use checkbox (`- [ ]`) syntax for tracking.
 
-**Goal:** Add production-ready authentication overlay to Bloom with Supabase Auth (Email, Google, GitHub).
+**Goal:** Add production-ready authentication overlay to OpenThorn with Supabase Auth (Email, Google, GitHub).
 
 **Architecture:** Supabase client singleton (`src/lib/supabase.ts`) → AuthProvider context (`src/lib/AuthContext.tsx`) wraps app → AuthModal component renders full-screen overlay with Sign In / Sign Up tabs, social OAuth buttons, and email form → Header consumes auth state to swap buttons for avatar.
 

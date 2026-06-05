@@ -370,7 +370,7 @@ git commit -m "feat: add useCollaboration hook with presence and Postgres Change
 
 ---
 
-## Task 3: Fix `findFlorviaAccount` and `buildInviteLink`
+## Task 3: Fix `findOpenThornAccount` and `buildInviteLink`
 
 **Files:**
 - Modify: `src/pages/ProjectBuilderPage.tsx:1115-1147`
@@ -396,11 +396,11 @@ New:
   }, [projectId])
 ```
 
-- [ ] **Step 2: Replace `findFlorviaAccount` (lines 1123–1147)**
+- [ ] **Step 2: Replace `findOpenThornAccount` (lines 1123–1147)**
 
 Old:
 ```typescript
-  const findFlorviaAccount = useCallback(async (email: string) => {
+  const findOpenThornAccount = useCallback(async (email: string) => {
     const normalizedEmail = email.trim().toLowerCase()
     const tables = ['profiles', 'users']
 
@@ -429,7 +429,7 @@ Old:
 
 New:
 ```typescript
-  const findFlorviaAccount = useCallback(async (email: string) => {
+  const findOpenThornAccount = useCallback(async (email: string) => {
     const normalizedEmail = email.trim().toLowerCase()
     const { data } = await supabase
       .from('profiles')
@@ -458,7 +458,7 @@ Expected: no errors.
 
 ```bash
 git add src/pages/ProjectBuilderPage.tsx
-git commit -m "fix: resolve findFlorviaAccount to use profiles table, simplify invite link"
+git commit -m "fix: resolve findOpenThornAccount to use profiles table, simplify invite link"
 ```
 
 ---
@@ -723,17 +723,17 @@ disabled={!firstRunComplete || agentRunning || remoteGenerating}
 
 Find the prompt input placeholder (around line 2056):
 ```typescript
-placeholder={agentRunning ? agentStatus || 'Florvia is working...' : 'Ask Florvia for a change...'}
+placeholder={agentRunning ? agentStatus || 'OpenThorn is working...' : 'Ask OpenThorn for a change...'}
 ```
 
 Change to:
 ```typescript
 placeholder={
   agentRunning
-    ? agentStatus || 'Florvia is working...'
+    ? agentStatus || 'OpenThorn is working...'
     : remoteGenerating
       ? 'A collaborator is generating…'
-      : 'Ask Florvia for a change...'
+      : 'Ask OpenThorn for a change...'
 }
 ```
 

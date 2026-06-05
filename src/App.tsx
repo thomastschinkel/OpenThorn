@@ -4,7 +4,7 @@ import { useAuth } from './lib/AuthContext'
 import ErrorBoundary from './components/ErrorBoundary/ErrorBoundary'
 import Header from './components/Header/Header'
 import HeroSection from './components/HeroSection/HeroSection'
-import MeetFlorviaSection from './components/MeetFlorviaSection/MeetFlorviaSection'
+import MeetOpenThornSection from './components/MeetOpenThornSection/MeetOpenThornSection'
 import BYOKSection from './components/BYOKSection/BYOKSection'
 import BottomCTA from './components/BottomCTA/BottomCTA'
 import Footer from './components/Footer/Footer'
@@ -26,7 +26,7 @@ function HomePage() {
   return (
     <>
       <HeroSection />
-      <MeetFlorviaSection />
+      <MeetOpenThornSection />
       <BYOKSection />
       <BottomCTA />
     </>

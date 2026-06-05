@@ -20,7 +20,7 @@ describe('deployToNetlify', () => {
     })
 
     const { deployToNetlify } = await import('../deploy')
-    const result = await deployToNetlify('project-12345678', '<!doctype html><html>Bloom</html>')
+    const result = await deployToNetlify('project-12345678', '<!doctype html><html>OpenThorn</html>')
 
     expect(result).toEqual({
       siteId: 'site-123',
@@ -31,7 +31,7 @@ describe('deployToNetlify', () => {
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify({
         projectId: 'project-12345678',
-        html: '<!doctype html><html>Bloom</html>',
+        html: '<!doctype html><html>OpenThorn</html>',
       }),
     })
   })

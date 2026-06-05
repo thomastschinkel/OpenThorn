@@ -173,7 +173,7 @@ export default function DashboardSidebar({ projects = [], activeFilter = 'all', 
   const userInitial = firstName.charAt(0).toUpperCase()
 
   const staticNotifications = [
-    { id: 'welcome', text: 'Welcome to Florvia! Start building your first project.', time: 'Just now' },
+    { id: 'welcome', text: 'Welcome to OpenThorn! Start building your first project.', time: 'Just now' },
     { id: 'templates', text: 'New templates are available in the Templates section.', time: '2h ago' },
     { id: 'community', text: 'Community Apps feature coming soon.', time: '1d ago' },
   ]
@@ -199,7 +199,7 @@ export default function DashboardSidebar({ projects = [], activeFilter = 'all', 
       {/* Logo */}
       <div className={styles.logoRow}>
         <a href="/dashboard" className={styles.logo}>
-          <img src="/assets/logo.png" alt="Florvia" className={styles.logoImg} />
+          <img src="/assets/logo.png" alt="OpenThorn" className={styles.logoImg} />
         </a>
         <button
           className={`${styles.bellBtn} ${notificationsOpen ? styles.bellBtnActive : ''}`}

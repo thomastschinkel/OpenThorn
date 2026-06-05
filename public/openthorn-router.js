@@ -1,5 +1,5 @@
 /**
- * Florvia Hash Router — minimal react-router-dom v6 replacement.
+ * OpenThorn Hash Router — minimal react-router-dom v6 replacement.
  *
  * Uses window.location.hash + hashchange event. Zero dependencies,
  * no URL constructor, no history library. Works everywhere:

@@ -1,8 +1,8 @@
-# Bloom Homepage Implementation Plan
+# OpenThorn Homepage Implementation Plan
 
 > **For agentic workers:** REQUIRED SUB-SKILL: Use superpowers:subagent-driven-development (recommended) or superpowers:executing-plans to implement this plan task-by-task. Steps use checkbox (`- [ ]`) syntax for tracking.
 
-**Goal:** Build the Bloom marketing homepage with all 6 sections (Header, Hero, Meet Bloom, BYOK Detail, Bottom CTA, Footer) using the Organic Modern design system.
+**Goal:** Build the OpenThorn marketing homepage with all 6 sections (Header, Hero, Meet OpenThorn, BYOK Detail, Bottom CTA, Footer) using the Organic Modern design system.
 
 **Architecture:** Single-page React 19 app with TypeScript, CSS Modules for scoped styling, and Framer Motion for animations. Each section is a self-contained component with its own styles. No routing needed — everything renders on one page. Google Fonts (Fraunces + DM Sans) loaded via CSS `@import`.
 
@@ -79,8 +79,8 @@ bloom/
     <meta charset="UTF-8" />
     <link rel="icon" type="image/svg+xml" href="/favicon.svg" />
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-    <meta name="description" content="Bloom — Build beautiful websites by talking to AI. BYOK. No hidden costs." />
-    <title>Bloom — Build with AI</title>
+    <meta name="description" content="OpenThorn — Build beautiful websites by talking to AI. BYOK. No hidden costs." />
+    <title>OpenThorn — Build with AI</title>
   </head>
   <body>
     <div id="root"></div>
@@ -264,7 +264,7 @@ Expected: All packages install without errors.
 
 ```bash
 git add index.html package.json package-lock.json vite.config.ts tsconfig.json tsconfig.app.json tsconfig.node.json eslint.config.js public/favicon.svg src/vite-env.d.ts
-git commit -m "chore: scaffold Vite + React + TypeScript project for Bloom"
+git commit -m "chore: scaffold Vite + React + TypeScript project for OpenThorn"
 ```
 
 ---
@@ -828,7 +828,7 @@ const solutionsItems: DropdownItem[] = [
 ]
 
 const resourcesItems: DropdownItem[] = [
-  { label: 'Documentation', description: 'Learn how to use Bloom', href: '#' },
+  { label: 'Documentation', description: 'Learn how to use OpenThorn', href: '#' },
   { label: 'API Reference', description: 'Integrate with our API', href: '#' },
   { label: 'Templates', description: 'Start with pre-built designs', href: '#' },
   { label: 'Blog', description: 'Stories and updates', href: '#' },
@@ -863,8 +863,8 @@ export default function Header() {
     <header className={`${styles.header} ${scrolled ? styles.headerScrolled : ''}`}>
       <div className={styles.inner}>
         <a href="/" className={styles.logo}>
-          <img src="/assets/logo.png" alt="Bloom" className={styles.logoImg} />
-          Bloom
+          <img src="/assets/logo.png" alt="OpenThorn" className={styles.logoImg} />
+          OpenThorn
         </a>
 
         <nav className={styles.nav}>
@@ -1142,7 +1142,7 @@ export default function HeroSection() {
       >
         <motion.h1 className={styles.headline} variants={fadeUp}>
           Build with{' '}
-          <span className={styles.headlineGradient}>Bloom</span>
+          <span className={styles.headlineGradient}>OpenThorn</span>
         </motion.h1>
 
         <motion.p className={styles.subtitle} variants={fadeUp}>
@@ -1369,7 +1369,7 @@ const steps = [
     number: '01',
     title: 'Start with an idea',
     description:
-      'Describe the app or website you want to create or drop in screenshots and docs — Bloom understands your vision.',
+      'Describe the app or website you want to create or drop in screenshots and docs — OpenThorn understands your vision.',
     icon: BulbIcon,
   },
   {
@@ -1399,7 +1399,7 @@ export default function MeetBloomSection() {
 
   return (
     <section className={styles.section} ref={sectionRef}>
-      <p className={styles.sectionLabel}>Meet Bloom</p>
+      <p className={styles.sectionLabel}>Meet OpenThorn</p>
       <h2 className={styles.sectionTitle}>From idea to live in minutes</h2>
 
       <div style={{ position: 'relative', maxWidth: 'var(--max-width)', margin: '0 auto' }}>
@@ -1512,7 +1512,7 @@ function RocketIcon() {
 
 ```bash
 git add src/components/MeetBloomSection/
-git commit -m "feat: add Meet Bloom section with animated step cards and connector lines"
+git commit -m "feat: add Meet OpenThorn section with animated step cards and connector lines"
 ```
 
 ---
@@ -1640,7 +1640,7 @@ const features = [
   },
   {
     title: 'Zero platform markup',
-    description: 'Unlike other tools, Bloom never charges a premium on your API usage. You pay exactly what the provider charges.',
+    description: 'Unlike other tools, OpenThorn never charges a premium on your API usage. You pay exactly what the provider charges.',
     icon: ZeroIcon,
   },
   {
@@ -1664,7 +1664,7 @@ export default function BYOKSection() {
           <h2 className={styles.sectionTitle}>Your keys, your control</h2>
           <p className={styles.sectionBody}>
             Unlike <span className={styles.highlight}>Lovable</span> or{' '}
-            <span className={styles.highlight}>Base44</span>, Bloom doesn't lock
+            <span className={styles.highlight}>Base44</span>, OpenThorn doesn't lock
             you into a subscription. Configure your own API keys from any provider
             and pay only for what you use. <span className={styles.highlight}>No markup, no ads, no hidden costs.</span>
           </p>
@@ -1694,7 +1694,7 @@ export default function BYOKSection() {
         </div>
 
         <p className={styles.marketPosition}>
-          Bloom is the only AI website builder that puts you in control of your stack.
+          OpenThorn is the only AI website builder that puts you in control of your stack.
         </p>
       </div>
     </section>
@@ -1975,7 +1975,7 @@ export default function Footer() {
           <div className={styles.brand}>
             <a href="/" className={styles.logo}>
               <img src="/assets/logo.png" alt="" className={styles.logoImg} />
-              Bloom
+              OpenThorn
             </a>
             <p className={styles.tagline}>
               Build with AI. Ship with confidence. <br />
@@ -1998,7 +1998,7 @@ export default function Footer() {
         </div>
 
         <div className={styles.bottom}>
-          <span>&copy; {new Date().getFullYear()} Bloom. All rights reserved.</span>
+          <span>&copy; {new Date().getFullYear()} OpenThorn. All rights reserved.</span>
           <div className={styles.socialLinks}>
             <a href="https://github.com" aria-label="GitHub" target="_blank" rel="noopener noreferrer">
               <svg width="18" height="18" viewBox="0 0 24 24" fill="currentColor">
@@ -2124,7 +2124,7 @@ Checklist:
 - [ ] Header is fixed and glass-morphism
 - [ ] Hero animations play (staggered entrance)
 - [ ] Solutions/Resources dropdowns work on hover
-- [ ] Meet Bloom cards animate on scroll
+- [ ] Meet OpenThorn cards animate on scroll
 - [ ] BYOK section renders with feature cards
 - [ ] Footer is dark with links
 - [ ] Fonts (Fraunces, DM Sans) load correctly

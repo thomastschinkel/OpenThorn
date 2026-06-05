@@ -34,7 +34,7 @@ export interface AgentPlan {
   notes: string
 }
 
-const PLAN_HEADER = `# Florvia Agent — Project Plan
+const PLAN_HEADER = `# OpenThorn Agent — Project Plan
 
 > Auto-managed working memory. The agent maintains this with the update_plan tool.
 > Requirements are the contract: every box must be checked before the project is done.

@@ -3,7 +3,7 @@ _Date: 2026-06-04_
 
 ## Overview
 
-Add a Templates section to the Florvia dashboard. Users browse 3 professional starter templates, preview them live in a full-screen overlay, and launch a new project from any template. The project builder immediately renders the template — no waiting for the agent — and the agent builds on top of the existing files rather than replacing them.
+Add a Templates section to the OpenThorn dashboard. Users browse 3 professional starter templates, preview them live in a full-screen overlay, and launch a new project from any template. The project builder immediately renders the template — no waiting for the agent — and the agent builds on top of the existing files rather than replacing them.
 
 ---
 
@@ -102,7 +102,7 @@ Do not delete template files unless the user explicitly requests it.
 The static cached system prompt is untouched. The reminder travels in the user turn, not the system prompt.
 
 ### Agent mode
-Template projects always start in `mode: 'refine'` (passed to `runFlorviaAgent`) so the agent skips the `set_title` call at the start — the title is already set from the template name.
+Template projects always start in `mode: 'refine'` (passed to `runOpenThornAgent`) so the agent skips the `set_title` call at the start — the title is already set from the template name.
 
 ---
 

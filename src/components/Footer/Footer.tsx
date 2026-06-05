@@ -41,7 +41,7 @@ export default function Footer() {
           <div className={styles.brand}>
             <a href="/" className={styles.logo}>
               <img src="/assets/logo.png" alt="" className={styles.logoImg} />
-              <span className={styles.logoText}>Florvia</span>
+              <span className={styles.logoText}>OpenThorn</span>
             </a>
             <p className={styles.tagline}>
               Turn a description into a deployed website — with your own API keys and your own infrastructure.
@@ -91,7 +91,7 @@ export default function Footer() {
 
         <div className={styles.bottom}>
           <span className={styles.copyright}>
-            &copy; {new Date().getFullYear()} Florvia. All rights reserved.
+            &copy; {new Date().getFullYear()} OpenThorn. All rights reserved.
           </span>
           <div className={styles.socials}>
             <a href="https://github.com" aria-label="GitHub" target="_blank" rel="noopener noreferrer">

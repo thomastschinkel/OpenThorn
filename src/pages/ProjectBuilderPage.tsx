@@ -9,7 +9,7 @@ import { deployToNetlify } from '../lib/deploy'
 import { pushFiles, createRepo, getGitHubUser } from '../lib/github'
 import { buildPreview, escapeHtml } from '../lib/preview-bundle'
 import { capturePreviewThumbnail } from '../lib/preview-screenshot'
-import { runFlorviaAgent, type AgentCodeFile, type SelectedAgentModel } from '../lib/agent'
+import { runOpenThornAgent, type AgentCodeFile, type SelectedAgentModel } from '../lib/agent'
 import {
   normalizeThinkingLevel,
   type AgentThinkingLevel,
@@ -65,7 +65,7 @@ const codeFiles: AgentCodeFile[] = [
       `      <div className="navbar-inner">`,
       `        <a href="#" className="logo">`,
       `          <span className="logo-icon">◆</span>`,
-      `          Florvia`,
+      `          OpenThorn`,
       `        </a>`,
       `        <div className="nav-links">`,
       `          <a href="#features">Features</a>`,
@@ -96,7 +96,7 @@ const codeFiles: AgentCodeFile[] = [
       `          <span className="highlight"> with AI</span>`,
       `        </h1>`,
       `        <p className="hero-sub">`,
-      `          Describe your idea in plain English and watch Florvia generate a complete,`,
+      `          Describe your idea in plain English and watch OpenThorn generate a complete,`,
       `          production-ready frontend in seconds. No coding required.`,
       `        </p>`,
       `        <div className="hero-actions">`,
@@ -159,7 +159,7 @@ const codeFiles: AgentCodeFile[] = [
       `  { icon: '📱', title: 'Fully responsive', description: 'Your site looks great on every device — desktop, tablet, and mobile right out of the box.' },`,
       `  { icon: '🔌', title: 'Easy export', description: 'Download as ZIP, deploy to production, or push to GitHub with a single click.' },`,
       `  { icon: '🧩', title: 'Component library', description: 'Access a growing library of pre-built components you can mix and match.' },`,
-      `  { icon: '🤖', title: 'AI refinement', description: 'Ask Florvia to tweak any part of your site — change colors, add sections, or restructure layouts.' },`,
+      `  { icon: '🤖', title: 'AI refinement', description: 'Ask OpenThorn to tweak any part of your site — change colors, add sections, or restructure layouts.' },`,
       `]`,
       ``,
       `export default function Features() {`,
@@ -205,9 +205,9 @@ const codeFiles: AgentCodeFile[] = [
       `        <h2>Loved by founders and teams</h2>`,
       `      </div>`,
       `      <div className="quotes-grid">`,
-      `        <Quote text="Florvia cut our landing page build time from two weeks to ten minutes. Game changer." author="Sarah Chen" role="CTO, Duplo" />`,
+      `        <Quote text="OpenThorn cut our landing page build time from two weeks to ten minutes. Game changer." author="Sarah Chen" role="CTO, Duplo" />`,
       `        <Quote text="I shipped my SaaS waitlist page before the coffee got cold. The design quality is unreal." author="Marcus Webb" role="Solo founder" />`,
-      `        <Quote text="We use Florvia for all our marketing pages now. Consistent quality, zero design debt." author="Priya Kapoor" role="Head of Growth, Nimble" />`,
+      `        <Quote text="We use OpenThorn for all our marketing pages now. Consistent quality, zero design debt." author="Priya Kapoor" role="Head of Growth, Nimble" />`,
       `      </div>`,
       `    </section>`,
       `  )`,
@@ -223,7 +223,7 @@ const codeFiles: AgentCodeFile[] = [
       `    <section className="cta">`,
       `      <div className="cta-card">`,
       `        <h2>Ready to build your next website?</h2>`,
-      `        <p>Join thousands of developers and founders who ship faster with Florvia.</p>`,
+      `        <p>Join thousands of developers and founders who ship faster with OpenThorn.</p>`,
       `        <div className="cta-actions">`,
       `          <button className="btn btn-primary btn-lg">Start building free →</button>`,
       `          <button className="btn btn-ghost-light btn-lg">Talk to sales</button>`,
@@ -245,7 +245,7 @@ const codeFiles: AgentCodeFile[] = [
       `        <div className="footer-brand">`,
       `          <a href="#" className="logo">`,
       `            <span className="logo-icon">◆</span>`,
-      `            Florvia`,
+      `            OpenThorn`,
       `          </a>`,
       `          <p>AI-powered website generation for modern teams.</p>`,
       `        </div>`,
@@ -270,7 +270,7 @@ const codeFiles: AgentCodeFile[] = [
       `        </div>`,
       `      </div>`,
       `      <div className="footer-bottom">`,
-      `        <span>© 2026 Florvia. All rights reserved.</span>`,
+      `        <span>© 2026 OpenThorn. All rights reserved.</span>`,
       `      </div>`,
       `    </footer>`,
       `  )`,
@@ -398,7 +398,7 @@ const codeFiles: AgentCodeFile[] = [
 const EMPTY_CODE_FILE: AgentCodeFile = {
   path: 'No files yet',
   language: 'txt',
-  code: 'Florvia will show the generated files after the first successful build.',
+  code: 'OpenThorn will show the generated files after the first successful build.',
 }
 
 interface FileTreeNode {
@@ -1372,7 +1372,7 @@ export default function ProjectBuilderPage() {
     return new URL(`/projects/${projectId}`, window.location.origin).toString()
   }, [projectId])
 
-  const findFlorviaAccount = useCallback(async (email: string) => {
+  const findOpenThornAccount = useCallback(async (email: string) => {
     const normalizedEmail = email.trim().toLowerCase()
     const { data } = await supabase
       .from('profiles')
@@ -1411,11 +1411,11 @@ export default function ProjectBuilderPage() {
     }
 
     setInviteLoading(true)
-    const account = await findFlorviaAccount(normalizedEmail)
+    const account = await findOpenThornAccount(normalizedEmail)
 
     if (!account) {
       setInviteLoading(false)
-      setInviteError('No Florvia account found for that email.')
+      setInviteError('No OpenThorn account found for that email.')
       return
     }
 
@@ -1454,7 +1454,7 @@ export default function ProjectBuilderPage() {
         console.error('Failed to persist collaborator:', error.message)
       }
     }
-  }, [buildInviteLink, collaborators, findFlorviaAccount, inviteEmail, invitePermission, projectId, user])
+  }, [buildInviteLink, collaborators, findOpenThornAccount, inviteEmail, invitePermission, projectId, user])
 
   const handlePermissionChange = useCallback((collaboratorId: string, permission: SharePermission) => {
     setCollaborators((current) => current.map((collaborator) => (
@@ -1567,7 +1567,7 @@ export default function ProjectBuilderPage() {
         {
           id: assistantId,
           role: 'assistant' as const,
-          title: 'Florvia',
+          title: 'OpenThorn',
           timeline: [],
         },
       ]
@@ -1621,7 +1621,7 @@ export default function ProjectBuilderPage() {
         ? `<system-reminder>\nTEMPLATE MODE: This project was started from the "${templateNameRef.current || 'template'}" template. The existing files are the template foundation — build upon them. Preserve the color system, component structure, and design language. Do not delete template files unless the user explicitly requests it.\n</system-reminder>\n\n${request}`
         : request
 
-      const result = await runFlorviaAgent({
+      const result = await runOpenThornAgent({
         userId: user.id,
         prompt: effectivePrompt,
         title,
@@ -1858,7 +1858,7 @@ export default function ProjectBuilderPage() {
           </button>
 
           <div className={styles.brandCluster}>
-            <img src="/assets/logo.png" alt="Florvia" className={styles.logo} />
+            <img src="/assets/logo.png" alt="OpenThorn" className={styles.logo} />
             <div>
               {titleEditing ? (
                 <input
@@ -2098,7 +2098,7 @@ export default function ProjectBuilderPage() {
                       <div className={styles.personInfo}>
                         <strong>{collaborator.name}</strong>
                         <span>
-                          {collaborator.email} - {collaborator.accountVerified ? 'Florvia account' : 'Pending'} - Invited {new Date(collaborator.invitedAt).toLocaleDateString('en-US', { month: 'short', day: 'numeric' })}
+                          {collaborator.email} - {collaborator.accountVerified ? 'OpenThorn account' : 'Pending'} - Invited {new Date(collaborator.invitedAt).toLocaleDateString('en-US', { month: 'short', day: 'numeric' })}
                         </span>
                       </div>
                       {canManageShare ? (
@@ -2246,7 +2246,7 @@ export default function ProjectBuilderPage() {
                   <p className={styles.githubInstructions}>
                     Create a{' '}
                     <a
-                      href="https://github.com/settings/tokens/new?scopes=repo&description=Florvia"
+                      href="https://github.com/settings/tokens/new?scopes=repo&description=OpenThorn"
                       target="_blank"
                       rel="noopener noreferrer"
                     >
@@ -2307,7 +2307,7 @@ export default function ProjectBuilderPage() {
                 >
                   <div className={styles.assistantTop}>
                     <img src="/assets/logo.png" alt="" />
-                    <span>{message.title ?? 'Florvia'}</span>
+                    <span>{message.title ?? 'OpenThorn'}</span>
                   </div>
 
                   {/* Chronological timeline: text, thinking, and tool calls in order */}
@@ -2437,10 +2437,10 @@ export default function ProjectBuilderPage() {
                   reconnecting
                     ? `Reconnecting to ${activeModel?.model_name ?? 'the model'} — resuming your work…`
                     : agentRunning
-                      ? agentStatus || 'Florvia is working...'
+                      ? agentStatus || 'OpenThorn is working...'
                       : remoteGenerating
                         ? 'A collaborator is generating…'
-                        : 'Ask Florvia for a change...'
+                        : 'Ask OpenThorn for a change...'
                 }
                 onSubmit={(nextPrompt, selectedModel, thinkingLevel) => handleAgentRequest(nextPrompt, selectedModel, thinkingLevel)}
               />
@@ -2525,7 +2525,7 @@ export default function ProjectBuilderPage() {
                       <div className={styles.previewMark}>
                         <img src="/assets/logo.png" alt="" />
                       </div>
-                      <h2>{reconnecting ? `Reconnecting to ${activeModel?.model_name ?? 'the model'}…` : agentRunning ? 'Florvia is building...' : 'Ready when you are'}</h2>
+                      <h2>{reconnecting ? `Reconnecting to ${activeModel?.model_name ?? 'the model'}…` : agentRunning ? 'OpenThorn is building...' : 'Ready when you are'}</h2>
                       <p>{prompt}</p>
                       {(agentRunning || reconnecting) && (
                         <div className={styles.previewChecklist}>

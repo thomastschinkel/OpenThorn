@@ -9,7 +9,7 @@ When the user refreshes the browser while the agent is generating, two things go
 
 1. **Stuck spinner** — `loadProject()` detects the interruption and strips the incomplete assistant message from local state, but immediately fires a Supabase `generating: false` update. That update triggers the realtime subscription's `onChatUpdate` with the full saved chat (still containing the incomplete message with a `toolStatus: 'running'` tool call). Because `agentRunning` is `false` at that instant, `onChatUpdate` restores the dirty message. The resume then adds a new assistant message below it; the new one completes normally, but the old one's miniSpinner stays stuck forever.
 
-2. **No reconnect feedback** — the user sees no indication that the page detected the interruption and is resuming. The placeholder just shows "Florvia is working..." once the resume kicks in, which looks indistinguishable from a hang.
+2. **No reconnect feedback** — the user sees no indication that the page detected the interruption and is resuming. The placeholder just shows "OpenThorn is working..." once the resume kicks in, which looks indistinguishable from a hang.
 
 ## Solution
 
@@ -49,7 +49,7 @@ Use `reconnecting` to change the PromptInput placeholder:
 reconnecting
   ? 'Reconnected — resuming your last request...'
   : agentRunning
-    ? agentStatus || 'Florvia is working...'
+    ? agentStatus || 'OpenThorn is working...'
     : ...
 ```
 
@@ -70,5 +70,5 @@ Wait — rather than a separate transient assistant message, it's simpler to ins
 ## Success Criteria
 
 1. After refreshing during generation, no stuck miniSpinner appears in the chat
-2. The PromptInput placeholder shows "Reconnected — resuming your last request..." briefly before switching to "Florvia is working..."
+2. The PromptInput placeholder shows "Reconnected — resuming your last request..." briefly before switching to "OpenThorn is working..."
 3. Generation resumes and completes normally

@@ -704,7 +704,7 @@ Add after the deploy modal (still before `<main className={styles.shell}>`):
           <div className={styles.deployBodyInner}>
             <p className={styles.githubInstructions}>
               Create a{' '}
-              <a href="https://github.com/settings/tokens/new?scopes=repo&description=Bloom" target="_blank" rel="noopener noreferrer">
+              <a href="https://github.com/settings/tokens/new?scopes=repo&description=OpenThorn" target="_blank" rel="noopener noreferrer">
                 fine-grained personal access token
               </a>{' '}
               with <strong>repo</strong> scope and paste it below.

@@ -6,7 +6,7 @@
 ## Problem
 
 The project share system is broken in three ways:
-1. `findFlorviaAccount` queries `profiles` and `users` tables that don't exist → 404 errors → "user not found" on every invite
+1. `findOpenThornAccount` queries `profiles` and `users` tables that don't exist → 404 errors → "user not found" on every invite
 2. Collaborators never see shared projects in the Dashboard — the query and realtime subscription only watch projects owned by the current user
 3. There is no live sync between collaborators inside a project
 
@@ -79,7 +79,7 @@ RLS additions:
 
 ## Section 2: User Lookup & Invite Flow
 
-### Fix `findFlorviaAccount`
+### Fix `findOpenThornAccount`
 
 Replace the current loop over non-existent tables with a single query:
 
@@ -91,12 +91,12 @@ const { data } = await supabase
   .maybeSingle()
 ```
 
-Returns `{ id, name }` or `null` (→ "No Florvia account found for that email").
+Returns `{ id, name }` or `null` (→ "No OpenThorn account found for that email").
 
 ### Invite flow (simplified)
 
 1. Owner enters collaborator email
-2. `findFlorviaAccount` looks up `profiles`
+2. `findOpenThornAccount` looks up `profiles`
 3. If found: INSERT into `project_collaborators` with `user_id`, `email`, `permission`, `invited_by`
 4. Invited user can access the project immediately — no token needed
 

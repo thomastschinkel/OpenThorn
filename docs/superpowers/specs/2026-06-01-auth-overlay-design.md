@@ -2,11 +2,11 @@
 
 **Date**: 2026-06-01
 **Status**: Approved
-**Project**: Bloom — BYOK AI Website Builder
+**Project**: OpenThorn — BYOK AI Website Builder
 
 ## Overview
 
-Add production-ready authentication to the Bloom landing page using Supabase Auth. "Sign in" and "Start free" header buttons open a full-screen overlay with Sign In / Sign Up tabs. Auth state is managed via a React context; after successful auth the overlay closes and the header reflects the logged-in user.
+Add production-ready authentication to the OpenThorn landing page using Supabase Auth. "Sign in" and "Start free" header buttons open a full-screen overlay with Sign In / Sign Up tabs. Auth state is managed via a React context; after successful auth the overlay closes and the header reflects the logged-in user.
 
 ## Architecture
 

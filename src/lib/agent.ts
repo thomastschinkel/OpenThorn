@@ -715,7 +715,7 @@ class LoopDetector {
 
 // ─── Main Agent Loop ────────────────────────────────────────────────────────
 
-export async function runFlorviaAgent(input: AgentRunInput): Promise<AgentRunResult> {
+export async function runOpenThornAgent(input: AgentRunInput): Promise<AgentRunResult> {
   const sessionId = generateSessionId()
 
   // ── Resolve provider with fallback ────────────────────────────

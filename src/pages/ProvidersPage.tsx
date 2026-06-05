@@ -210,9 +210,9 @@ export default function ProvidersPage() {
 
       <main className={styles.main}>
         <div className={styles.content}>
-          {/* Florvia logo */}
+          {/* OpenThorn logo */}
           <div className={styles.brandRow}>
-            <img src="/assets/logo.png" alt="Florvia" className={styles.brandLogo} />
+            <img src="/assets/logo.png" alt="OpenThorn" className={styles.brandLogo} />
           </div>
 
           {/* Empty state */}
@@ -225,7 +225,7 @@ export default function ProvidersPage() {
               </div>
               <h2 className={styles.emptyTitle}>No providers configured</h2>
               <p className={styles.emptyText}>
-                Connect your LLM providers to start building with Florvia.
+                Connect your LLM providers to start building with OpenThorn.
                 Your API keys are stored securely in your account.
               </p>
               <button className={styles.configureBtn} onClick={() => setPickerOpen(true)} type="button">
