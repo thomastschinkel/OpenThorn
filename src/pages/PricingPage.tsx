@@ -1,6 +1,7 @@
 import { useEffect, useState, type CSSProperties } from 'react'
 import { motion } from 'framer-motion'
 import { fetchModels, getFlagshipModels, type ModelEntry } from '../lib/pricing'
+import { usePageTitle } from '../lib/usePageTitle'
 import styles from './PricingPage.module.css'
 
 type HighlightRole = 'bestValue' | 'highestQuality' | 'cheapestUsable'
@@ -24,6 +25,7 @@ const roleCopy: Record<HighlightRole, { label: string; short: string; detail: st
 }
 
 export default function PricingPage() {
+  usePageTitle('Model Pricing')
   const [models, setModels] = useState<ModelEntry[]>([])
   const [error, setError] = useState<string | null>(null)
 

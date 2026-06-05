@@ -1,7 +1,9 @@
 import { Link } from 'react-router-dom'
+import { usePageTitle } from '../lib/usePageTitle'
 import styles from './NotFoundPage.module.css'
 
 export default function NotFoundPage() {
+  usePageTitle('Page Not Found')
   return (
     <div className={styles.root}>
       <div className={styles.card}>

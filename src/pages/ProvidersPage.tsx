@@ -2,6 +2,7 @@ import { useState, useEffect, useCallback } from 'react'
 import { useAuth } from '../lib/AuthContext'
 import { supabase } from '../lib/supabase'
 import DashboardSidebar from '../components/DashboardSidebar/DashboardSidebar'
+import { usePageTitle } from '../lib/usePageTitle'
 import styles from './ProvidersPage.module.css'
 
 interface ProviderKey {
@@ -43,6 +44,7 @@ const LOGO_MAP: Record<string, string> = {
 }
 
 export default function ProvidersPage() {
+  usePageTitle('API Providers')
   const { user, loading: authLoading } = useAuth()
   const [savedKeys, setSavedKeys] = useState<ProviderKey[]>([])
   const [loading, setLoading] = useState(true)

@@ -172,7 +172,7 @@ export default function PromptInput({
     }
 
     if (!user) {
-      window.dispatchEvent(new CustomEvent('florvia:require-auth'))
+      window.dispatchEvent(new CustomEvent('openthorn:require-auth'))
     } else {
       navigate('/dashboard')
     }

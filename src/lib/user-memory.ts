@@ -29,7 +29,7 @@ export interface UserMemoryEntry {
   updated: string
 }
 
-const STORAGE_PREFIX = 'florvia.memory.'
+const STORAGE_PREFIX = 'openthorn.memory.'
 const MAX_ENTRIES = 40
 
 // In-memory fallback when localStorage is unavailable (tests / SSR / private mode).

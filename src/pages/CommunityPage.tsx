@@ -2,6 +2,7 @@ import { useState, useEffect, useCallback } from 'react'
 import { useNavigate } from 'react-router-dom'
 import { useAuth } from '../lib/AuthContext'
 import { supabase } from '../lib/supabase'
+import { usePageTitle } from '../lib/usePageTitle'
 import type { AgentCodeFile } from '../lib/agent'
 import DashboardSidebar from '../components/DashboardSidebar/DashboardSidebar'
 import ModelSelector, { type SelectedModel } from '../components/ModelSelector/ModelSelector'
@@ -48,6 +49,7 @@ function postAccentColor(title: string): string {
 }
 
 export default function CommunityPage() {
+  usePageTitle('Community')
   const { user, loading } = useAuth()
   const navigate = useNavigate()
 

@@ -3,6 +3,7 @@ import { useNavigate } from 'react-router-dom'
 import { useAuth } from '../lib/AuthContext'
 import { supabase } from '../lib/supabase'
 import { buildPreview } from '../lib/preview-bundle'
+import { usePageTitle } from '../lib/usePageTitle'
 import { TEMPLATES, type Template } from '../lib/templates'
 import DashboardSidebar from '../components/DashboardSidebar/DashboardSidebar'
 import ModelSelector, { type SelectedModel } from '../components/ModelSelector/ModelSelector'
@@ -23,6 +24,7 @@ const CATEGORY_COLORS: Record<string, { bg: string; color: string; border: strin
 }
 
 export default function TemplatesPage() {
+  usePageTitle('Templates')
   const { user, loading } = useAuth()
   const navigate = useNavigate()
   const [htmlMap, setHtmlMap] = useState<Record<string, string>>({})

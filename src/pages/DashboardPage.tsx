@@ -2,6 +2,7 @@ import { useState, useEffect, useCallback, useRef } from 'react'
 import { useNavigate, useLocation } from 'react-router-dom'
 import { useAuth } from '../lib/AuthContext'
 import { supabase } from '../lib/supabase'
+import { usePageTitle } from '../lib/usePageTitle'
 import type { AgentThinkingLevel } from '../lib/agent-thinking'
 import DashboardSidebar, { type ProjectFilter, type SidebarNotification } from '../components/DashboardSidebar/DashboardSidebar'
 import PromptInput from '../components/PromptInput/PromptInput'
@@ -67,6 +68,7 @@ const examplePrompts = [
 const INITIAL_VISIBLE = 4
 
 export default function DashboardPage() {
+  usePageTitle('Dashboard')
   const { user, loading: authLoading } = useAuth()
   const navigate = useNavigate()
   const location = useLocation()
