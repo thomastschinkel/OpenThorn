@@ -585,7 +585,7 @@ function normalizeAgentSuggestions(items: string[]): string[] {
     normalized.push(value)
   }
 
-  return normalized.slice(0, 4)
+  return normalized.slice(0, 2)
 }
 
 function formatToolLabel(name: string, input?: Record<string, unknown>): string {
@@ -707,7 +707,8 @@ export default function ProjectBuilderPage() {
   const { projectId } = useParams()
   const location = useLocation()
   const state = (location.state ?? {}) as ProjectRouteState
-  const hasInitialPrompt = Boolean(state.prompt)
+  // Capture once at mount — immune to location.state being cleared on reload
+  const [hasInitialPrompt] = useState(Boolean(state.prompt))
   const prompt = state.prompt || ''
   const initialThinkingLevel = normalizeThinkingLevel(state.thinkingLevel)
   const [title, setTitle] = useState('')
@@ -784,6 +785,9 @@ export default function ProjectBuilderPage() {
   const promptRef = useRef(prompt)
   const selectedModelRef = useRef(state.selectedModel)
   const thinkingLevelRef = useRef(initialThinkingLevel)
+  const isTemplateProjectRef = useRef(Boolean(state.isTemplate))
+  const templateNameRef = useRef(state.templateName ?? '')
+  const resumePromptRef = useRef<string | null>(null)
 
   const activeCodeFile = projectFiles.find((file) => file.path === activeFile) ?? projectFiles[0] ?? EMPTY_CODE_FILE
   const userInitial = user?.user_metadata?.full_name?.charAt(0).toUpperCase() ?? user?.email?.charAt(0).toUpperCase() ?? 'U'
@@ -812,6 +816,13 @@ export default function ProjectBuilderPage() {
       agentAbortRef.current?.abort()
     }
   }, [])
+
+  // Clear route state from history so page reloads don't re-trigger the agent.
+  // The values we need (prompt, model, templateFiles, isTemplate) are already frozen
+  // in useState/useRef above, so this is safe to do immediately on mount.
+  useEffect(() => {
+    navigate(location.pathname, { replace: true, state: null })
+  }, []) // eslint-disable-line react-hooks/exhaustive-deps
 
   // Load template files immediately on mount so the preview renders before the agent runs
   useEffect(() => {
@@ -848,7 +859,7 @@ export default function ProjectBuilderPage() {
       // Verify ownership before upserting to prevent IDOR
       const { data: existing } = await supabase
         .from('projects')
-        .select('user_id, title, files, chat_history, netlify_site_id')
+        .select('user_id, title, files, chat_history, netlify_site_id, generating, generating_by')
         .eq('id', projectId)
         .single()
 
@@ -899,8 +910,26 @@ export default function ProjectBuilderPage() {
       }
 
       // Load persisted chat history if it exists
-      if (existing && Array.isArray(existing.chat_history) && (existing.chat_history as ChatMessage[]).length > 0) {
-        const savedChat = existing.chat_history as ChatMessage[]
+      const savedChat = (existing && Array.isArray(existing.chat_history) && (existing.chat_history as ChatMessage[]).length > 0)
+        ? existing.chat_history as ChatMessage[]
+        : null
+
+      // Detect generation interrupted by a page reload
+      const wasInterrupted = Boolean(existing?.generating && existing?.generating_by === user.id)
+      if (wasInterrupted && savedChat) {
+        const lastUserMsg = [...savedChat].reverse().find(m => m.role === 'user')
+        if (lastUserMsg) {
+          // Strip the trailing incomplete assistant message so the re-run adds a fresh one
+          const cleaned = savedChat[savedChat.length - 1]?.role === 'assistant'
+            ? savedChat.slice(0, -1)
+            : savedChat
+          setMessages(cleaned)
+          resumePromptRef.current = lastUserMsg.content as string
+          initialAgentStartedRef.current = true // block auto-start from racing with resume
+          // Clear the flag so a second reload doesn't attempt resume again
+          void supabase.from('projects').update({ generating: false, generating_by: null }).eq('id', projectId)
+        }
+      } else if (savedChat) {
         setMessages(savedChat)
       }
       setChatHistoryLoaded(true)
@@ -912,7 +941,7 @@ export default function ProjectBuilderPage() {
 
       setNetlifySiteId(typeof existing?.netlify_site_id === 'string' ? existing.netlify_site_id : null)
 
-      // Upsert project metadata (don't overwrite files or title)
+      // Upsert project metadata (don't overwrite files or title on updates)
       const { error } = await supabase
         .from('projects')
         .upsert({
@@ -920,6 +949,7 @@ export default function ProjectBuilderPage() {
           user_id: user.id,
           preview_url: null,
           created_at: new Date().toISOString(),
+          ...(!existing && { title: 'Untitled project' }),
         }, { onConflict: 'id' })
 
       if (error) {
@@ -1468,7 +1498,7 @@ export default function ProjectBuilderPage() {
 
     const runId = `${Date.now()}-${Math.random().toString(36).slice(2)}`
     const assistantId = `assistant-${runId}`
-    const chosenModel = selectedModel ?? state.selectedModel ?? null
+    const chosenModel = selectedModel ?? activeModel
     const chosenThinkingLevel = thinkingLevel
     setActiveModel(chosenModel)
     setActiveThinkingLevel(chosenThinkingLevel)
@@ -1476,6 +1506,7 @@ export default function ProjectBuilderPage() {
     let eventCounter = 0
 
     setAgentSuggestions([])
+    const hadTitle = Boolean(title)
 
     setMessages((current) => {
       const withUser = options.reuseInitialUser
@@ -1535,9 +1566,9 @@ export default function ProjectBuilderPage() {
     }
 
     try {
-      const isFirstTemplateMessage = state.isTemplate && !messages.some(m => m.role === 'assistant')
+      const isFirstTemplateMessage = isTemplateProjectRef.current && !messages.some(m => m.role === 'assistant')
       const effectivePrompt = isFirstTemplateMessage
-        ? `<system-reminder>\nTEMPLATE MODE: This project was started from the "${state.templateName ?? 'template'}" template. The existing files are the template foundation — build upon them. Preserve the color system, component structure, and design language. Do not delete template files unless the user explicitly requests it.\n</system-reminder>\n\n${request}`
+        ? `<system-reminder>\nTEMPLATE MODE: This project was started from the "${templateNameRef.current || 'template'}" template. The existing files are the template foundation — build upon them. Preserve the color system, component structure, and design language. Do not delete template files unless the user explicitly requests it.\n</system-reminder>\n\n${request}`
         : request
 
       const result = await runFlorviaAgent({
@@ -1561,8 +1592,8 @@ export default function ProjectBuilderPage() {
             }
           }
 
-          // Title set by agent early in the run
-          if (event.type === 'title' && event.text) {
+          // Title set by agent early in the run (only on first creation)
+          if (event.type === 'title' && event.text && !hadTitle) {
             setTitle(event.text)
             pushStatus(`Project title set to "${event.text}".`, 'success')
             if (user && projectId) {
@@ -1617,7 +1648,7 @@ export default function ProjectBuilderPage() {
                 if (doneData.nextSuggestions) {
                   setAgentSuggestions(normalizeAgentSuggestions(doneData.nextSuggestions))
                 }
-                if (doneData.title && typeof doneData.title === 'string' && doneData.title.trim()) {
+                if (!hadTitle && doneData.title && typeof doneData.title === 'string' && doneData.title.trim()) {
                   setTitle(doneData.title.trim())
                   // Also save the title to Supabase
                   if (user && projectId) {
@@ -1698,6 +1729,18 @@ export default function ProjectBuilderPage() {
   useEffect(() => {
     handleAgentRequestRef.current = handleAgentRequest
   }, [handleAgentRequest])
+
+  // Resume generation that was interrupted by a page reload
+  useEffect(() => {
+    const pending = resumePromptRef.current
+    if (!pending || !filesLoaded || !chatHistoryLoaded || !user || isViewOnly) return
+    resumePromptRef.current = null
+    const timer = setTimeout(() => {
+      void handleAgentRequestRef.current?.(pending, activeModel, activeThinkingLevel, { reuseInitialUser: true })
+    }, 100)
+    return () => clearTimeout(timer)
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [filesLoaded, chatHistoryLoaded, user, isViewOnly])
 
   // When a remote collaborator's generation ends, fire our queued prompt if any
   useEffect(() => {
@@ -2309,7 +2352,7 @@ export default function ProjectBuilderPage() {
             ))}
           </div>
 
-          {firstRunComplete && agentSuggestions.length > 0 && (
+          {firstRunComplete && !agentRunning && agentSuggestions.length > 0 && (
             <div className={styles.suggestionBlock}>
               {agentSuggestions.map((suggestion) => (
                 <button
