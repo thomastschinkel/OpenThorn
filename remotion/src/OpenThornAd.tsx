@@ -10,6 +10,19 @@ import {
   useCurrentFrame,
   useVideoConfig,
 } from "remotion";
+import { loadFont as loadFraunces } from "@remotion/google-fonts/Fraunces";
+import { loadFont as loadRoboto } from "@remotion/google-fonts/Roboto";
+
+const { fontFamily: fraunces } = loadFraunces("normal", {
+  weights: ["300"],
+  subsets: ["latin"],
+});
+const { fontFamily: roboto } = loadRoboto("normal", {
+  weights: ["400"],
+  subsets: ["latin"],
+});
+// roboto is used in FinalScene (Task 6) — referenced here to ensure module-level font load
+void roboto;
 
 const palette = {
   bg: "#09070B",
@@ -174,8 +187,57 @@ function LogoRevealScene() {
   );
 }
 
-function StatementScene(_props: { text: string; accent: string; startFrame: number }) {
-  return null;
+function StatementScene({
+  text,
+  accent,
+  startFrame,
+}: {
+  text: string;
+  accent: string;
+  startFrame: number;
+}) {
+  const frame = useCurrentFrame();
+  const local = frame - startFrame;
+
+  const textIn = p(local, 0, 18);
+  const underlineIn = p(local, 14, 18);
+
+  return (
+    <AbsoluteFill style={{ alignItems: "center", justifyContent: "center" }}>
+      <div style={{ position: "relative", display: "inline-block" }}>
+        {/* Statement text */}
+        <div
+          style={{
+            fontFamily: fraunces,
+            fontSize: 180,
+            fontWeight: 300,
+            color: palette.text,
+            lineHeight: 1,
+            letterSpacing: "-0.02em",
+            opacity: textIn,
+            transform: `translateY(${(1 - textIn) * 24}px)`,
+            userSelect: "none",
+            whiteSpace: "nowrap",
+          }}
+        >
+          {text}
+        </div>
+        {/* Underline draws left-to-right */}
+        <div
+          style={{
+            position: "absolute",
+            bottom: -14,
+            left: 0,
+            height: 3,
+            width: `${underlineIn * 100}%`,
+            background: accent,
+            borderRadius: 99,
+            boxShadow: `0 0 20px ${accent}`,
+          }}
+        />
+      </div>
+    </AbsoluteFill>
+  );
 }
 
 function ProviderScene(_props: { startFrame: number }) {
