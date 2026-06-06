@@ -119,8 +119,11 @@ function LogoRevealScene() {
     extrapolateRight: "clamp",
   });
 
+  const nameIn = p(frame, 14, 22);
+  const tagIn = p(frame, 28, 20);
+
   return (
-    <AbsoluteFill style={{ alignItems: "center", justifyContent: "center" }}>
+    <AbsoluteFill style={{ alignItems: "center", justifyContent: "center", flexDirection: "column" }}>
       {/* Radial purple glow behind logo */}
       <div
         style={{
@@ -144,6 +147,41 @@ function LogoRevealScene() {
           position: "relative",
         }}
       />
+      {/* "Meet OpenThorn." */}
+      <div
+        style={{
+          fontFamily: fraunces,
+          fontSize: 96,
+          fontWeight: 300,
+          color: palette.text,
+          letterSpacing: "-0.02em",
+          marginTop: 36,
+          opacity: nameIn,
+          transform: `translateY(${(1 - nameIn) * 20}px)`,
+          userSelect: "none",
+          position: "relative",
+        }}
+      >
+        Meet OpenThorn.
+      </div>
+      {/* "AI Website Builder" */}
+      <div
+        style={{
+          fontFamily: roboto,
+          fontSize: 28,
+          fontWeight: 400,
+          color: palette.muted,
+          marginTop: 16,
+          letterSpacing: "0.08em",
+          textTransform: "uppercase",
+          opacity: tagIn,
+          transform: `translateY(${(1 - tagIn) * 12}px)`,
+          userSelect: "none",
+          position: "relative",
+        }}
+      >
+        AI Website Builder
+      </div>
     </AbsoluteFill>
   );
 }
