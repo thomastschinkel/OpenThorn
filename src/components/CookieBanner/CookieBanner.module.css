@@ -80,3 +80,21 @@
   background: rgba(157, 137, 251, 0.25);
   color: #b8a9fd;
 }
+
+.dismiss {
+  padding: 8px 10px;
+  border-radius: 8px;
+  font-size: 0.75rem;
+  font-weight: 500;
+  cursor: pointer;
+  transition: all 0.15s ease;
+  font-family: inherit;
+  background: transparent;
+  color: #5a5a7a;
+  border: 1px solid transparent;
+}
+
+.dismiss:hover {
+  color: #9090b8;
+  background: rgba(255, 255, 255, 0.05);
+}

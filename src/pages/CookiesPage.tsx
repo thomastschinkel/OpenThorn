@@ -57,10 +57,9 @@ export default function CookiesPage() {
       <p>You can change your analytics consent at any time:</p>
       <ul>
         <li>
-          <strong>Re-open the cookie banner</strong> — clear the{' '}
-          <code>openthorn-cookie-consent</code> key from your browser's localStorage
-          (DevTools → Application → Local Storage) and reload the page. The banner will
-          reappear.
+          <strong>Cookie Preferences link</strong> — click <em>Cookie Preferences</em> in
+          the footer of any page. The consent banner will reappear and you can change your
+          choice.
         </li>
         <li>
           <strong>Clear all site data</strong> — in your browser settings, clear site data
@@ -75,7 +74,7 @@ export default function CookiesPage() {
       <h2>6. Contact</h2>
       <p>
         For questions about our use of cookies or local storage, contact us at{' '}
-        <strong>[CONTACT_EMAIL]</strong>.
+        <strong><a href="mailto:mys.thomas00@gmail.com">mys.thomas00@gmail.com</a></strong>.
       </p>
     </LegalPage>
   )

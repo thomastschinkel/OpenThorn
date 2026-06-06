@@ -7,9 +7,10 @@ export default function PrivacyPage() {
     <LegalPage title="Privacy Policy" lastUpdated="June 6, 2025">
       <h2>1. Who We Are</h2>
       <p>
-        OpenThorn is operated by <strong>[CONTROLLER_NAME]</strong>, located at{' '}
-        <strong>[CONTROLLER_ADDRESS]</strong>, Italy (the "Data Controller"). For
-        privacy-related enquiries, contact us at <strong>[CONTACT_EMAIL]</strong>.
+        OpenThorn is operated by <strong>Thomas T.</strong>, located in{' '}
+        <strong>Italy</strong> (the "Data Controller"). For privacy-related enquiries,
+        contact us at{' '}
+        <strong><a href="mailto:mys.thomas00@gmail.com">mys.thomas00@gmail.com</a></strong>.
       </p>
 
       <h2>2. What Data We Collect</h2>
@@ -121,7 +122,7 @@ export default function PrivacyPage() {
         </li>
       </ul>
       <p>
-        To exercise any of these rights, email us at <strong>[CONTACT_EMAIL]</strong>. We
+        To exercise any of these rights, email us at <strong><a href="mailto:mys.thomas00@gmail.com">mys.thomas00@gmail.com</a></strong>. We
         will respond within 30 days.
       </p>
 
@@ -150,7 +151,7 @@ export default function PrivacyPage() {
       <h2>10. Contact</h2>
       <p>
         For any questions about this privacy policy or your personal data, contact us at{' '}
-        <strong>[CONTACT_EMAIL]</strong>.
+        <strong><a href="mailto:mys.thomas00@gmail.com">mys.thomas00@gmail.com</a></strong>.
       </p>
     </LegalPage>
   )

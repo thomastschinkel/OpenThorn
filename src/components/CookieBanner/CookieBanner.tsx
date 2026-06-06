@@ -15,6 +15,12 @@ export default function CookieBanner() {
     } else if (!stored) {
       setVisible(true)
     }
+
+    function handleOpen() {
+      setVisible(true)
+    }
+    document.addEventListener('open-cookie-settings', handleOpen)
+    return () => document.removeEventListener('open-cookie-settings', handleOpen)
   }, [])
 
   function accept() {
@@ -40,6 +46,7 @@ export default function CookieBanner() {
       <div className={styles.actions}>
         <button onClick={reject} className={styles.reject}>Reject</button>
         <button onClick={accept} className={styles.accept}>Accept</button>
+        <button onClick={reject} className={styles.dismiss} aria-label="Close without consenting">✕</button>
       </div>
     </div>
   )
