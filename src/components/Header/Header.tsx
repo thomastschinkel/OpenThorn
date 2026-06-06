@@ -38,8 +38,8 @@ const useCasesItems: DropdownItem[] = [
 ]
 
 const resourcesItems: DropdownItem[] = [
-  { label: 'Blog', description: 'Changelog, product updates, and behind-the-scenes', href: '#' },
-  { label: 'Templates', description: 'Jump-start your next project', href: '#' },
+  { label: 'Blog', description: 'Changelog, product updates, and behind-the-scenes', href: '/blog' },
+  { label: 'Templates', description: 'Jump-start your next project', href: '/templates' },
   { label: 'Guides', description: 'Step-by-step walkthroughs for every skill level', href: '#' },
   { label: 'Docs & FAQs', description: 'How OpenThorn works, answered clearly', href: '#' },
 ]
@@ -59,12 +59,19 @@ function DropdownMenu({ items, isOpen, cols = 2 }: { items: DropdownItem[]; isOp
         <div className={styles.dropdownInnerCols} style={{ gridTemplateColumns: `repeat(${columns.length}, auto)` }}>
           {columns.map((col, ci) => (
             <div key={ci}>
-              {col.map((item) => (
-                <a key={item.label} href={item.href} className={styles.dropdownItem}>
-                  <div className={styles.dropdownItemTitle}>{item.label}</div>
-                  <div className={styles.dropdownItemDesc}>{item.description}</div>
-                </a>
-              ))}
+              {col.map((item) =>
+                item.href.startsWith('/') ? (
+                  <Link key={item.label} to={item.href} className={styles.dropdownItem}>
+                    <div className={styles.dropdownItemTitle}>{item.label}</div>
+                    <div className={styles.dropdownItemDesc}>{item.description}</div>
+                  </Link>
+                ) : (
+                  <a key={item.label} href={item.href} className={styles.dropdownItem}>
+                    <div className={styles.dropdownItemTitle}>{item.label}</div>
+                    <div className={styles.dropdownItemDesc}>{item.description}</div>
+                  </a>
+                )
+              )}
             </div>
           ))}
         </div>
@@ -166,7 +173,7 @@ export default function Header({ onSignIn, onSignUp }: HeaderProps) {
           <span className={styles.divider} />
 
           {/* GitHub */}
-          <a href="https://github.com" className={styles.navItem} target="_blank" rel="noopener noreferrer">
+          <a href="https://github.com/thomastschinkel/OpenThorn" className={styles.navItem} target="_blank" rel="noopener noreferrer">
             GitHub
           </a>
 

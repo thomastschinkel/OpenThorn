@@ -14,6 +14,8 @@ import ProjectBuilderPage from './pages/ProjectBuilderPage'
 import ProvidersPage from './pages/ProvidersPage'
 import TemplatesPage from './pages/TemplatesPage'
 import CommunityPage from './pages/CommunityPage'
+import BlogPage from './pages/BlogPage'
+import BlogPostPage from './pages/BlogPostPage'
 import NotFoundPage from './pages/NotFoundPage'
 import AuthModal from './components/AuthModal/AuthModal'
 import { useAnalytics } from './lib/useAnalytics'
@@ -71,6 +73,8 @@ export default function App() {
         <Routes>
           <Route path="/" element={<Layout><HomePage /></Layout>} />
           <Route path="/pricing" element={<Layout><PricingPage /></Layout>} />
+          <Route path="/blog" element={<Layout><BlogPage /></Layout>} />
+          <Route path="/blog/:slug" element={<Layout><BlogPostPage /></Layout>} />
           <Route path="/dashboard" element={<DashboardPage />} />
           <Route path="/projects/:projectId" element={<ProjectBuilderPage />} />
           <Route path="/templates" element={<TemplatesPage />} />
