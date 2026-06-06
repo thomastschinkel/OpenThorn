@@ -108,7 +108,42 @@ export default function TermsPage() {
         your own risk.
       </p>
 
-      <h2>10. Limitation of Liability</h2>
+      <h2>10. EU Artificial Intelligence Act</h2>
+      <p>
+        OpenThorn is an AI-powered service subject to Regulation (EU) 2024/1689 (the EU AI
+        Act). The following disclosures apply:
+      </p>
+      <ul>
+        <li>
+          <strong>You are interacting with AI.</strong> The service uses large language
+          models to generate code and website content. All output is AI-generated.
+        </li>
+        <li>
+          <strong>Bring Your Own Keys.</strong> OpenThorn does not operate AI models.
+          You connect your own API keys from third-party AI providers (e.g. OpenAI,
+          Anthropic, Google). Those providers are responsible for their models' compliance
+          with applicable AI regulations.
+        </li>
+        <li>
+          <strong>Minimal-risk use case.</strong> OpenThorn is used exclusively for code
+          and website generation. It is not used for any high-risk purpose as defined in
+          Annex III of the EU AI Act (including but not limited to biometric
+          identification, employment decisions, credit scoring, or law enforcement).
+        </li>
+        <li>
+          <strong>Human review recommended.</strong> AI-generated code may contain errors,
+          security vulnerabilities, or inaccuracies. You are responsible for reviewing,
+          testing, and validating all output before deploying it in any production
+          environment.
+        </li>
+        <li>
+          <strong>No prohibited practices.</strong> OpenThorn does not use AI to
+          manipulate users subliminally, exploit vulnerabilities, perform social scoring,
+          or engage in any practice prohibited under Art. 5 of the EU AI Act.
+        </li>
+      </ul>
+
+      <h2>11. Limitation of Liability</h2>
       <p>
         To the maximum extent permitted by applicable law, OpenThorn and its operators
         shall not be liable for any indirect, incidental, special, consequential, or
@@ -121,14 +156,14 @@ export default function TermsPage() {
         personal injury caused by our negligence.
       </p>
 
-      <h2>11. Termination</h2>
+      <h2>12. Termination</h2>
       <p>
         We may suspend or terminate your account if you breach these Terms. You may delete
         your account at any time by contacting us at <strong><a href="mailto:mys.thomas00@gmail.com">mys.thomas00@gmail.com</a></strong>.
         Termination does not affect any accrued rights or obligations.
       </p>
 
-      <h2>12. Changes to Terms</h2>
+      <h2>13. Changes to Terms</h2>
       <p>
         We may update these Terms at any time by posting the revised version on this page
         with an updated date. Continued use of the service after the update constitutes
@@ -136,7 +171,7 @@ export default function TermsPage() {
         account.
       </p>
 
-      <h2>13. Governing Law</h2>
+      <h2>14. Governing Law</h2>
       <p>
         These Terms are governed by Italian law. For users who are consumers under the
         Italian Consumer Code (D.Lgs. 206/2005), the mandatory consumer protection
@@ -145,7 +180,7 @@ export default function TermsPage() {
         except where mandatory consumer law provides otherwise.
       </p>
 
-      <h2>14. Contact</h2>
+      <h2>15. Contact</h2>
       <p>
         For any questions about these Terms, contact us at <strong><a href="mailto:mys.thomas00@gmail.com">mys.thomas00@gmail.com</a></strong>.
       </p>
