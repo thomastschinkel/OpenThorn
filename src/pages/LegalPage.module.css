@@ -1,0 +1,82 @@
+.page {
+  min-height: calc(100vh - 64px);
+  padding: 64px 24px 120px;
+}
+
+.container {
+  max-width: 720px;
+  margin: 0 auto;
+}
+
+.header {
+  margin-bottom: 48px;
+  padding-bottom: 32px;
+  border-bottom: 1px solid rgba(148, 137, 251, 0.15);
+}
+
+.title {
+  font-family: 'Fraunces', serif;
+  font-size: clamp(1.8rem, 4vw, 2.75rem);
+  font-weight: 700;
+  color: #ededf5;
+  line-height: 1.2;
+  margin: 0 0 12px;
+}
+
+.updated {
+  font-size: 0.875rem;
+  color: #7474a0;
+  margin: 0;
+}
+
+.content {
+  color: #c8c8e0;
+  font-size: 1rem;
+  line-height: 1.75;
+}
+
+.content h2 {
+  font-family: 'Fraunces', serif;
+  font-size: 1.35rem;
+  font-weight: 600;
+  color: #ededf5;
+  margin: 2.25rem 0 0.875rem;
+  line-height: 1.3;
+}
+
+.content p {
+  margin: 0 0 1.1rem;
+}
+
+.content ul,
+.content ol {
+  margin: 0 0 1.1rem 1.5rem;
+  padding: 0;
+}
+
+.content li {
+  margin-bottom: 0.35rem;
+}
+
+.content a {
+  color: #9d89fb;
+  text-underline-offset: 3px;
+}
+
+.content a:hover {
+  color: #b8a9fd;
+}
+
+.content strong {
+  color: #ededf5;
+  font-weight: 600;
+}
+
+.content code {
+  font-family: 'JetBrains Mono', 'Fira Code', monospace;
+  font-size: 0.875em;
+  color: #9d89fb;
+  background: rgba(157, 137, 251, 0.1);
+  padding: 2px 6px;
+  border-radius: 4px;
+}
