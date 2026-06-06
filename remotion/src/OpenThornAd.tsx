@@ -21,8 +21,6 @@ const { fontFamily: roboto } = loadRoboto("normal", {
   weights: ["400"],
   subsets: ["latin"],
 });
-// roboto is used in FinalScene (Task 6) — referenced here to ensure module-level font load
-void roboto;
 
 const palette = {
   bg: "#09070B",
@@ -328,6 +326,128 @@ function ProviderScene({ startFrame }: { startFrame: number }) {
   );
 }
 
-function FinalScene(_props: { startFrame: number }) {
-  return null;
+function FinalScene({ startFrame }: { startFrame: number }) {
+  const frame = useCurrentFrame();
+  const { fps } = useVideoConfig();
+  const local = frame - startFrame;
+
+  const logoScale = spring({
+    frame: local,
+    fps,
+    config: { damping: 18, stiffness: 100, mass: 0.9 },
+  });
+
+  const nameIn = p(local, 18, 22);
+  const taglineIn = p(local, 36, 22);
+  const urlIn = p(local, 54, 22);
+
+  const glow = interpolate(local, [0, 60, 100], [0, 0.6, 0.42], {
+    extrapolateLeft: "clamp",
+    extrapolateRight: "clamp",
+  });
+
+  const fadeToBlack = interpolate(local, [100, 120], [0, 1], {
+    extrapolateLeft: "clamp",
+    extrapolateRight: "clamp",
+  });
+
+  return (
+    <AbsoluteFill
+      style={{ alignItems: "center", justifyContent: "center", flexDirection: "column" }}
+    >
+      {/* Rotating tri-color glow */}
+      <div
+        style={{
+          position: "absolute",
+          width: 900,
+          height: 900,
+          borderRadius: "50%",
+          opacity: glow,
+          background: `conic-gradient(from 0deg, ${palette.purple}44, ${palette.teal}33, ${palette.amber}33, ${palette.purple}44)`,
+          filter: "blur(90px)",
+          transform: `rotate(${local * 0.4}deg)`,
+        }}
+      />
+
+      {/* Logo mark */}
+      <Img
+        src={staticFile("logo.png")}
+        style={{
+          width: 128,
+          height: 128,
+          objectFit: "contain",
+          transform: `scale(${0.6 + logoScale * 0.4})`,
+          position: "relative",
+          zIndex: 1,
+        }}
+      />
+
+      {/* Wordmark */}
+      <div
+        style={{
+          fontFamily: fraunces,
+          fontSize: 72,
+          fontWeight: 300,
+          color: palette.text,
+          letterSpacing: "-0.02em",
+          marginTop: 32,
+          opacity: nameIn,
+          transform: `translateY(${(1 - nameIn) * 20}px)`,
+          position: "relative",
+          zIndex: 1,
+          userSelect: "none",
+        }}
+      >
+        OpenThorn
+      </div>
+
+      {/* Tagline */}
+      <div
+        style={{
+          fontFamily: roboto,
+          fontSize: 28,
+          fontWeight: 400,
+          color: palette.muted,
+          marginTop: 20,
+          opacity: taglineIn,
+          transform: `translateY(${(1 - taglineIn) * 14}px)`,
+          position: "relative",
+          zIndex: 1,
+          userSelect: "none",
+        }}
+      >
+        Build for free.
+      </div>
+
+      {/* URL */}
+      <div
+        style={{
+          fontFamily: roboto,
+          fontSize: 24,
+          fontWeight: 400,
+          color: palette.purple,
+          marginTop: 12,
+          opacity: urlIn,
+          transform: `translateY(${(1 - urlIn) * 12}px)`,
+          position: "relative",
+          zIndex: 1,
+          userSelect: "none",
+        }}
+      >
+        openthorn.app
+      </div>
+
+      {/* Black fade overlay */}
+      <div
+        style={{
+          position: "absolute",
+          inset: 0,
+          background: "#000",
+          opacity: fadeToBlack,
+          pointerEvents: "none",
+          zIndex: 2,
+        }}
+      />
+    </AbsoluteFill>
+  );
 }
