@@ -21,9 +21,7 @@ import BlogPage from './pages/BlogPage'
 import BlogPostPage from './pages/BlogPostPage'
 import NotFoundPage from './pages/NotFoundPage'
 import AuthModal from './components/AuthModal/AuthModal'
-import CookieBanner from './components/CookieBanner/CookieBanner'
 import ProtectedRoute from './components/ProtectedRoute/ProtectedRoute'
-import { useAnalytics } from './lib/useAnalytics'
 import styles from './App.module.css'
 
 function HomePage() {
@@ -60,7 +58,6 @@ function Layout({ children }: { children: React.ReactNode }) {
       <Header onSignIn={openSignIn} onSignUp={openSignUp} />
       <main>{children}</main>
       <Footer />
-      <CookieBanner />
       <AuthModal
         isOpen={authModalOpen}
         onClose={() => setAuthModalOpen(false)}
@@ -71,8 +68,6 @@ function Layout({ children }: { children: React.ReactNode }) {
 }
 
 export default function App() {
-  useAnalytics()
-
   return (
     <ErrorBoundary>
       <div className={styles.app}>

@@ -33,10 +33,6 @@ const legalLinks = [
   { label: 'Cookie Policy', to: '/cookies' },
 ]
 
-function openCookieSettings() {
-  document.dispatchEvent(new CustomEvent('open-cookie-settings'))
-}
-
 export default function Footer() {
   return (
     <footer className={styles.footer}>
@@ -91,9 +87,6 @@ export default function Footer() {
               {legalLinks.map((l) => (
                 <Link key={l.label} to={l.to}>{l.label}</Link>
               ))}
-              <button onClick={openCookieSettings} className={styles.cookiePrefsBtn}>
-                Cookie Preferences
-              </button>
             </div>
           </div>
         </div>
