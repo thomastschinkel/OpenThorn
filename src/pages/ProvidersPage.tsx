@@ -31,6 +31,16 @@ const PROVIDERS: ProviderDef[] = [
   { id: 'mistral', name: 'Mistral AI', baseUrl: 'https://api.mistral.ai/v1', color: '#F59E0B' },
   { id: 'groq', name: 'Groq', baseUrl: 'https://api.groq.com/openai/v1', color: '#F97316' },
   { id: 'together', name: 'Together AI', baseUrl: 'https://api.together.xyz/v1', color: '#6366F1' },
+  { id: 'xai', name: 'xAI (Grok)', baseUrl: 'https://api.x.ai/v1', color: '#E5E7EB' },
+  { id: 'cohere', name: 'Cohere', baseUrl: 'https://api.cohere.com/v1', color: '#39D353' },
+  { id: 'perplexity', name: 'Perplexity AI', baseUrl: 'https://api.perplexity.ai', color: '#20B2AA' },
+  { id: 'openrouter', name: 'OpenRouter', baseUrl: 'https://openrouter.ai/api/v1', color: '#6B46C1' },
+  { id: 'ollama', name: 'Ollama', baseUrl: 'http://localhost:11434/v1', color: '#374151' },
+  { id: 'fireworks', name: 'Fireworks AI', baseUrl: 'https://api.fireworks.ai/inference/v1', color: '#EF4444' },
+  { id: 'cerebras', name: 'Cerebras', baseUrl: 'https://api.cerebras.ai/v1', color: '#F59E0B' },
+  { id: 'azure', name: 'Azure OpenAI', baseUrl: 'https://YOUR_RESOURCE.openai.azure.com/openai/deployments', color: '#0078D4' },
+  { id: 'bedrock', name: 'Amazon Bedrock', baseUrl: 'https://bedrock-runtime.us-east-1.amazonaws.com', color: '#FF9900' },
+  { id: 'nvidia', name: 'Nvidia NIM', baseUrl: 'https://integrate.api.nvidia.com/v1', color: '#76B900' },
 ]
 
 const LOGO_MAP: Record<string, string> = {
@@ -41,6 +51,16 @@ const LOGO_MAP: Record<string, string> = {
   mistral: '/assets/mistralai.png',
   groq: '/assets/groq.png',
   together: '/assets/togetherai.png',
+  xai: '/assets/xai.png',
+  cohere: '/assets/cohere.png',
+  perplexity: '/assets/perplexity.png',
+  openrouter: '/assets/openrouter.png',
+  ollama: '/assets/ollama.png',
+  fireworks: '/assets/fireworks.png',
+  cerebras: '/assets/celebras.png',
+  azure: '/assets/azure.png',
+  bedrock: '/assets/bedrock.png',
+  nvidia: '/assets/nvidia.png',
 }
 
 export default function ProvidersPage() {
@@ -201,6 +221,18 @@ export default function ProvidersPage() {
     setShowKey(false)
   }
 
+  const ProviderLogo = ({ id, name, color, className }: { id: string; name: string; color: string; className: string }) => {
+    const [failed, setFailed] = useState(false)
+    if (!LOGO_MAP[id] || failed) {
+      return (
+        <span className={className} style={{ background: color + '22', color, display: 'flex', alignItems: 'center', justifyContent: 'center', fontWeight: 700, fontSize: '1rem', borderRadius: 8 }}>
+          {name.charAt(0)}
+        </span>
+      )
+    }
+    return <img src={LOGO_MAP[id]} alt={name} className={className} onError={() => setFailed(true)} />
+  }
+
   if (authLoading) return null
 
   const enabledKeys = savedKeys.filter((k) => k.enabled)
@@ -263,7 +295,7 @@ export default function ProvidersPage() {
 
               <div className={styles.editorHeader}>
                 {editingDef && !formCustom ? (
-                  <img src={LOGO_MAP[editingDef.id]} alt={editingDef.name} className={styles.editorLogoImg} />
+                  <ProviderLogo id={editingDef.id} name={editingDef.name} color={editingDef.color} className={styles.editorLogoImg} />
                 ) : (
                   <div className={styles.editorLogoPlaceholder}>
                     <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8">
@@ -380,7 +412,7 @@ export default function ProvidersPage() {
                     <div key={key.id} className={styles.enabledCard}>
                       <div className={styles.enabledLeft}>
                         <div className={styles.enabledLogo}>
-                          {def ? <img src={LOGO_MAP[def.id]} alt={def.name} className={styles.enabledLogoImg} /> : (
+                          {def ? <ProviderLogo id={def.id} name={def.name} color={def.color} className={styles.enabledLogoImg} /> : (
                             <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8"><rect x="2" y="2" width="20" height="20" rx="4"/></svg>
                           )}
                         </div>
@@ -425,6 +457,12 @@ export default function ProvidersPage() {
               </button>
             </div>
             <div className={styles.pickerGrid}>
+              <button className={`${styles.pickerCard} ${styles.pickerCardCustom}`} onClick={openCustomEditor} type="button">
+                <div className={styles.pickerLogo} style={{ background: 'rgba(255,255,255,0.06)' }}>
+                  <svg width="28" height="28" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.5"><circle cx="12" cy="12" r="3"/><path d="M12 1v4M12 19v4M4.22 4.22l2.83 2.83M16.95 16.95l2.83 2.83M1 12h4M19 12h4M4.22 19.78l2.83-2.83M16.95 7.05l2.83-2.83"/></svg>
+                </div>
+                <span className={styles.pickerName}>Custom</span>
+              </button>
               {PROVIDERS.map((p) => {
                 const saved = savedKeys.find((k) => k.provider_id === p.id)
                 const isEnabled = saved?.enabled ?? false
@@ -432,19 +470,13 @@ export default function ProvidersPage() {
                 return (
                   <button key={p.id} className={`${styles.pickerCard} ${isEnabled ? styles.pickerCardActive : ''}`} onClick={() => openEditor(p.id)} type="button">
                     <div className={styles.pickerLogo}>
-                      <img src={LOGO_MAP[p.id]} alt={p.name} className={styles.pickerLogoImg} />
+                      <ProviderLogo id={p.id} name={p.name} color={p.color} className={styles.pickerLogoImg} />
                     </div>
                     <span className={styles.pickerName}>{p.name}</span>
                     {hasKey && <span className={styles.configuredBadge}>Key set</span>}
                   </button>
                 )
               })}
-              <button className={`${styles.pickerCard} ${styles.pickerCardCustom}`} onClick={openCustomEditor} type="button">
-                <div className={styles.pickerLogo} style={{ background: 'rgba(255,255,255,0.06)' }}>
-                  <svg width="28" height="28" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.5"><circle cx="12" cy="12" r="3"/><path d="M12 1v4M12 19v4M4.22 4.22l2.83 2.83M16.95 16.95l2.83 2.83M1 12h4M19 12h4M4.22 19.78l2.83-2.83M16.95 7.05l2.83-2.83"/></svg>
-                </div>
-                <span className={styles.pickerName}>Custom</span>
-              </button>
             </div>
           </div>
         </div>
