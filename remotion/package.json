@@ -1,0 +1,37 @@
+{
+  "name": "remotion",
+  "version": "1.0.0",
+  "description": "OpenThorn public launch ad",
+  "repository": {},
+  "license": "UNLICENSED",
+  "private": true,
+  "dependencies": {
+    "@remotion/cli": "4.0.473",
+    "@remotion/google-fonts": "4.0.473",
+    "@remotion/tailwind-v4": "4.0.473",
+    "@remotion/transitions": "^4.0.473",
+    "react": "19.2.3",
+    "react-dom": "19.2.3",
+    "remotion": "4.0.473",
+    "tailwindcss": "4.0.0"
+  },
+  "devDependencies": {
+    "@remotion/eslint-config-flat": "4.0.473",
+    "@types/react": "19.2.7",
+    "@types/web": "0.0.166",
+    "eslint": "9.19.0",
+    "prettier": "3.8.1",
+    "typescript": "5.9.3"
+  },
+  "scripts": {
+    "dev": "remotion studio",
+    "build": "remotion bundle",
+    "render": "remotion render OpenThornLaunchAd out/openthorn-launch-ad.mp4",
+    "still": "remotion still OpenThornLaunchAd --frame=300 --scale=0.25 out/openthorn-launch-ad-frame300.png",
+    "upgrade": "remotion upgrade",
+    "lint": "eslint src && tsc"
+  },
+  "sideEffects": [
+    "*.css"
+  ]
+}
