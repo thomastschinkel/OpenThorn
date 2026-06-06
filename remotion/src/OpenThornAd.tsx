@@ -240,8 +240,92 @@ function StatementScene({
   );
 }
 
-function ProviderScene(_props: { startFrame: number }) {
-  return null;
+const PROVIDERS = [
+  { src: "openai.png", name: "OpenAI" },
+  { src: "anthropic.png", name: "Anthropic" },
+  { src: "google.png", name: "Google" },
+  { src: "mistralai.png", name: "Mistral" },
+  { src: "groq.png", name: "Groq" },
+  { src: "deepseek.webp", name: "DeepSeek" },
+] as const;
+
+function ProviderScene({ startFrame }: { startFrame: number }) {
+  const frame = useCurrentFrame();
+  const local = frame - startFrame;
+
+  const textIn = p(local, 0, 18);
+  const underlineIn = p(local, 14, 18);
+
+  return (
+    <AbsoluteFill
+      style={{
+        alignItems: "center",
+        justifyContent: "center",
+        flexDirection: "column",
+        gap: 64,
+      }}
+    >
+      {/* Statement text + teal underline */}
+      <div style={{ position: "relative", display: "inline-block" }}>
+        <div
+          style={{
+            fontFamily: fraunces,
+            fontSize: 180,
+            fontWeight: 300,
+            color: palette.text,
+            lineHeight: 1,
+            letterSpacing: "-0.02em",
+            opacity: textIn,
+            transform: `translateY(${(1 - textIn) * 24}px)`,
+            userSelect: "none",
+            whiteSpace: "nowrap",
+          }}
+        >
+          Any provider.
+        </div>
+        <div
+          style={{
+            position: "absolute",
+            bottom: -14,
+            left: 0,
+            height: 3,
+            width: `${underlineIn * 100}%`,
+            background: palette.teal,
+            borderRadius: 99,
+            boxShadow: `0 0 20px ${palette.teal}`,
+          }}
+        />
+      </div>
+
+      {/* Provider logos — staggered fade-in, grayscale */}
+      <div style={{ display: "flex", gap: 48, alignItems: "center" }}>
+        {PROVIDERS.map(({ src, name }, i) => {
+          const logoIn = p(local, 28 + i * 7, 16);
+          return (
+            <div
+              key={name}
+              style={{
+                opacity: logoIn * 0.5,
+                transform: `translateY(${(1 - logoIn) * 14}px)`,
+              }}
+            >
+              <Img
+                src={staticFile(src)}
+                alt={name}
+                style={{
+                  height: 44,
+                  width: "auto",
+                  maxWidth: 100,
+                  objectFit: "contain",
+                  filter: "grayscale(1) brightness(1.4)",
+                }}
+              />
+            </div>
+          );
+        })}
+      </div>
+    </AbsoluteFill>
+  );
 }
 
 function FinalScene(_props: { startFrame: number }) {
