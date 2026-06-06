@@ -27,7 +27,9 @@
     "dev": "remotion studio",
     "build": "remotion bundle",
     "render": "remotion render OpenThornLaunchAd out/openthorn-launch-ad.mp4",
+    "render:ad": "remotion render OpenThornAd out/openthorn-ad.mp4",
     "still": "remotion still OpenThornLaunchAd --frame=300 --scale=0.25 out/openthorn-launch-ad-frame300.png",
+    "still:ad": "remotion still OpenThornAd --scale=0.5",
     "upgrade": "remotion upgrade",
     "lint": "eslint src && tsc"
   },
