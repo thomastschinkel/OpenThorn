@@ -7,8 +7,8 @@ export default function PrivacyPage() {
     <LegalPage title="Privacy Policy" lastUpdated="June 6, 2026">
       <h2>1. Who We Are</h2>
       <p>
-        OpenThorn is operated by <strong>Thomas T.</strong>, located in{' '}
-        <strong>Italy</strong> (the "Data Controller"). For privacy-related enquiries,
+        OpenThorn is operated by <strong>Thomas Tschinkel</strong>, located in{' '}
+        <strong>Rome, Italy</strong> (the "Data Controller"). For privacy-related enquiries,
         contact us at{' '}
         <strong><a href="mailto:mys.thomas00@gmail.com">mys.thomas00@gmail.com</a></strong>.
       </p>
@@ -18,6 +18,11 @@ export default function PrivacyPage() {
       <ul>
         <li>
           <strong>Account data</strong> — your email address when you register or sign in.
+        </li>
+        <li>
+          <strong>API keys</strong> — the API keys you add for third-party AI providers
+          (e.g. OpenAI, Anthropic). These are encrypted with AES-256-GCM before storage
+          and are never shared with third parties.
         </li>
         <li>
           <strong>Project data</strong> — the prompts you write, the code OpenThorn
@@ -110,8 +115,11 @@ export default function PrivacyPage() {
       <h2>9. Changes to This Policy</h2>
       <p>
         We may update this policy from time to time. When we do, we will update the "Last
-        updated" date at the top of this page. Continued use of the service after a change
-        constitutes acceptance of the revised policy.
+        updated" date at the top of this page. For material changes that affect your rights
+        under the GDPR — such as new categories of data collected, new processors, or a
+        new legal basis — we will notify you by email or a prominent notice in the service
+        and, where required by law, seek your renewed consent. Minor editorial changes
+        (e.g. clarifications, spelling) take effect immediately without notice.
       </p>
 
       <h2>10. Contact</h2>

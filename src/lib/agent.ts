@@ -11,6 +11,7 @@ import {
   loopBreakPrompt,
   type ToolDefinition,
 } from './agent-prompt'
+import { decryptApiKey } from './crypto'
 import {
   AGENT_THINKING_PROFILES,
   normalizeThinkingLevel,
@@ -2369,7 +2370,12 @@ async function resolveProviderWithFallback(
     throw new Error('No enabled provider found. Add a provider key to get started.')
   }
 
-  const keys = allKeys as ProviderKeyRow[]
+  const keys = await Promise.all(
+    (allKeys as ProviderKeyRow[]).map(async (k) => ({
+      ...k,
+      api_key: await decryptApiKey(k.api_key, userId),
+    }))
+  )
 
   // Sort: preferred provider first, then by creation date
   const sortedKeys = [...keys]

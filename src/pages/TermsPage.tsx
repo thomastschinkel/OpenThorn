@@ -148,12 +148,17 @@ export default function TermsPage() {
         To the maximum extent permitted by applicable law, OpenThorn and its operators
         shall not be liable for any indirect, incidental, special, consequential, or
         punitive damages arising out of or related to your use of the service. Because the
-        service is provided free of charge, our aggregate liability to you shall not exceed
-        €0.
+        service is provided free of charge, our aggregate liability to you for direct
+        damages shall not exceed the greater of the fees you paid us in the twelve months
+        preceding the claim or €0.
       </p>
       <p>
-        Nothing in these Terms limits liability for fraud, gross negligence, or death or
-        personal injury caused by our negligence.
+        Nothing in these Terms limits or excludes liability for fraud, gross negligence,
+        or death or personal injury caused by our negligence, or any other liability that
+        cannot be limited or excluded under applicable mandatory law. If you are a
+        consumer, your statutory rights under applicable consumer protection law
+        (including the Italian Consumer Code, D.Lgs. 206/2005) are not affected by
+        these Terms.
       </p>
 
       <h2>12. Termination</h2>

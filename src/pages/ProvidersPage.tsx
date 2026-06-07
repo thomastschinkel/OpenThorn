@@ -1,9 +1,14 @@
 import { useState, useEffect, useCallback } from 'react'
 import { useAuth } from '../lib/AuthContext'
 import { supabase } from '../lib/supabase'
+import { encryptApiKey, decryptApiKey } from '../lib/crypto'
 import DashboardSidebar from '../components/DashboardSidebar/DashboardSidebar'
 import { usePageTitle } from '../lib/usePageTitle'
 import styles from './ProvidersPage.module.css'
+
+async function decryptKeys(data: ProviderKey[], userId: string): Promise<ProviderKey[]> {
+  return Promise.all(data.map(async (k) => ({ ...k, api_key: await decryptApiKey(k.api_key, userId) })))
+}
 
 interface ProviderKey {
   id: string
@@ -107,8 +112,8 @@ export default function ProvidersPage() {
     if (!user) return
 
     // Initial fetch
-    supabase.from('provider_keys').select('*').eq('user_id', user.id).order('created_at').then(({ data, error }) => {
-      if (!error && data) setSavedKeys(data)
+    supabase.from('provider_keys').select('*').eq('user_id', user.id).order('created_at').then(async ({ data, error }) => {
+      if (!error && data) setSavedKeys(await decryptKeys(data, user.id))
       setLoading(false)
     })
 
@@ -122,8 +127,8 @@ export default function ProvidersPage() {
         filter: `user_id=eq.${user.id}`,
       }, () => {
         // Refetch all keys on any change
-        supabase.from('provider_keys').select('*').eq('user_id', user.id).order('created_at').then(({ data, error }) => {
-          if (!error && data) setSavedKeys(data)
+        supabase.from('provider_keys').select('*').eq('user_id', user.id).order('created_at').then(async ({ data, error }) => {
+          if (!error && data) setSavedKeys(await decryptKeys(data, user.id))
         })
       })
       .subscribe()
@@ -158,11 +163,12 @@ export default function ProvidersPage() {
     if (!user || !editingProvider || !formKey.trim()) return
     setSaving(true)
     const def = PROVIDERS.find((p) => p.id === editingProvider)
+    const encryptedKey = await encryptApiKey(formKey.trim(), user.id)
     const payload = {
       user_id: user.id,
       provider_id: editingProvider,
       provider_name: formName || def?.name || 'Custom',
-      api_key: formKey.trim(),
+      api_key: encryptedKey,
       base_url: formUrl.trim() || (def?.baseUrl ?? ''),
       models: formModels.trim(),
       enabled: formEnabled,
@@ -181,7 +187,7 @@ export default function ProvidersPage() {
     if (!result.error && result.data) {
       setSavedKeys((prev) => {
         const next = prev.filter((k) => k.provider_id !== editingProvider)
-        return [...next, result.data![0]]
+        return [...next, { ...result.data![0], api_key: formKey.trim() }]
       })
       setEditingProvider(null)
     }
@@ -201,10 +207,12 @@ export default function ProvidersPage() {
 
   const toggleEnabled = async (key: ProviderKey) => {
     if (!user) return
-    const updated = { ...key, enabled: !key.enabled, updated_at: new Date().toISOString() }
-    const { error } = await supabase.from('provider_keys').update(updated).eq('id', key.id).eq('user_id', user.id)
+    const newEnabled = !key.enabled
+    const { error } = await supabase.from('provider_keys')
+      .update({ enabled: newEnabled, updated_at: new Date().toISOString() })
+      .eq('id', key.id).eq('user_id', user.id)
     if (!error) {
-      setSavedKeys((prev) => prev.map((k) => (k.id === key.id ? updated : k)))
+      setSavedKeys((prev) => prev.map((k) => (k.id === key.id ? { ...k, enabled: newEnabled } : k)))
     }
   }
 
@@ -402,6 +410,12 @@ export default function ProvidersPage() {
             </div>
           )}
 
+          {/* Trademark note */}
+          <p className={styles.trademarkNote}>
+            All product names, logos, and brands are property of their respective owners.
+            Use of these names does not imply endorsement.
+          </p>
+
           {/* Enabled providers list + add button */}
           {!editingProvider && !loading && enabledKeys.length > 0 && (
             <>
@@ -484,9 +498,3 @@ export default function ProvidersPage() {
     </div>
   )
 }
-
-            {/* Trademark note */}
-            <p className={styles.trademarkNote}>
-              All product names, logos, and brands are property of their respective owners.
-              Use of these names does not imply endorsement.
-            </p>
