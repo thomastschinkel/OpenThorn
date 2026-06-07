@@ -35,18 +35,18 @@ const palette = {
 
 const SCENE = {
   logo: 0,
-  keys: 112,
-  provider: 202,
-  tax: 292,
-  final: 382,
+  keys: 125,   // 4.15s
+  provider: 218, // 7.25s
+  tax: 390,    // 13s
+  final: 488,  // 16.25s
 } as const;
 
 const SCENE_END = {
-  logo: 120,
-  keys: 210,
-  provider: 300,
-  tax: 390,
-  final: 510,
+  logo: 133,
+  keys: 226,
+  provider: 398,
+  tax: 496,
+  final: 660,
 } as const;
 
 /** Smooth 0→1 with expo-out easing */
@@ -423,7 +423,7 @@ function FinalScene({ startFrame }: { startFrame: number }) {
     extrapolateRight: "clamp",
   });
 
-  const fadeToBlack = interpolate(local, [100, 120], [0, 1], {
+  const fadeToBlack = interpolate(local, [152, 172], [0, 1], {
     extrapolateLeft: "clamp",
     extrapolateRight: "clamp",
   });
@@ -703,14 +703,14 @@ function HairlineSeparator({ startFrame, endFrame }: { startFrame: number; endFr
 
 const CAPTIONS = [
   { text: "Meet OpenThorn.", start: 14, end: 72 },
-  { text: "An AI website builder that works the way you do.", start: 72, end: 128 },
-  { text: "Your keys.", start: 128, end: 172 },
-  { text: "Your data. Your control.", start: 172, end: 218 },
-  { text: "Connect OpenAI, Anthropic, Gemini.", start: 218, end: 274 },
-  { text: "Any provider you already trust.", start: 274, end: 322 },
-  { text: "No subscriptions. No markup. No lock-in.", start: 322, end: 400 },
-  { text: "OpenThorn.", start: 408, end: 458 },
-  { text: "Build for free.", start: 458, end: 530 },
+  { text: "An AI website builder that works the way you do.", start: 72, end: 132 },
+  { text: "Your keys.", start: 134, end: 180 },
+  { text: "Your data. Your control.", start: 180, end: 226 },
+  { text: "Connect OpenAI, Anthropic, Gemini.", start: 228, end: 300 },
+  { text: "Any provider you already trust.", start: 300, end: 364 },
+  { text: "No subscriptions. No markup. No lock-in.", start: 396, end: 494 },
+  { text: "OpenThorn.", start: 500, end: 554 },
+  { text: "Build for free.", start: 554, end: 630 },
 ] as const;
 
 function CaptionLayer() {
