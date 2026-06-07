@@ -131,6 +131,19 @@ function AudioLayer() {
         }
       />
 
+      {/* Voiceover */}
+      <Sequence from={8}>
+        <Audio
+          src={staticFile("audio/openthorn-ad-voice.mp3")}
+          volume={(f) =>
+            interpolate(f, [0, 8, durationInFrames - 20, durationInFrames], [0, 0.95, 0.95, 0], {
+              extrapolateLeft: "clamp",
+              extrapolateRight: "clamp",
+            })
+          }
+        />
+      </Sequence>
+
       {/* Chord on logo reveal */}
       <Sequence from={SCENE.logo} durationInFrames={Math.round(fps * 3)}>
         <Audio src={staticFile("audio/openthorn-ad-chord.wav")} volume={0.55} />
