@@ -17,6 +17,7 @@ const DOC_NAV = [
   { path: '/terms', label: 'Terms of Service' },
   { path: '/privacy', label: 'Privacy Policy' },
   { path: '/cookies', label: 'Cookie Policy' },
+  { path: '/imprint', label: 'Imprint' },
 ]
 
 export default function LegalPage({ title, lastUpdated, children }: Props) {

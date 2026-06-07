@@ -12,6 +12,7 @@ import PricingPage from './pages/PricingPage'
 import PrivacyPage from './pages/PrivacyPage'
 import TermsPage from './pages/TermsPage'
 import CookiesPage from './pages/CookiesPage'
+import ImprintPage from './pages/ImprintPage'
 import DashboardPage from './pages/DashboardPage'
 import ProjectBuilderPage from './pages/ProjectBuilderPage'
 import ProvidersPage from './pages/ProvidersPage'
@@ -77,6 +78,7 @@ export default function App() {
           <Route path="/privacy" element={<Layout><PrivacyPage /></Layout>} />
           <Route path="/terms" element={<Layout><TermsPage /></Layout>} />
           <Route path="/cookies" element={<Layout><CookiesPage /></Layout>} />
+          <Route path="/imprint" element={<Layout><ImprintPage /></Layout>} />
           <Route path="/blog" element={<Layout><BlogPage /></Layout>} />
           <Route path="/blog/:slug" element={<Layout><BlogPostPage /></Layout>} />
           <Route path="/dashboard" element={<ProtectedRoute pageName="the Dashboard"><DashboardPage /></ProtectedRoute>} />

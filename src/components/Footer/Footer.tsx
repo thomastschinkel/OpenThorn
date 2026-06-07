@@ -31,6 +31,7 @@ const legalLinks = [
   { label: 'Privacy Policy', to: '/privacy' },
   { label: 'Terms of Service', to: '/terms' },
   { label: 'Cookie Policy', to: '/cookies' },
+  { label: 'Imprint', to: '/imprint' },
 ]
 
 export default function Footer() {
