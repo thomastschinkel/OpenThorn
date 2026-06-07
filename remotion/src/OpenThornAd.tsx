@@ -1,6 +1,7 @@
 import type { ReactNode } from "react";
 import {
   AbsoluteFill,
+  Audio,
   Easing,
   Img,
   interpolate,
@@ -71,6 +72,8 @@ export const OpenThornAd = () => {
 
   return (
     <AbsoluteFill style={{ background: palette.bg, overflow: "hidden" }}>
+      <AudioLayer />
+
       {/* Scene 1 — Logo reveal (0–120f) */}
       <AbsoluteFill style={{ opacity: sceneOpacity(frame, SCENE.logo, SCENE_END.logo) }}>
         <LogoRevealScene />
@@ -106,6 +109,49 @@ export const OpenThornAd = () => {
     </AbsoluteFill>
   );
 };
+
+// ─── Audio ────────────────────────────────────────────────────────────────────
+
+function AudioLayer() {
+  const { durationInFrames, fps } = useVideoConfig();
+
+  return (
+    <>
+      {/* Ambient music bed — fades in over 0.8s, out over 1.2s */}
+      <Audio
+        src={staticFile("audio/openthorn-ad-ambient.wav")}
+        loop
+        volume={(f) =>
+          interpolate(
+            f,
+            [0, Math.round(fps * 0.8), durationInFrames - Math.round(fps * 1.2), durationInFrames],
+            [0, 0.32, 0.32, 0],
+            { extrapolateLeft: "clamp", extrapolateRight: "clamp" },
+          )
+        }
+      />
+
+      {/* Chord on logo reveal */}
+      <Sequence from={SCENE.logo} durationInFrames={Math.round(fps * 3)}>
+        <Audio src={staticFile("audio/openthorn-ad-chord.wav")} volume={0.55} />
+      </Sequence>
+
+      {/* Whoosh at each scene cut */}
+      <Sequence from={SCENE.keys} durationInFrames={fps}>
+        <Audio src={staticFile("audio/openthorn-ad-whoosh.wav")} volume={0.5} />
+      </Sequence>
+      <Sequence from={SCENE.provider} durationInFrames={fps}>
+        <Audio src={staticFile("audio/openthorn-ad-whoosh.wav")} volume={0.5} />
+      </Sequence>
+      <Sequence from={SCENE.tax} durationInFrames={fps}>
+        <Audio src={staticFile("audio/openthorn-ad-whoosh.wav")} volume={0.5} />
+      </Sequence>
+      <Sequence from={SCENE.final} durationInFrames={fps}>
+        <Audio src={staticFile("audio/openthorn-ad-whoosh.wav")} volume={0.4} />
+      </Sequence>
+    </>
+  );
+}
 
 // ─── Scene Components ──────────────────────────────────────────────────────────
 
