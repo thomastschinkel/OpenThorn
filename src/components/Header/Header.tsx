@@ -40,8 +40,7 @@ const useCasesItems: DropdownItem[] = [
 const resourcesItems: DropdownItem[] = [
   { label: 'Blog', description: 'Changelog, product updates, and behind-the-scenes', href: '/blog' },
   { label: 'Templates', description: 'Jump-start your next project', href: '/templates' },
-  { label: 'Guides', description: 'Step-by-step walkthroughs for every skill level', href: '#' },
-  { label: 'Docs & FAQs', description: 'How OpenThorn works, answered clearly', href: '#' },
+  { label: 'Docs & FAQs', description: 'How OpenThorn works, answered clearly', href: '/faq' },
 ]
 
 type DropdownKey = 'solutions' | 'useCases' | 'resources'

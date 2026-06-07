@@ -23,7 +23,6 @@ const useCasesLinks = [
 const resourcesLinks = [
   { label: 'Blog', href: '#' },
   { label: 'Templates', href: '#' },
-  { label: 'Guides', href: '#' },
 ]
 
 const resourcesRouteLinks = [

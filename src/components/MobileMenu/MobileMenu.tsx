@@ -29,8 +29,7 @@ const useCasesSub: SubItem[] = [
 const resourcesSub: SubItem[] = [
   { label: 'Blog', href: '#' },
   { label: 'Templates', href: '#' },
-  { label: 'Guides', href: '#' },
-  { label: 'Docs & FAQs', href: '#' },
+  { label: 'Docs & FAQs', href: '/faq' },
 ]
 
 interface MobileMenuProps {
