@@ -24,7 +24,10 @@ const resourcesLinks = [
   { label: 'Blog', href: '#' },
   { label: 'Templates', href: '#' },
   { label: 'Guides', href: '#' },
-  { label: 'Docs & FAQs', href: '#' },
+]
+
+const resourcesRouteLinks = [
+  { label: 'Docs & FAQs', to: '/faq' },
 ]
 
 const legalLinks = [
@@ -77,6 +80,9 @@ export default function Footer() {
             <div className={styles.colLinks}>
               {resourcesLinks.map((l) => (
                 <a key={l.label} href={l.href}>{l.label}</a>
+              ))}
+              {resourcesRouteLinks.map((l) => (
+                <Link key={l.label} to={l.to}>{l.label}</Link>
               ))}
             </div>
           </div>
