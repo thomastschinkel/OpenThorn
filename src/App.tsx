@@ -20,6 +20,7 @@ import TemplatesPage from './pages/TemplatesPage'
 import CommunityPage from './pages/CommunityPage'
 import BlogPage from './pages/BlogPage'
 import BlogPostPage from './pages/BlogPostPage'
+import FaqPage from './pages/FaqPage'
 import NotFoundPage from './pages/NotFoundPage'
 import AuthModal from './components/AuthModal/AuthModal'
 import ProtectedRoute from './components/ProtectedRoute/ProtectedRoute'
@@ -81,6 +82,7 @@ export default function App() {
           <Route path="/imprint" element={<Layout><ImprintPage /></Layout>} />
           <Route path="/blog" element={<Layout><BlogPage /></Layout>} />
           <Route path="/blog/:slug" element={<Layout><BlogPostPage /></Layout>} />
+          <Route path="/faq" element={<Layout><FaqPage /></Layout>} />
           <Route path="/dashboard" element={<ProtectedRoute pageName="the Dashboard"><DashboardPage /></ProtectedRoute>} />
           <Route path="/projects/:projectId" element={<ProtectedRoute pageName="your project"><ProjectBuilderPage /></ProtectedRoute>} />
           <Route path="/templates" element={<ProtectedRoute pageName="Templates"><TemplatesPage /></ProtectedRoute>} />
