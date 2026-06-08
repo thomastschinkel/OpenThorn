@@ -62,6 +62,11 @@ export default function CommunityPage() {
   const [selected, setSelected] = useState<CommunityPost | null>(null)
   const [selectedModel, setSelectedModel] = useState<SelectedModel | null>(null)
   const [launching, setLaunching] = useState(false)
+  const [editMode, setEditMode] = useState(false)
+  const [editTitle, setEditTitle] = useState('')
+  const [editDesc, setEditDesc] = useState('')
+  const [deleteConfirm, setDeleteConfirm] = useState(false)
+  const [saving, setSaving] = useState(false)
 
   useEffect(() => {
     if (!user) return
@@ -85,6 +90,15 @@ export default function CommunityPage() {
         if (data) setLikedSet(new Set(data.map((r) => r.post_id as string)))
       })
   }, [user])
+
+  useEffect(() => {
+    if (selected) {
+      setEditMode(false)
+      setDeleteConfirm(false)
+      setEditTitle(selected.title)
+      setEditDesc(selected.description ?? '')
+    }
+  }, [selected?.id])
 
   useEffect(() => {
     const handler = (e: KeyboardEvent) => { if (e.key === 'Escape') setSelected(null) }
@@ -114,6 +128,33 @@ export default function CommunityPage() {
       await supabase.from('community_likes').insert({ user_id: user.id, post_id: postId })
     }
   }, [user, likedSet])
+
+  const handleEditSave = useCallback(async () => {
+    if (!selected || !user) return
+    const trimTitle = editTitle.trim()
+    if (!trimTitle) return
+    setSaving(true)
+    const { error } = await supabase
+      .from('community_posts')
+      .update({ title: trimTitle, description: editDesc.trim() || null })
+      .eq('id', selected.id)
+    if (!error) {
+      const updated = { ...selected, title: trimTitle, description: editDesc.trim() || null }
+      setPosts((prev) => prev.map((p) => p.id === selected.id ? updated : p))
+      setSelected(updated)
+      setEditMode(false)
+    }
+    setSaving(false)
+  }, [selected, user, editTitle, editDesc])
+
+  const handleDeletePost = useCallback(async () => {
+    if (!selected || !user) return
+    const { error } = await supabase.from('community_posts').delete().eq('id', selected.id)
+    if (!error) {
+      setPosts((prev) => prev.filter((p) => p.id !== selected.id))
+      setSelected(null)
+    }
+  }, [selected, user])
 
   const handleUseProject = useCallback(async () => {
     if (!user || !selected || !selectedModel) return
@@ -403,36 +444,103 @@ export default function CommunityPage() {
                 </button>
               </div>
 
-              <h2 className={styles.overlayTitle}>{selected.title}</h2>
+              {user?.id === selected.user_id && !editMode && (
+                <div className={styles.ownerActions}>
+                  <button
+                    className={styles.ownerEditBtn}
+                    type="button"
+                    onClick={() => { setEditMode(true); setDeleteConfirm(false) }}
+                  >
+                    <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+                      <path d="M11 4H4a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2v-7"/>
+                      <path d="M18.5 2.5a2.121 2.121 0 0 1 3 3L12 15l-4 1 1-4 9.5-9.5z"/>
+                    </svg>
+                    Edit
+                  </button>
+                  {deleteConfirm ? (
+                    <div className={styles.deleteConfirm}>
+                      <span className={styles.deleteConfirmText}>Delete this post?</span>
+                      <button className={styles.deleteConfirmYes} type="button" onClick={handleDeletePost}>Yes, delete</button>
+                      <button className={styles.deleteConfirmNo} type="button" onClick={() => setDeleteConfirm(false)}>Cancel</button>
+                    </div>
+                  ) : (
+                    <button
+                      className={styles.ownerDeleteBtn}
+                      type="button"
+                      onClick={() => setDeleteConfirm(true)}
+                    >
+                      <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+                        <polyline points="3 6 5 6 21 6"/><path d="M19 6l-1 14a2 2 0 0 1-2 2H8a2 2 0 0 1-2-2L5 6"/>
+                        <path d="M10 11v6"/><path d="M14 11v6"/>
+                        <path d="M9 6V4a1 1 0 0 1 1-1h4a1 1 0 0 1 1 1v2"/>
+                      </svg>
+                      Delete
+                    </button>
+                  )}
+                </div>
+              )}
 
-              {selected.description && (
-                <p className={styles.overlayDesc}>{selected.description}</p>
+              {editMode ? (
+                <div className={styles.editForm}>
+                  <input
+                    className={styles.editTitleInput}
+                    value={editTitle}
+                    onChange={(e) => setEditTitle(e.target.value)}
+                    placeholder="Title"
+                    maxLength={80}
+                  />
+                  <textarea
+                    className={styles.editDescInput}
+                    value={editDesc}
+                    onChange={(e) => setEditDesc(e.target.value)}
+                    placeholder="Description (optional)"
+                    maxLength={280}
+                    rows={3}
+                  />
+                  <div className={styles.editActions}>
+                    <button className={styles.editSaveBtn} type="button" onClick={handleEditSave} disabled={saving || !editTitle.trim()}>
+                      {saving ? 'Saving…' : 'Save'}
+                    </button>
+                    <button className={styles.editCancelBtn} type="button" onClick={() => setEditMode(false)}>Cancel</button>
+                  </div>
+                </div>
+              ) : (
+                <>
+                  <h2 className={styles.overlayTitle}>{selected.title}</h2>
+                  {selected.description && (
+                    <p className={styles.overlayDesc}>{selected.description}</p>
+                  )}
+                </>
               )}
 
               <p className={styles.overlayDate}>Published {formatRelativeTime(selected.published_at)}</p>
 
-              <div className={styles.modelSection}>
-                <span className={styles.modelLabel}>Select model to use</span>
-                <ModelSelector
-                  page="dashboard"
-                  selectedModel={selectedModel}
-                  onModelSelect={setSelectedModel}
-                  placement="bottom"
-                  subLayout="stacked"
-                />
-              </div>
+              {!editMode && (
+                <div className={styles.modelSection}>
+                  <span className={styles.modelLabel}>Select model to use</span>
+                  <ModelSelector
+                    page="dashboard"
+                    selectedModel={selectedModel}
+                    onModelSelect={setSelectedModel}
+                    placement="bottom"
+                    subLayout="stacked"
+                  />
+                </div>
+              )}
 
               <div className={styles.spacer} />
 
-              <button
-                className={styles.useBtn}
-                type="button"
-                onClick={handleUseProject}
-                disabled={!selectedModel || launching}
-                style={{ background: postAccentColor(selected.title) }}
-              >
-                {launching ? 'Starting…' : 'Use this project →'}
-              </button>
+              {!editMode && (
+                <button
+                  className={styles.useBtn}
+                  type="button"
+                  onClick={handleUseProject}
+                  disabled={!selectedModel || launching}
+                  style={{ background: postAccentColor(selected.title) }}
+                >
+                  {launching ? 'Starting…' : 'Use this project →'}
+                </button>
+              )}
             </div>
           </div>
         </div>

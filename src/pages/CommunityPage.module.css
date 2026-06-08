@@ -584,3 +584,154 @@
 }
 .useBtn:hover:not(:disabled) { opacity: 0.9; transform: translateY(-1px); }
 .useBtn:disabled { opacity: 0.45; cursor: not-allowed; }
+
+/* Owner edit/delete actions */
+.ownerActions {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  flex-wrap: wrap;
+}
+
+.ownerEditBtn,
+.ownerDeleteBtn {
+  display: flex;
+  align-items: center;
+  gap: 5px;
+  font-size: 12px;
+  font-weight: 600;
+  padding: 5px 10px;
+  border-radius: 7px;
+  border: 1px solid rgba(255, 255, 255, 0.1);
+  cursor: pointer;
+  transition: background 0.15s, border-color 0.15s, color 0.15s;
+}
+
+.ownerEditBtn {
+  background: rgba(255, 255, 255, 0.05);
+  color: rgba(255, 255, 255, 0.55);
+}
+.ownerEditBtn:hover {
+  background: rgba(124, 106, 247, 0.12);
+  border-color: rgba(124, 106, 247, 0.4);
+  color: #a78bfa;
+}
+
+.ownerDeleteBtn {
+  background: rgba(255, 255, 255, 0.05);
+  color: rgba(255, 255, 255, 0.55);
+}
+.ownerDeleteBtn:hover {
+  background: rgba(239, 68, 68, 0.1);
+  border-color: rgba(239, 68, 68, 0.35);
+  color: #f87171;
+}
+
+.deleteConfirm {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  flex-wrap: wrap;
+}
+
+.deleteConfirmText {
+  font-size: 12px;
+  color: rgba(255, 255, 255, 0.5);
+}
+
+.deleteConfirmYes {
+  font-size: 12px;
+  font-weight: 600;
+  padding: 4px 10px;
+  border-radius: 6px;
+  border: 1px solid rgba(239, 68, 68, 0.4);
+  background: rgba(239, 68, 68, 0.12);
+  color: #f87171;
+  cursor: pointer;
+  transition: background 0.15s;
+}
+.deleteConfirmYes:hover { background: rgba(239, 68, 68, 0.2); }
+
+.deleteConfirmNo {
+  font-size: 12px;
+  font-weight: 600;
+  padding: 4px 10px;
+  border-radius: 6px;
+  border: 1px solid rgba(255, 255, 255, 0.1);
+  background: rgba(255, 255, 255, 0.05);
+  color: rgba(255, 255, 255, 0.45);
+  cursor: pointer;
+  transition: background 0.15s;
+}
+.deleteConfirmNo:hover { background: rgba(255, 255, 255, 0.1); }
+
+/* Inline edit form */
+.editForm {
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+}
+
+.editTitleInput {
+  background: rgba(255, 255, 255, 0.06);
+  border: 1px solid rgba(255, 255, 255, 0.15);
+  border-radius: 8px;
+  padding: 9px 12px;
+  font-size: 16px;
+  font-weight: 700;
+  color: rgba(255, 255, 255, 0.9);
+  outline: none;
+  width: 100%;
+  transition: border-color 0.15s;
+}
+.editTitleInput:focus { border-color: rgba(124, 106, 247, 0.5); }
+
+.editDescInput {
+  background: rgba(255, 255, 255, 0.06);
+  border: 1px solid rgba(255, 255, 255, 0.15);
+  border-radius: 8px;
+  padding: 9px 12px;
+  font-size: 13px;
+  color: rgba(255, 255, 255, 0.7);
+  outline: none;
+  width: 100%;
+  resize: vertical;
+  line-height: 1.5;
+  font-family: inherit;
+  transition: border-color 0.15s;
+}
+.editDescInput:focus { border-color: rgba(124, 106, 247, 0.5); }
+.editDescInput::placeholder { color: rgba(255, 255, 255, 0.25); }
+
+.editActions {
+  display: flex;
+  gap: 8px;
+}
+
+.editSaveBtn {
+  flex: 1;
+  background: #7c6af7;
+  border: none;
+  border-radius: 8px;
+  padding: 9px;
+  font-size: 13px;
+  font-weight: 700;
+  color: #fff;
+  cursor: pointer;
+  transition: opacity 0.15s;
+}
+.editSaveBtn:hover:not(:disabled) { opacity: 0.85; }
+.editSaveBtn:disabled { opacity: 0.45; cursor: not-allowed; }
+
+.editCancelBtn {
+  background: rgba(255, 255, 255, 0.06);
+  border: 1px solid rgba(255, 255, 255, 0.1);
+  border-radius: 8px;
+  padding: 9px 14px;
+  font-size: 13px;
+  font-weight: 600;
+  color: rgba(255, 255, 255, 0.5);
+  cursor: pointer;
+  transition: background 0.15s;
+}
+.editCancelBtn:hover { background: rgba(255, 255, 255, 0.1); }
