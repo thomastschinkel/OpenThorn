@@ -1,3 +1,5 @@
+import { supabase } from './supabase'
+
 export interface DeployResult {
   url: string
   siteId: string
@@ -8,9 +10,18 @@ export async function deployToNetlify(
   html: string,
   existingSiteId?: string | null,
 ): Promise<DeployResult> {
-  const res = await fetch('/.netlify/functions/deploy-netlify', {
+  const { data } = await supabase.auth.getSession()
+  const token = data.session?.access_token
+  if (!token) {
+    throw new Error('You must be signed in to publish a site.')
+  }
+
+  const res = await fetch('/api/deploy-netlify', {
     method: 'POST',
-    headers: { 'Content-Type': 'application/json' },
+    headers: {
+      'Content-Type': 'application/json',
+      Authorization: `Bearer ${token}`,
+    },
     body: JSON.stringify({ projectId, html, existingSiteId }),
   })
 
@@ -19,13 +30,13 @@ export async function deployToNetlify(
     throw new Error(`Deploy failed: ${body || res.statusText}`)
   }
 
-  const data = await res.json()
-  if (!data?.url || !data?.siteId) {
+  const data2 = await res.json()
+  if (!data2?.url || !data2?.siteId) {
     throw new Error('Deploy failed: invalid response from deploy endpoint')
   }
 
   return {
-    url: String(data.url),
-    siteId: String(data.siteId),
+    url: String(data2.url),
+    siteId: String(data2.siteId),
   }
 }

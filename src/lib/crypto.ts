@@ -1,3 +1,14 @@
+import { supabase } from './supabase'
+
+// Provider API keys are encrypted at rest. Two schemes exist:
+//
+//   senc:  Server-side AES-256-GCM, keyed by a server-held secret combined with
+//          the user id (see api/_shared.ts). A database dump alone cannot be
+//          decrypted without the server secret. This is the default.
+//   enc:   Legacy client-side AES-256-GCM, keyed only from the user id. Kept for
+//          backward compatibility and used as a fallback when the server
+//          endpoint is unavailable (e.g. local dev without KEY_ENCRYPTION_SECRET).
+
 const SALT = 'openthorn-v1-key-encryption'
 
 async function deriveKey(userId: string): Promise<CryptoKey> {
@@ -27,7 +38,7 @@ function base64ToBytes(b64: string): Uint8Array {
   return bytes
 }
 
-export async function encryptApiKey(plaintext: string, userId: string): Promise<string> {
+async function clientEncrypt(plaintext: string, userId: string): Promise<string> {
   const key = await deriveKey(userId)
   const iv = crypto.getRandomValues(new Uint8Array(12))
   const enc = new TextEncoder()
@@ -36,8 +47,7 @@ export async function encryptApiKey(plaintext: string, userId: string): Promise<
   return `enc:${ivHex}:${bytesToBase64(new Uint8Array(ciphertext))}`
 }
 
-export async function decryptApiKey(stored: string, userId: string): Promise<string> {
-  if (!stored.startsWith('enc:')) return stored
+async function clientDecrypt(stored: string, userId: string): Promise<string> {
   const firstColon = stored.indexOf(':', 4)
   const ivHex = stored.slice(4, firstColon)
   const ctBase64 = stored.slice(firstColon + 1)
@@ -46,4 +56,46 @@ export async function decryptApiKey(stored: string, userId: string): Promise<str
   const key = await deriveKey(userId)
   const plain = await crypto.subtle.decrypt({ name: 'AES-GCM', iv }, key, ct)
   return new TextDecoder().decode(plain)
+}
+
+/** Call the server key endpoint. Returns the result, or null if unavailable. */
+async function serverKeyOp(action: 'encrypt' | 'decrypt', value: string): Promise<string | null> {
+  let token: string | undefined
+  try {
+    const { data } = await supabase.auth.getSession()
+    token = data.session?.access_token
+  } catch {
+    token = undefined
+  }
+  if (!token) return null
+
+  try {
+    const res = await fetch('/api/provider-keys', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${token}` },
+      body: JSON.stringify({ action, value }),
+    })
+    if (!res.ok) return null
+    const data = (await res.json()) as { result?: unknown }
+    return typeof data.result === 'string' ? data.result : null
+  } catch {
+    return null
+  }
+}
+
+export async function encryptApiKey(plaintext: string, userId: string): Promise<string> {
+  const server = await serverKeyOp('encrypt', plaintext)
+  if (server && server.startsWith('senc:')) return server
+  // Fallback: server not configured/reachable — encrypt client-side.
+  return clientEncrypt(plaintext, userId)
+}
+
+export async function decryptApiKey(stored: string, userId: string): Promise<string> {
+  if (stored.startsWith('senc:')) {
+    const server = await serverKeyOp('decrypt', stored)
+    if (server === null) throw new Error('Unable to decrypt provider key')
+    return server
+  }
+  if (stored.startsWith('enc:')) return clientDecrypt(stored, userId)
+  return stored
 }

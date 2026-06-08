@@ -1,4 +1,4 @@
-import { useState, useEffect } from 'react'
+import { useState, useEffect, lazy, Suspense } from 'react'
 import { Routes, Route, Navigate } from 'react-router-dom'
 import { useAuth } from './lib/AuthContext'
 import ErrorBoundary from './components/ErrorBoundary/ErrorBoundary'
@@ -8,24 +8,27 @@ import MeetOpenThornSection from './components/MeetOpenThornSection/MeetOpenThor
 import BYOKSection from './components/BYOKSection/BYOKSection'
 import BottomCTA from './components/BottomCTA/BottomCTA'
 import Footer from './components/Footer/Footer'
-import PricingPage from './pages/PricingPage'
-import PrivacyPage from './pages/PrivacyPage'
-import TermsPage from './pages/TermsPage'
-import CookiesPage from './pages/CookiesPage'
-import ImprintPage from './pages/ImprintPage'
-import DashboardPage from './pages/DashboardPage'
-import ProjectBuilderPage from './pages/ProjectBuilderPage'
-import ProvidersPage from './pages/ProvidersPage'
-import TemplatesPage from './pages/TemplatesPage'
-import CommunityPage from './pages/CommunityPage'
-import BlogPage from './pages/BlogPage'
-import BlogPostPage from './pages/BlogPostPage'
-import FaqPage from './pages/FaqPage'
-import ModerationPage from './pages/ModerationPage'
-import NotFoundPage from './pages/NotFoundPage'
 import AuthModal from './components/AuthModal/AuthModal'
 import ProtectedRoute from './components/ProtectedRoute/ProtectedRoute'
 import styles from './App.module.css'
+
+// Route pages are code-split so the heavy builder/preview stack (esbuild-wasm,
+// jszip, html2canvas, the agent) isn't pulled into the initial landing bundle.
+const PricingPage = lazy(() => import('./pages/PricingPage'))
+const PrivacyPage = lazy(() => import('./pages/PrivacyPage'))
+const TermsPage = lazy(() => import('./pages/TermsPage'))
+const CookiesPage = lazy(() => import('./pages/CookiesPage'))
+const ImprintPage = lazy(() => import('./pages/ImprintPage'))
+const DashboardPage = lazy(() => import('./pages/DashboardPage'))
+const ProjectBuilderPage = lazy(() => import('./pages/ProjectBuilderPage'))
+const ProvidersPage = lazy(() => import('./pages/ProvidersPage'))
+const TemplatesPage = lazy(() => import('./pages/TemplatesPage'))
+const CommunityPage = lazy(() => import('./pages/CommunityPage'))
+const BlogPage = lazy(() => import('./pages/BlogPage'))
+const BlogPostPage = lazy(() => import('./pages/BlogPostPage'))
+const FaqPage = lazy(() => import('./pages/FaqPage'))
+const ModerationPage = lazy(() => import('./pages/ModerationPage'))
+const NotFoundPage = lazy(() => import('./pages/NotFoundPage'))
 
 function HomePage() {
   const { user, loading } = useAuth()
@@ -74,6 +77,7 @@ export default function App() {
   return (
     <ErrorBoundary>
       <div className={styles.app}>
+        <Suspense fallback={null}>
         <Routes>
           <Route path="/" element={<Layout><HomePage /></Layout>} />
           <Route path="/pricing" element={<Layout><PricingPage /></Layout>} />
@@ -92,6 +96,7 @@ export default function App() {
           <Route path="/providers" element={<ProtectedRoute pageName="Providers"><ProvidersPage /></ProtectedRoute>} />
           <Route path="*" element={<NotFoundPage />} />
         </Routes>
+        </Suspense>
       </div>
     </ErrorBoundary>
   )

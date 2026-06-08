@@ -4,6 +4,14 @@ const fetchMock = vi.fn()
 
 vi.stubGlobal('fetch', fetchMock)
 
+vi.mock('../supabase', () => ({
+  supabase: {
+    auth: {
+      getSession: async () => ({ data: { session: { access_token: 'test-token' } } }),
+    },
+  },
+}))
+
 describe('deployToNetlify', () => {
   beforeEach(() => {
     vi.resetModules()
@@ -26,9 +34,9 @@ describe('deployToNetlify', () => {
       siteId: 'site-123',
       url: 'https://bloom-project.netlify.app',
     })
-    expect(fetchMock).toHaveBeenCalledWith('/.netlify/functions/deploy-netlify', {
+    expect(fetchMock).toHaveBeenCalledWith('/api/deploy-netlify', {
       method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
+      headers: { 'Content-Type': 'application/json', Authorization: 'Bearer test-token' },
       body: JSON.stringify({
         projectId: 'project-12345678',
         html: '<!doctype html><html>OpenThorn</html>',
@@ -53,9 +61,9 @@ describe('deployToNetlify', () => {
       url: 'https://existing.netlify.app',
     })
     expect(fetchMock).toHaveBeenCalledTimes(1)
-    expect(fetchMock).toHaveBeenCalledWith('/.netlify/functions/deploy-netlify', {
+    expect(fetchMock).toHaveBeenCalledWith('/api/deploy-netlify', {
       method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
+      headers: { 'Content-Type': 'application/json', Authorization: 'Bearer test-token' },
       body: JSON.stringify({
         projectId: 'project-1',
         html: '<html></html>',

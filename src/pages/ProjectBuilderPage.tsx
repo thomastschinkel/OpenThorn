@@ -1331,17 +1331,16 @@ export default function ProjectBuilderPage() {
 
   const findOpenThornAccount = useCallback(async (email: string) => {
     const normalizedEmail = email.trim().toLowerCase()
-    const { data } = await supabase
-      .from('profiles')
-      .select('id, full_name')
-      .ilike('email', normalizedEmail)
-      .maybeSingle()
+    // profiles is locked to self-only via RLS; use the SECURITY DEFINER lookup
+    // so we can resolve an invitee's account without exposing the table.
+    const { data } = await supabase.rpc('find_account_by_email', { lookup_email: normalizedEmail })
 
-    if (!data) return null
+    const row = Array.isArray(data) ? data[0] : data
+    if (!row) return null
 
     return {
-      id: String(data.id),
-      name: String(data.full_name ?? normalizedEmail.split('@')[0]),
+      id: String(row.id),
+      name: String(row.full_name ?? normalizedEmail.split('@')[0]),
     }
   }, [])
 

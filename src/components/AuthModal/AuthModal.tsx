@@ -1,5 +1,5 @@
 import { useState, useEffect, useCallback } from 'react'
-import { useNavigate } from 'react-router-dom'
+import { Link, useNavigate } from 'react-router-dom'
 import { motion, AnimatePresence } from 'framer-motion'
 import { useAuth } from '../../lib/AuthContext'
 import SocialButton from './SocialButton'
@@ -234,9 +234,9 @@ export default function AuthModal({ isOpen, onClose, initialMode }: AuthModalPro
         {viewMode === 'signup' && (
           <p className={styles.terms}>
             By continuing, you agree to our{' '}
-            <a href="#" className={styles.termsLink}>Terms of Service</a>
+            <Link to="/terms" className={styles.termsLink} onClick={onClose}>Terms of Service</Link>
             {' '}and{' '}
-            <a href="#" className={styles.termsLink}>Privacy Policy</a>
+            <Link to="/privacy" className={styles.termsLink} onClick={onClose}>Privacy Policy</Link>
           </p>
         )}
 

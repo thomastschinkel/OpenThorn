@@ -5,8 +5,10 @@ assets/*.pdf
 *.local
 .env
 .env.local
-dev.out.log
-dev.err.log
+dev*.log
+*.err.log
+*.out.log
+remotion/public/*.mp4
 remotion/node_modules/
 remotion/build/
 remotion/out/
