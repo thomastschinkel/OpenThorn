@@ -259,20 +259,32 @@
 
 /* ===== User footer ===== */
 .userFooter {
-  display: flex;
-  align-items: center;
-  gap: 8px;
-  padding: 12px 16px;
+  position: relative;
+  padding: 8px 10px;
   border-top: 1px solid var(--color-border);
   flex-shrink: 0;
 }
 
-.userInfo {
+.userTrigger {
   display: flex;
   align-items: center;
   gap: 10px;
-  flex: 1;
-  min-width: 0;
+  width: 100%;
+  padding: 8px 8px;
+  border-radius: 10px;
+  background: transparent;
+  border: none;
+  cursor: pointer;
+  transition: background 0.15s;
+  text-align: left;
+}
+
+.userTrigger:hover {
+  background: rgba(255, 255, 255, 0.05);
+}
+
+.userTriggerActive {
+  background: rgba(255, 255, 255, 0.07);
 }
 
 .avatar {
@@ -293,6 +305,7 @@
   display: flex;
   flex-direction: column;
   min-width: 0;
+  flex: 1;
 }
 
 .userName {
@@ -310,24 +323,145 @@
   white-space: nowrap;
 }
 
-.signOutBtn {
+.chevron {
+  color: var(--color-text-muted);
+  flex-shrink: 0;
+  transition: transform 0.2s ease, color 0.15s;
+  margin-right: 2px;
+}
+
+.chevronUp {
+  transform: rotate(0deg);
+  color: var(--color-text-secondary);
+}
+
+.chevron:not(.chevronUp) {
+  transform: rotate(180deg);
+}
+
+/* ===== Profile menu popover ===== */
+.profileMenu {
+  position: absolute;
+  bottom: calc(100% + 6px);
+  left: 10px;
+  right: 10px;
+  z-index: 70;
+  background: var(--color-surface-overlay);
+  border: 1px solid var(--color-border-visible);
+  border-radius: 12px;
+  box-shadow: 0 -4px 24px rgba(0, 0, 0, 0.35), 0 16px 40px rgba(0, 0, 0, 0.4), 0 0 0 1px rgba(0, 0, 0, 0.15);
+  padding: 6px;
+  animation: profileMenuIn 0.15s cubic-bezier(0.16, 1, 0.3, 1);
+}
+
+@keyframes profileMenuIn {
+  from {
+    opacity: 0;
+    transform: translateY(6px) scale(0.97);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0) scale(1);
+  }
+}
+
+.profileMenuHeader {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  padding: 8px 10px 10px;
+}
+
+.profileMenuAvatar {
+  width: 34px;
+  height: 34px;
+  border-radius: 9px;
+  background: var(--color-accent);
+  color: #08050C;
   display: flex;
   align-items: center;
   justify-content: center;
-  width: 32px;
-  height: 32px;
-  border-radius: 8px;
-  color: var(--color-text-muted);
-  background: transparent;
-  border: none;
-  cursor: pointer;
-  transition: color 0.15s, background 0.15s;
+  font-size: 14px;
+  font-weight: 700;
   flex-shrink: 0;
 }
 
-.signOutBtn:hover {
-  color: #FCA5A5;
+.profileMenuMeta {
+  display: flex;
+  flex-direction: column;
+  min-width: 0;
+}
+
+.profileMenuName {
+  font-size: 13px;
+  font-weight: 600;
+  color: var(--color-text);
+  line-height: 1.25;
+}
+
+.profileMenuEmail {
+  font-size: 11px;
+  color: var(--color-text-muted);
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.profileMenuDivider {
+  height: 1px;
+  background: var(--color-border);
+  margin: 4px 0;
+}
+
+.profileMenuItem {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  width: 100%;
+  height: 34px;
+  padding: 0 10px;
+  border-radius: 7px;
+  font-family: var(--font-body);
+  font-size: 13px;
+  font-weight: 450;
+  color: var(--color-text-secondary);
+  background: transparent;
+  border: none;
+  cursor: pointer;
+  transition: background 0.1s, color 0.1s;
+  text-align: left;
+}
+
+.profileMenuItem svg {
+  flex-shrink: 0;
+  opacity: 0.6;
+  transition: opacity 0.1s;
+}
+
+.profileMenuItem:hover {
+  background: rgba(255, 255, 255, 0.06);
+  color: var(--color-text);
+}
+
+.profileMenuItem:hover svg {
+  opacity: 1;
+}
+
+.profileMenuSignOut {
+  color: #f87171;
+}
+
+.profileMenuSignOut svg {
+  opacity: 0.7;
+}
+
+.profileMenuSignOut:hover {
   background: rgba(239, 68, 68, 0.1);
+  color: #fca5a5;
+}
+
+.profileMenuSignOut:hover svg {
+  opacity: 1;
 }
 
 .bellBadge {

@@ -750,6 +750,14 @@ export async function runOpenThornAgent(input: AgentRunInput): Promise<AgentRunR
   }
   const userMemoryReminder = userMemoryToSystemReminder(loadUserMemory(input.userId))
 
+  // ── Custom instructions (user knowledge) ─────────────────────
+  const { data: profileData } = await supabase
+    .from('profiles')
+    .select('custom_instructions')
+    .eq('id', input.userId)
+    .single()
+  const customInstructions = (profileData as { custom_instructions: string | null } | null)?.custom_instructions?.trim() ?? ''
+
   // ── Resolve active skills from prompt ────────────────────────
   const activeSkills = resolveActiveSkills(input.prompt)
   if (activeSkills.length > 0) {
@@ -781,6 +789,14 @@ export async function runOpenThornAgent(input: AgentRunInput): Promise<AgentRunR
   // Inject cross-project user memory (preferences / known fixes)
   if (userMemoryReminder) {
     messages.push({ role: 'user', content: userMemoryReminder })
+  }
+
+  // Inject user's custom knowledge/instructions
+  if (customInstructions) {
+    messages.push({
+      role: 'user',
+      content: `<user-knowledge>\nThe user has set the following custom instructions that apply to every project. Follow them unless they conflict with explicit instructions in the current request:\n\n${customInstructions}\n</user-knowledge>`,
+    })
   }
 
   messages.push({ role: 'user', content: buildThinkingLevelPrompt(thinkingLevel) })
