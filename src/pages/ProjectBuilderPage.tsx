@@ -543,6 +543,7 @@ interface ChatMessage {
   role: 'user' | 'assistant'
   content?: string       // user messages
   title?: string
+  summary?: string
   files?: AgentCodeFile[]
   error?: boolean
   timeline: TimelineEvent[]  // assistant messages
@@ -1662,6 +1663,9 @@ export default function ProjectBuilderPage() {
                     })
                   }
                 }
+                if (typeof doneData.summary === 'string' && doneData.summary.trim()) {
+                  updateAssistantMessage(assistantId, { summary: doneData.summary.trim() })
+                }
               } catch { /* ok */ }
             }
           }
@@ -2241,6 +2245,11 @@ export default function ProjectBuilderPage() {
                       return null
                     })}
                   </div>
+
+                  {/* Summary at completion */}
+                  {message.summary && (
+                    <p className={styles.completionSummary}>{message.summary}</p>
+                  )}
 
                   {/* File list at completion */}
                   {message.files && message.files.length > 0 && (

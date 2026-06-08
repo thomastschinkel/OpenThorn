@@ -1524,6 +1524,13 @@
 
 /* ─── Completion Badge ──────────────────────────────────────────────────── */
 
+.completionSummary {
+  margin-top: 12px;
+  font-size: 13px;
+  color: rgba(255, 255, 255, 0.75);
+  line-height: 1.5;
+}
+
 .completionBadge {
   margin-top: 14px;
   padding: 8px 14px;
