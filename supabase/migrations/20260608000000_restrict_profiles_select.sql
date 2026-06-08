@@ -24,4 +24,7 @@ as $$
 $$;
 
 revoke all on function public.find_account_by_email(text) from public;
+-- Supabase default privileges auto-grant EXECUTE to anon on new functions;
+-- revoke it so only signed-in users can resolve an account by email.
+revoke execute on function public.find_account_by_email(text) from anon;
 grant execute on function public.find_account_by_email(text) to authenticated;
