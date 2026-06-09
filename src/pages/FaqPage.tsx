@@ -165,7 +165,9 @@ function AccordionItem({ question, answer }: FaqItem) {
 }
 
 export default function FaqPage() {
-  usePageTitle('FAQ')
+  usePageTitle('FAQ', {
+    description: 'Answers to common questions about OpenThorn — how bring-your-own-key works, supported AI providers, costs, and deploying your generated site.',
+  })
 
   return (
     <div className={styles.page}>

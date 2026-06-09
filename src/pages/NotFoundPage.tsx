@@ -3,7 +3,9 @@ import { usePageTitle } from '../lib/usePageTitle'
 import styles from './NotFoundPage.module.css'
 
 export default function NotFoundPage() {
-  usePageTitle('Page Not Found')
+  usePageTitle('Page Not Found', {
+    description: 'The page you are looking for could not be found.',
+  })
   return (
     <div className={styles.root}>
       <div className={styles.card}>

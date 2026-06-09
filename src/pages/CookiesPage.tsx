@@ -2,7 +2,9 @@ import LegalPage from './LegalPage'
 import { usePageTitle } from '../lib/usePageTitle'
 
 export default function CookiesPage() {
-  usePageTitle('Cookie Policy')
+  usePageTitle('Cookie Policy', {
+    description: 'How OpenThorn uses cookies and local storage. We use only essential cookies for authentication — no tracking or advertising cookies.',
+  })
   return (
     <LegalPage title="Cookie and Storage Policy" lastUpdated="June 8, 2026">
       <h2>1. What Cookies and Local Storage Are</h2>

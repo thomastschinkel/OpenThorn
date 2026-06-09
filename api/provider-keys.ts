@@ -41,7 +41,7 @@ export default async function handler(req: VercelReq, res: VercelRes): Promise<v
     return
   }
 
-  if (!rateLimit(`keys:${user.id}`, 60, 60_000)) {
+  if (!(await rateLimit(`keys:${user.id}`, 60, 60_000))) {
     res.status(429).json({ error: 'Too many requests' })
     return
   }

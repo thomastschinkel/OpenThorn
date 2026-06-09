@@ -2,7 +2,9 @@ import LegalPage from './LegalPage'
 import { usePageTitle } from '../lib/usePageTitle'
 
 export default function TermsPage() {
-  usePageTitle('Terms of Service')
+  usePageTitle('Terms of Service', {
+    description: 'The terms governing your use of OpenThorn, the free bring-your-own-key AI website builder.',
+  })
   return (
     <LegalPage title="Terms of Service" lastUpdated="June 8, 2026">
       <h2>1. About OpenThorn</h2>

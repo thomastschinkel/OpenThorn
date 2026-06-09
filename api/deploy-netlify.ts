@@ -1,4 +1,4 @@
-import { verifyUser, rateLimit, runNetlifyDeploy } from './_shared'
+import { verifyUser, rateLimit, runNetlifyDeploy, getProjectForDeploy, persistProjectSiteId } from './_shared'
 
 interface VercelReq {
   method?: string
@@ -15,7 +15,9 @@ function header(req: VercelReq, name: string): string | undefined {
   return Array.isArray(v) ? v[0] : v
 }
 
-function parseBody(body: unknown): { projectId?: string; html?: string; existingSiteId?: string | null } {
+// The Netlify site id is never trusted from the body — it is looked up from the
+// database, scoped to the caller, so a user cannot deploy onto someone else's site.
+function parseBody(body: unknown): { projectId?: string; html?: string } {
   if (!body) return {}
   if (typeof body === 'string') {
     try { return JSON.parse(body) } catch { return {} }
@@ -29,26 +31,37 @@ export default async function handler(req: VercelReq, res: VercelRes): Promise<v
     return
   }
 
-  const user = await verifyUser(header(req, 'authorization'))
+  const authorization = header(req, 'authorization')
+  const user = await verifyUser(authorization)
   if (!user) {
     res.status(401).json({ error: 'Unauthorized' })
     return
   }
 
   // Best-effort guard against abuse: cap deploys per user per minute.
-  if (!rateLimit(`deploy:${user.id}`, 10, 60_000)) {
+  if (!(await rateLimit(`deploy:${user.id}`, 10, 60_000))) {
     res.status(429).json({ error: 'Too many deploys. Please wait a minute and try again.' })
     return
   }
 
-  const { projectId, html, existingSiteId } = parseBody(req.body)
+  const { projectId, html } = parseBody(req.body)
   if (!projectId || !html) {
     res.status(400).json({ error: 'Missing projectId or html' })
     return
   }
 
+  // Verify the caller owns/collaborates on this project and derive its site id.
+  const access = await getProjectForDeploy(authorization, projectId)
+  if (!access.ok) {
+    res.status(403).json({ error: 'You do not have access to this project.' })
+    return
+  }
+
   try {
-    const result = await runNetlifyDeploy({ projectId, html, existingSiteId })
+    const result = await runNetlifyDeploy({ projectId, html, existingSiteId: access.siteId })
+    if (result.siteId !== access.siteId) {
+      await persistProjectSiteId(authorization, projectId, result.siteId)
+    }
     res.status(200).json(result)
   } catch (err) {
     res.status(500).json({ error: err instanceof Error ? err.message : 'Deploy failed' })

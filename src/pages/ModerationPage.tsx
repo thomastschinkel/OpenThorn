@@ -2,7 +2,9 @@ import LegalPage from './LegalPage'
 import { usePageTitle } from '../lib/usePageTitle'
 
 export default function ModerationPage() {
-  usePageTitle('Moderation and DSA')
+  usePageTitle('Moderation and DSA', {
+    description: 'How OpenThorn moderates user-generated sites and complies with the EU Digital Services Act, including how to report illegal content.',
+  })
   return (
     <LegalPage title="Moderation and DSA Notice" lastUpdated="June 8, 2026">
       <h2>1. Scope</h2>

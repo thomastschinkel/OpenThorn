@@ -109,6 +109,50 @@
   height: 14px;
 }
 
+.termsField {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+  margin-top: 2px;
+}
+
+.termsLabel {
+  display: flex;
+  align-items: flex-start;
+  gap: 8px;
+  cursor: pointer;
+}
+
+.termsCheckbox {
+  flex-shrink: 0;
+  width: 16px;
+  height: 16px;
+  margin-top: 1px;
+  accent-color: var(--color-accent);
+  cursor: pointer;
+}
+
+.termsCheckbox:disabled {
+  cursor: not-allowed;
+  opacity: 0.5;
+}
+
+.termsText {
+  font-size: 12px;
+  line-height: 1.4;
+  color: var(--color-text-secondary);
+}
+
+.termsLink {
+  color: var(--color-text);
+  text-decoration: underline;
+  text-underline-offset: 2px;
+}
+
+.termsLink:hover {
+  color: var(--color-accent);
+}
+
 .submitBtn {
   display: flex;
   align-items: center;

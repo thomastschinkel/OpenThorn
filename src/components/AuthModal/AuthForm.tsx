@@ -22,6 +22,7 @@ export default function AuthForm({
   const [password, setPassword] = useState('')
   const [confirmPassword, setConfirmPassword] = useState('')
   const [showPassword, setShowPassword] = useState(false)
+  const [acceptedTerms, setAcceptedTerms] = useState(false)
   const [fieldErrors, setFieldErrors] = useState<Record<string, string>>({})
 
   const validate = (): boolean => {
@@ -47,6 +48,10 @@ export default function AuthForm({
       if (mode === 'signup' && password !== confirmPassword) {
         errors.confirmPassword = 'Passwords do not match'
       }
+    }
+
+    if (mode === 'signup' && !acceptedTerms) {
+      errors.terms = 'Please accept the Terms of Service and Privacy Policy to continue'
     }
 
     setFieldErrors(errors)
@@ -162,6 +167,27 @@ export default function AuthForm({
             autoComplete="new-password"
           />
           {fieldErrors.confirmPassword && <span className={styles.fieldError}>{fieldErrors.confirmPassword}</span>}
+        </div>
+      )}
+
+      {mode === 'signup' && (
+        <div className={styles.termsField}>
+          <label className={styles.termsLabel}>
+            <input
+              type="checkbox"
+              className={styles.termsCheckbox}
+              checked={acceptedTerms}
+              onChange={(e) => { setAcceptedTerms(e.target.checked); handleInputChange('terms') }}
+              disabled={loading}
+            />
+            <span className={styles.termsText}>
+              I agree to the{' '}
+              <a href="/terms" target="_blank" rel="noopener noreferrer" className={styles.termsLink}>Terms of Service</a>
+              {' '}and{' '}
+              <a href="/privacy" target="_blank" rel="noopener noreferrer" className={styles.termsLink}>Privacy Policy</a>
+            </span>
+          </label>
+          {fieldErrors.terms && <span className={styles.fieldError}>{fieldErrors.terms}</span>}
         </div>
       )}
 

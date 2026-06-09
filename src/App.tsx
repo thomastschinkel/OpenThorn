@@ -1,6 +1,7 @@
 import { useState, useEffect, lazy, Suspense } from 'react'
 import { Routes, Route, Navigate } from 'react-router-dom'
 import { useAuth } from './lib/AuthContext'
+import { usePageTitle } from './lib/usePageTitle'
 import ErrorBoundary from './components/ErrorBoundary/ErrorBoundary'
 import Header from './components/Header/Header'
 import HeroSection from './components/HeroSection/HeroSection'
@@ -34,6 +35,7 @@ const NotFoundPage = lazy(() => import('./pages/NotFoundPage'))
 
 function HomePage() {
   const { user, loading } = useAuth()
+  usePageTitle()
 
   if (loading) return null
   if (user) return <Navigate to="/dashboard" replace />

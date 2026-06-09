@@ -1,5 +1,5 @@
 import { useState, useEffect, useCallback } from 'react'
-import { Link, useNavigate } from 'react-router-dom'
+import { useNavigate } from 'react-router-dom'
 import { motion, AnimatePresence } from 'framer-motion'
 import { useAuth } from '../../lib/AuthContext'
 import SocialButton from './SocialButton'
@@ -229,16 +229,6 @@ export default function AuthModal({ isOpen, onClose, initialMode }: AuthModalPro
           error={error}
           onClearError={() => setError(null)}
         />
-
-        {/* Terms (signup only) */}
-        {viewMode === 'signup' && (
-          <p className={styles.terms}>
-            By continuing, you agree to our{' '}
-            <Link to="/terms" className={styles.termsLink} onClick={onClose}>Terms of Service</Link>
-            {' '}and{' '}
-            <Link to="/privacy" className={styles.termsLink} onClick={onClose}>Privacy Policy</Link>
-          </p>
-        )}
 
         {/* Forgot password link (signin only) */}
         {viewMode === 'signin' && (

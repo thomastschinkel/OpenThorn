@@ -2,7 +2,9 @@ import LegalPage from './LegalPage'
 import { usePageTitle } from '../lib/usePageTitle'
 
 export default function PrivacyPage() {
-  usePageTitle('Privacy Policy')
+  usePageTitle('Privacy Policy', {
+    description: 'How OpenThorn handles your data. Your provider API keys are encrypted at rest, and we run no analytics or third-party tracking.',
+  })
   return (
     <LegalPage title="Privacy Policy" lastUpdated="June 8, 2026">
       <h2>1. Who We Are</h2>

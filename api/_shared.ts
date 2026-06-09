@@ -18,13 +18,18 @@ function supabaseEnv(): { url: string; anonKey: string } | null {
   return { url, anonKey }
 }
 
+/** Extract the bearer token from an Authorization header value. */
+function bearer(authorization: string | undefined): string {
+  return (authorization || '').replace(/^Bearer\s+/i, '').trim()
+}
+
 /**
  * Verify a Supabase access token by calling the Auth API. Returns the user on
  * success, or null if the token is missing/invalid or the server is not
  * configured with Supabase credentials.
  */
 export async function verifyUser(authorization: string | undefined): Promise<AuthedUser | null> {
-  const token = (authorization || '').replace(/^Bearer\s+/i, '').trim()
+  const token = bearer(authorization)
   if (!token) return null
 
   const env = supabaseEnv()
@@ -44,13 +49,87 @@ export async function verifyUser(authorization: string | undefined): Promise<Aut
 }
 
 // ---------------------------------------------------------------------------
-// Best-effort in-memory rate limiting (per warm instance)
+// Project ownership lookup (for the deploy endpoint)
+//
+// The Netlify site id is authoritative in the database, not in the request
+// body. Deriving it server-side (scoped to the caller's JWT via RLS) prevents a
+// caller from pushing HTML to a site id they don't own. PostgREST applies the
+// projects RLS policy, so a row is only returned when the user owns or
+// collaborates on the project.
+// ---------------------------------------------------------------------------
+
+// Conservative id charset — uuids pass, and it rules out any character that
+// could alter the PostgREST filter even before URL-encoding.
+const PROJECT_ID_RE = /^[A-Za-z0-9_-]{1,100}$/
+
+export interface ProjectAccess {
+  /** True only when the caller may deploy this project. */
+  ok: boolean
+  /** The project's persisted Netlify site id, or null if it has none yet. */
+  siteId: string | null
+}
+
+export async function getProjectForDeploy(
+  authorization: string | undefined,
+  projectId: string,
+): Promise<ProjectAccess> {
+  const env = supabaseEnv()
+  const token = bearer(authorization)
+  if (!env || !token || !PROJECT_ID_RE.test(projectId)) return { ok: false, siteId: null }
+
+  try {
+    const res = await fetch(
+      `${env.url}/rest/v1/projects?id=eq.${encodeURIComponent(projectId)}&select=netlify_site_id&limit=1`,
+      { headers: { apikey: env.anonKey, Authorization: `Bearer ${token}`, Accept: 'application/json' } },
+    )
+    if (!res.ok) return { ok: false, siteId: null }
+    const rows = (await res.json()) as Array<{ netlify_site_id?: string | null }>
+    if (!Array.isArray(rows) || rows.length === 0) return { ok: false, siteId: null }
+    const siteId = rows[0]?.netlify_site_id
+    return { ok: true, siteId: typeof siteId === 'string' && siteId ? siteId : null }
+  } catch {
+    return { ok: false, siteId: null }
+  }
+}
+
+/** Best-effort: persist the Netlify site id so future deploys reuse the site. */
+export async function persistProjectSiteId(
+  authorization: string | undefined,
+  projectId: string,
+  siteId: string,
+): Promise<void> {
+  const env = supabaseEnv()
+  const token = bearer(authorization)
+  if (!env || !token || !PROJECT_ID_RE.test(projectId)) return
+
+  try {
+    await fetch(`${env.url}/rest/v1/projects?id=eq.${encodeURIComponent(projectId)}`, {
+      method: 'PATCH',
+      headers: {
+        apikey: env.anonKey,
+        Authorization: `Bearer ${token}`,
+        'Content-Type': 'application/json',
+        Prefer: 'return=minimal',
+      },
+      body: JSON.stringify({ netlify_site_id: siteId }),
+    })
+  } catch {
+    /* non-fatal — the client also persists this after a successful deploy */
+  }
+}
+
+// ---------------------------------------------------------------------------
+// Rate limiting — shared (Upstash Redis) with in-memory fallback
+//
+// On Vercel, function instances are ephemeral and run concurrently, so an
+// in-memory counter cannot enforce a global limit. When UPSTASH_REDIS_REST_URL
+// and UPSTASH_REDIS_REST_TOKEN are configured we use a shared fixed-window
+// counter in Redis; otherwise we fall back to a best-effort per-instance limit.
 // ---------------------------------------------------------------------------
 
 const buckets = new Map<string, number[]>()
 
-/** Returns true if the action is allowed, false if the caller is over the limit. */
-export function rateLimit(key: string, max: number, windowMs: number): boolean {
+function inMemoryRateLimit(key: string, max: number, windowMs: number): boolean {
   const now = Date.now()
   const hits = (buckets.get(key) || []).filter((t) => now - t < windowMs)
   if (hits.length >= max) {
@@ -60,6 +139,49 @@ export function rateLimit(key: string, max: number, windowMs: number): boolean {
   hits.push(now)
   buckets.set(key, hits)
   return true
+}
+
+function upstashEnv(): { url: string; token: string } | null {
+  const url = process.env.UPSTASH_REDIS_REST_URL
+  const token = process.env.UPSTASH_REDIS_REST_TOKEN
+  if (!url || !token) return null
+  return { url, token }
+}
+
+async function redisRateLimit(
+  env: { url: string; token: string },
+  key: string,
+  max: number,
+  windowMs: number,
+): Promise<boolean> {
+  // Fixed window: INCR the counter, and set its TTL only on the first hit (NX).
+  const res = await fetch(`${env.url}/pipeline`, {
+    method: 'POST',
+    headers: { Authorization: `Bearer ${env.token}`, 'Content-Type': 'application/json' },
+    body: JSON.stringify([
+      ['INCR', `rl:${key}`],
+      ['PEXPIRE', `rl:${key}`, String(windowMs), 'NX'],
+    ]),
+  })
+  if (!res.ok) throw new Error(`Upstash error ${res.status}`)
+  const data = (await res.json()) as Array<{ result?: number }>
+  const count = Number(data?.[0]?.result ?? 0)
+  if (!Number.isFinite(count) || count <= 0) throw new Error('Unexpected Upstash response')
+  return count <= max
+}
+
+/** Returns true if the action is allowed, false if the caller is over the limit. */
+export async function rateLimit(key: string, max: number, windowMs: number): Promise<boolean> {
+  const env = upstashEnv()
+  if (env) {
+    try {
+      return await redisRateLimit(env, key, max, windowMs)
+    } catch {
+      // Fail open to the per-instance limiter rather than blocking real users.
+      return inMemoryRateLimit(key, max, windowMs)
+    }
+  }
+  return inMemoryRateLimit(key, max, windowMs)
 }
 
 // ---------------------------------------------------------------------------

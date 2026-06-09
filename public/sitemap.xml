@@ -1,4 +1,8 @@
 <?xml version="1.0" encoding="UTF-8"?>
+<!-- Only publicly accessible (non-auth-gated) pages belong here. Routes behind
+     ProtectedRoute (/dashboard, /community, /templates, /providers, /profile,
+     /settings, /projects/*) are intentionally excluded — crawlers only hit a
+     sign-in wall there. -->
 <urlset xmlns="http://www.sitemaps.org/schemas/sitemap/0.9">
   <url>
     <loc>https://openthorn.vercel.app/</loc>
@@ -7,22 +11,47 @@
   </url>
   <url>
     <loc>https://openthorn.vercel.app/pricing</loc>
-    <changefreq>daily</changefreq>
+    <changefreq>weekly</changefreq>
     <priority>0.8</priority>
   </url>
   <url>
-    <loc>https://openthorn.vercel.app/community</loc>
-    <changefreq>hourly</changefreq>
-    <priority>0.9</priority>
-  </url>
-  <url>
-    <loc>https://openthorn.vercel.app/templates</loc>
+    <loc>https://openthorn.vercel.app/blog</loc>
     <changefreq>weekly</changefreq>
     <priority>0.7</priority>
   </url>
   <url>
-    <loc>https://openthorn.vercel.app/providers</loc>
-    <changefreq>weekly</changefreq>
+    <loc>https://openthorn.vercel.app/blog/introducing-openthorn</loc>
+    <changefreq>monthly</changefreq>
     <priority>0.6</priority>
+  </url>
+  <url>
+    <loc>https://openthorn.vercel.app/faq</loc>
+    <changefreq>monthly</changefreq>
+    <priority>0.6</priority>
+  </url>
+  <url>
+    <loc>https://openthorn.vercel.app/terms</loc>
+    <changefreq>yearly</changefreq>
+    <priority>0.3</priority>
+  </url>
+  <url>
+    <loc>https://openthorn.vercel.app/privacy</loc>
+    <changefreq>yearly</changefreq>
+    <priority>0.3</priority>
+  </url>
+  <url>
+    <loc>https://openthorn.vercel.app/cookies</loc>
+    <changefreq>yearly</changefreq>
+    <priority>0.3</priority>
+  </url>
+  <url>
+    <loc>https://openthorn.vercel.app/imprint</loc>
+    <changefreq>yearly</changefreq>
+    <priority>0.3</priority>
+  </url>
+  <url>
+    <loc>https://openthorn.vercel.app/moderation</loc>
+    <changefreq>yearly</changefreq>
+    <priority>0.3</priority>
   </url>
 </urlset>

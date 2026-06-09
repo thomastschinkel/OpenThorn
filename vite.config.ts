@@ -5,6 +5,8 @@ import {
   verifyUser,
   rateLimit,
   runNetlifyDeploy,
+  getProjectForDeploy,
+  persistProjectSiteId,
   encryptForUser,
   decryptForUser,
   hasEncryptionSecret,
@@ -49,12 +51,17 @@ export default defineConfig(({ mode }) => {
             try {
               const user = await verifyUser(req.headers.authorization)
               if (!user) return sendJson(res, 401, { error: 'Unauthorized' })
-              if (!rateLimit(`deploy:${user.id}`, 10, 60_000)) {
+              if (!(await rateLimit(`deploy:${user.id}`, 10, 60_000))) {
                 return sendJson(res, 429, { error: 'Too many deploys. Please wait a minute and try again.' })
               }
-              const body = await readJsonBody<{ projectId?: string; html?: string; existingSiteId?: string | null }>(req)
+              const body = await readJsonBody<{ projectId?: string; html?: string }>(req)
               if (!body.projectId || !body.html) return sendJson(res, 400, { error: 'Missing projectId or html' })
-              const result = await runNetlifyDeploy({ projectId: body.projectId, html: body.html, existingSiteId: body.existingSiteId })
+              const access = await getProjectForDeploy(req.headers.authorization, body.projectId)
+              if (!access.ok) return sendJson(res, 403, { error: 'You do not have access to this project.' })
+              const result = await runNetlifyDeploy({ projectId: body.projectId, html: body.html, existingSiteId: access.siteId })
+              if (result.siteId !== access.siteId) {
+                await persistProjectSiteId(req.headers.authorization, body.projectId, result.siteId)
+              }
               sendJson(res, 200, result)
             } catch (err) {
               sendJson(res, 500, { error: err instanceof Error ? err.message : 'Deploy failed' })
@@ -67,7 +74,7 @@ export default defineConfig(({ mode }) => {
             try {
               const user = await verifyUser(req.headers.authorization)
               if (!user) return sendJson(res, 401, { error: 'Unauthorized' })
-              if (!rateLimit(`keys:${user.id}`, 60, 60_000)) return sendJson(res, 429, { error: 'Too many requests' })
+              if (!(await rateLimit(`keys:${user.id}`, 60, 60_000))) return sendJson(res, 429, { error: 'Too many requests' })
               const body = await readJsonBody<{ action?: string; value?: string }>(req)
               if ((body.action !== 'encrypt' && body.action !== 'decrypt') || typeof body.value !== 'string') {
                 return sendJson(res, 400, { error: 'Invalid request' })

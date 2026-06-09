@@ -1,5 +1,6 @@
 import { Link } from 'react-router-dom'
 import { blogPosts } from '../data/blogPosts'
+import { usePageTitle } from '../lib/usePageTitle'
 import styles from './BlogPage.module.css'
 
 function formatDate(iso: string) {
@@ -11,6 +12,9 @@ function formatDate(iso: string) {
 }
 
 export default function BlogPage() {
+  usePageTitle('Blog', {
+    description: 'Product updates, guides, and stories from the OpenThorn team on building and shipping websites with AI.',
+  })
   const [featured, ...rest] = blogPosts
 
   return (

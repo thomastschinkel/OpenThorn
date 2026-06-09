@@ -2,6 +2,7 @@ import { useParams, Link, Navigate } from 'react-router-dom'
 import ReactMarkdown from 'react-markdown'
 import remarkGfm from 'remark-gfm'
 import { getPostBySlug } from '../data/blogPosts'
+import { usePageTitle } from '../lib/usePageTitle'
 import styles from './BlogPostPage.module.css'
 
 function formatDate(iso: string) {
@@ -20,6 +21,8 @@ function estimateReadTime(content: string) {
 export default function BlogPostPage() {
   const { slug } = useParams<{ slug: string }>()
   const post = slug ? getPostBySlug(slug) : undefined
+
+  usePageTitle(post?.title, post ? { description: post.excerpt } : undefined)
 
   if (!post) return <Navigate to="/blog" replace />
 
