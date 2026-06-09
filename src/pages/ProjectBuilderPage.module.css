@@ -2671,3 +2671,29 @@
   white-space: nowrap;
   box-shadow: 0 4px 20px rgba(0, 0, 0, 0.4);
 }
+
+@media (max-width: 480px) {
+  .topbar {
+    height: auto;
+    padding: 8px 12px;
+    gap: 8px;
+  }
+
+  .projectNameBtn {
+    max-width: 180px;
+    font-size: 13px;
+    padding: 5px 10px;
+  }
+
+  .projectMeta {
+    display: none;
+  }
+
+  .modelBadge {
+    display: none;
+  }
+
+  .topActions {
+    gap: 6px;
+  }
+}

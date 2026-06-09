@@ -175,6 +175,20 @@ export default function SettingsPage() {
         </div>
       </aside>
 
+      {/* ── Mobile tab strip ── */}
+      <div className={styles.mobileTabBar}>
+        {navItems.map((item) => (
+          <button
+            key={item.id}
+            className={`${styles.mobileTab} ${tab === item.id ? styles.mobileTabActive : ''} ${item.danger ? styles.mobileTabDanger : ''}`}
+            onClick={() => setTab(item.id)}
+            type="button"
+          >
+            {item.label}
+          </button>
+        ))}
+      </div>
+
       {/* ── Main content ── */}
       <main className={styles.main}>
 

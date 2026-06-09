@@ -415,3 +415,58 @@
   from { transform: rotate(0deg); }
   to { transform: rotate(360deg); }
 }
+
+.mobileTopbar {
+  display: none;
+}
+
+@media (max-width: 768px) {
+  .main {
+    margin-left: 0;
+    padding: 80px 20px 80px;
+  }
+
+  .mobileTopbar {
+    display: flex;
+    align-items: center;
+    gap: 12px;
+    position: fixed;
+    top: 0;
+    left: 0;
+    right: 0;
+    height: 56px;
+    padding: 0 16px;
+    z-index: 48;
+    background: rgba(18, 14, 19, 0.88);
+    backdrop-filter: blur(12px);
+    -webkit-backdrop-filter: blur(12px);
+    border-bottom: 1px solid var(--color-border);
+  }
+
+  .mobileMenuBtn {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    width: 40px;
+    height: 40px;
+    border-radius: 10px;
+    color: var(--color-text-secondary);
+    flex-shrink: 0;
+    transition: background 0.15s, color 0.15s;
+  }
+
+  .mobileMenuBtn:hover {
+    background: rgba(255, 255, 255, 0.06);
+    color: var(--color-text);
+  }
+
+  .mobileLogo {
+    display: flex;
+    align-items: center;
+  }
+
+  .mobileLogoImg {
+    height: 22px;
+    width: auto;
+  }
+}

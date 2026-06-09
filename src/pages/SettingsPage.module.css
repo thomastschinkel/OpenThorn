@@ -573,3 +573,81 @@
 }
 
 @keyframes spin { to { transform: rotate(360deg); } }
+
+.mobileTabBar {
+  display: none;
+}
+
+@media (max-width: 768px) {
+  .sidebar {
+    display: none;
+  }
+
+  .main {
+    margin-left: 0;
+    padding: 72px 20px 80px;
+  }
+
+  .mobileTabBar {
+    display: flex;
+    position: fixed;
+    top: 0;
+    left: 0;
+    right: 0;
+    height: 56px;
+    z-index: 48;
+    background: rgba(18, 14, 19, 0.92);
+    backdrop-filter: blur(12px);
+    -webkit-backdrop-filter: blur(12px);
+    border-bottom: 1px solid var(--color-border);
+    overflow-x: auto;
+    overflow-y: hidden;
+    scrollbar-width: none;
+    padding: 0 12px;
+    gap: 4px;
+    align-items: center;
+  }
+
+  .mobileTabBar::-webkit-scrollbar {
+    display: none;
+  }
+
+  .mobileTab {
+    flex-shrink: 0;
+    height: 34px;
+    padding: 0 14px;
+    border-radius: 8px;
+    font-family: var(--font-body);
+    font-size: 13px;
+    font-weight: 500;
+    color: var(--color-text-secondary);
+    background: transparent;
+    border: none;
+    cursor: pointer;
+    transition: background 0.12s, color 0.12s;
+    white-space: nowrap;
+  }
+
+  .mobileTab:hover {
+    background: rgba(255, 255, 255, 0.05);
+    color: var(--color-text);
+  }
+
+  .mobileTabActive {
+    background: rgba(139, 92, 246, 0.15);
+    color: var(--color-accent);
+  }
+
+  .mobileTabActive:hover {
+    background: rgba(139, 92, 246, 0.2);
+  }
+
+  .mobileTabDanger {
+    color: #f87171;
+  }
+
+  .mobileTabDanger:hover {
+    background: rgba(239, 68, 68, 0.1);
+    color: #fca5a5;
+  }
+}

@@ -161,3 +161,24 @@
   }
   .brand { grid-column: 1 / -1; }
 }
+
+@media (max-width: 480px) {
+  .top {
+    grid-template-columns: 1fr;
+    gap: var(--space-xl);
+  }
+
+  .newsletter {
+    flex-direction: column;
+    gap: 8px;
+  }
+
+  .newsInput {
+    border-radius: var(--radius-full);
+  }
+
+  .newsBtn {
+    border-radius: var(--radius-full);
+    width: 100%;
+  }
+}

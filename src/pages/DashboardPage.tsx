@@ -96,6 +96,7 @@ export default function DashboardPage() {
   const [publishSuccess, setPublishSuccess] = useState<string | null>(null)
   const [hasEnabledProvider, setHasEnabledProvider] = useState(false)
   const [checklistModel, setChecklistModel] = useState<SelectedModel | null>(null)
+  const [sidebarOpen, setSidebarOpen] = useState(false)
 
   const visiblePrompts = showAllPrompts ? examplePrompts : examplePrompts.slice(0, INITIAL_VISIBLE)
 
@@ -510,7 +511,27 @@ export default function DashboardPage() {
           const existing: string[] = JSON.parse(localStorage.getItem(seenKey) ?? '[]')
           localStorage.setItem(seenKey, JSON.stringify([...new Set([...existing, ...sharedIds])]))
         }}
+        isOpen={sidebarOpen}
+        onClose={() => setSidebarOpen(false)}
       />
+
+      <div className={styles.mobileTopbar}>
+        <button
+          className={styles.mobileMenuBtn}
+          onClick={() => setSidebarOpen(true)}
+          aria-label="Open menu"
+          type="button"
+        >
+          <svg width={22} height={22} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+            <line x1="3" y1="6" x2="21" y2="6"/>
+            <line x1="3" y1="12" x2="21" y2="12"/>
+            <line x1="3" y1="18" x2="21" y2="18"/>
+          </svg>
+        </button>
+        <a href="/dashboard" className={styles.mobileLogo}>
+          <img src="/assets/logo.png" alt="OpenThorn" className={styles.mobileLogoImg} />
+        </a>
+      </div>
 
       <main className={`${styles.main} ${hasProjects ? styles.mainWithProjects : ''}`}>
         <div className={styles.content}>
