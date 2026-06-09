@@ -20,6 +20,7 @@ interface PromptInputProps {
     selectedModel: SelectedModel | null,
     thinkingLevel: AgentThinkingLevel,
   ) => void | boolean | Promise<void | boolean>
+  onModelChange?: (model: SelectedModel | null) => void
   page?: 'landing' | 'dashboard'
   disableTyping?: boolean
   placeholder?: string
@@ -100,6 +101,7 @@ export default function PromptInput({
   initialModel,
   initialThinkingLevel = DEFAULT_THINKING_LEVEL,
   onSubmit,
+  onModelChange,
   page = 'landing',
   disableTyping = false,
   placeholder = '',
@@ -200,6 +202,7 @@ export default function PromptInput({
 
   const handleModelSelect = (model: SelectedModel) => {
     setSelectedModel(model)
+    onModelChange?.(model)
   }
 
   const removeFile = (index: number) => {

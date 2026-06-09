@@ -37,7 +37,9 @@ const navItems: { id: Tab; label: string; danger?: boolean; icon: React.ReactNod
 ]
 
 export default function SettingsPage() {
-  usePageTitle('Settings')
+  usePageTitle('Settings', {
+    description: 'Manage your OpenThorn account, provider settings, custom instructions, and account safety options.',
+  })
   const { user, signOut } = useAuth()
   const navigate = useNavigate()
   const [tab, setTab] = useState<Tab>('account')

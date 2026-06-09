@@ -1,4 +1,5 @@
 import { useState } from 'react'
+import { useAuth } from '../../lib/AuthContext'
 import styles from './MobileMenu.module.css'
 
 interface SubItem {
@@ -7,37 +8,40 @@ interface SubItem {
 }
 
 const solutionsSub: SubItem[] = [
-  { label: 'Founders', href: '#' },
-  { label: 'Developers', href: '#' },
-  { label: 'Product Managers', href: '#' },
-  { label: 'Designers', href: '#' },
-  { label: 'Marketers', href: '#' },
-  { label: 'Agencies', href: '#' },
-  { label: 'Ops', href: '#' },
+  { label: 'Founders', href: '/blog/introducing-openthorn' },
+  { label: 'Developers', href: '/faq' },
+  { label: 'Product Managers', href: '/pricing' },
+  { label: 'Designers', href: '/templates' },
+  { label: 'Marketers', href: '/templates' },
+  { label: 'Agencies', href: '/pricing' },
+  { label: 'Ops', href: '/faq' },
 ]
 
 const useCasesSub: SubItem[] = [
-  { label: 'Productivity', href: '#' },
-  { label: 'E-Commerce', href: '#' },
-  { label: 'Marketing & Sales', href: '#' },
-  { label: 'SaaS & Startups', href: '#' },
-  { label: 'HR & Recruitment', href: '#' },
-  { label: 'Education', href: '#' },
-  { label: 'Community platforms', href: '#' },
+  { label: 'Productivity', href: '/templates' },
+  { label: 'E-Commerce', href: '/templates' },
+  { label: 'Marketing & Sales', href: '/templates' },
+  { label: 'SaaS & Startups', href: '/templates' },
+  { label: 'HR & Recruitment', href: '/templates' },
+  { label: 'Education', href: '/templates' },
+  { label: 'Community platforms', href: '/community' },
 ]
 
 const resourcesSub: SubItem[] = [
-  { label: 'Blog', href: '#' },
-  { label: 'Templates', href: '#' },
+  { label: 'Blog', href: '/blog' },
+  { label: 'Templates', href: '/templates' },
   { label: 'Docs & FAQs', href: '/faq' },
 ]
 
 interface MobileMenuProps {
   isOpen: boolean
   onClose: () => void
+  onSignIn: () => void
+  onSignUp: () => void
 }
 
-export default function MobileMenu({ isOpen, onClose }: MobileMenuProps) {
+export default function MobileMenu({ isOpen, onClose, onSignIn, onSignUp }: MobileMenuProps) {
+  const { user, loading } = useAuth()
   const [openSection, setOpenSection] = useState<string | null>(null)
 
   const toggle = (section: string) => {
@@ -56,6 +60,16 @@ export default function MobileMenu({ isOpen, onClose }: MobileMenuProps) {
     { key: 'useCases', label: 'Use Cases' },
     { key: 'resources', label: 'Resources' },
   ]
+
+  const handleSignIn = () => {
+    onClose()
+    onSignIn()
+  }
+
+  const handleSignUp = () => {
+    onClose()
+    onSignUp()
+  }
 
   return (
     <>
@@ -98,15 +112,23 @@ export default function MobileMenu({ isOpen, onClose }: MobileMenuProps) {
           <a href="/pricing" className={styles.mobileNavItem} onClick={onClose}>
             Pricing
           </a>
-          <a href="https://github.com" className={styles.mobileNavItem} target="_blank" rel="noopener noreferrer" onClick={onClose}>
+          <a href="https://github.com/thomastschinkel/OpenThorn" className={styles.mobileNavItem} target="_blank" rel="noopener noreferrer" onClick={onClose}>
             GitHub
           </a>
         </nav>
 
-        <div className={styles.actions}>
-          <button className={styles.loginMobile} onClick={onClose}>Sign in</button>
-          <button className={styles.ctaMobile} onClick={onClose}>Start free</button>
-        </div>
+        {!loading && (
+          <div className={styles.actions}>
+            {user ? (
+              <a className={styles.ctaMobile} href="/dashboard" onClick={onClose}>Dashboard</a>
+            ) : (
+              <>
+                <button className={styles.loginMobile} onClick={handleSignIn} type="button">Sign in</button>
+                <button className={styles.ctaMobile} onClick={handleSignUp} type="button">Start free</button>
+              </>
+            )}
+          </div>
+        )}
       </div>
     </>
   )

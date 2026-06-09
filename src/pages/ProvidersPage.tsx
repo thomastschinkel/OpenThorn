@@ -69,7 +69,9 @@ const LOGO_MAP: Record<string, string> = {
 }
 
 export default function ProvidersPage() {
-  usePageTitle('API Providers')
+  usePageTitle('API Providers', {
+    description: 'Connect and test the AI provider API keys OpenThorn uses to build your projects.',
+  })
   const { user, loading: authLoading } = useAuth()
   const [savedKeys, setSavedKeys] = useState<ProviderKey[]>([])
   const [loading, setLoading] = useState(true)
@@ -88,6 +90,10 @@ export default function ProvidersPage() {
   const [newModelName, setNewModelName] = useState('')
   const [newModelId, setNewModelId] = useState('')
   const [showAdvanced, setShowAdvanced] = useState(false)
+  const [testState, setTestState] = useState<{ status: 'idle' | 'testing' | 'success' | 'error'; message: string }>({
+    status: 'idle',
+    message: '',
+  })
 
   const parseModels = (raw: string): {name: string, id: string}[] => {
     return raw.split(',').map((m) => {
@@ -157,6 +163,7 @@ export default function ProvidersPage() {
     setEditingProvider(providerId)
     setPickerOpen(false)
     setShowKey(false)
+    setTestState({ status: 'idle', message: '' })
   }, [savedKeys])
 
   const saveKey = async () => {
@@ -194,6 +201,56 @@ export default function ProvidersPage() {
     setSaving(false)
   }
 
+  const testProviderConnection = async () => {
+    if (!editingProvider || !formKey.trim()) return
+
+    setTestState({ status: 'testing', message: 'Testing connection...' })
+    const def = PROVIDERS.find((p) => p.id === editingProvider)
+    const providerId = formCustom ? 'custom' : editingProvider
+    const baseUrl = (formUrl.trim() || def?.baseUrl || '').replace(/\/+$/, '')
+
+    if (!baseUrl || baseUrl.includes('YOUR_RESOURCE')) {
+      setTestState({ status: 'error', message: 'Enter a real base URL before testing.' })
+      return
+    }
+
+    if (providerId === 'bedrock') {
+      setTestState({ status: 'error', message: 'Bedrock requires AWS request signing, so it cannot be tested from the browser.' })
+      return
+    }
+
+    try {
+      const url = providerId === 'google'
+        ? `${baseUrl}/models?key=${encodeURIComponent(formKey.trim())}`
+        : providerId === 'azure'
+          ? `${baseUrl}?api-version=2024-02-15-preview`
+          : `${baseUrl}/models`
+
+      const headers: Record<string, string> = {}
+      if (providerId === 'anthropic') {
+        headers['x-api-key'] = formKey.trim()
+        headers['anthropic-version'] = '2023-06-01'
+      } else if (providerId === 'azure') {
+        headers['api-key'] = formKey.trim()
+      } else if (providerId !== 'google' && providerId !== 'ollama') {
+        headers.Authorization = `Bearer ${formKey.trim()}`
+      }
+
+      const response = await fetch(url, { method: 'GET', headers })
+      if (!response.ok) {
+        const body = await response.text().catch(() => '')
+        throw new Error(`Provider returned ${response.status}${body ? `: ${body.slice(0, 120)}` : ''}`)
+      }
+
+      setTestState({ status: 'success', message: 'Connection looks good.' })
+    } catch (err) {
+      setTestState({
+        status: 'error',
+        message: err instanceof Error ? err.message : 'Connection failed.',
+      })
+    }
+  }
+
   const deleteKey = async () => {
     if (!user || !editingProvider) return
     const existing = savedKeys.find((k) => k.provider_id === editingProvider)
@@ -227,6 +284,7 @@ export default function ProvidersPage() {
     setEditingProvider(id)
     setPickerOpen(false)
     setShowKey(false)
+    setTestState({ status: 'idle', message: '' })
   }
 
   const ProviderLogo = ({ id, name, color, className }: { id: string; name: string; color: string; className: string }) => {
@@ -325,7 +383,7 @@ export default function ProvidersPage() {
                 <div className={styles.field}>
                   <label className={styles.fieldLabel}>API key</label>
                   <div className={styles.keyWrap}>
-                    <input className={styles.keyInput} type={showKey ? 'text' : 'password'} placeholder="Enter your API key" value={formKey} onChange={(e) => setFormKey(e.target.value)} />
+                    <input className={styles.keyInput} type={showKey ? 'text' : 'password'} placeholder="Enter your API key" value={formKey} onChange={(e) => { setFormKey(e.target.value); setTestState({ status: 'idle', message: '' }) }} />
                     <button className={styles.eyeBtn} onClick={() => setShowKey(!showKey)} type="button">
                       {showKey ? (
                         <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><path d="M1 12s4-8 11-8 11 8 11 8-4 8-11 8-11-8-11-8z"/><circle cx="12" cy="12" r="3"/></svg>
@@ -338,7 +396,7 @@ export default function ProvidersPage() {
 
                 <div className={styles.field}>
                   <label className={styles.fieldLabel}>Base URL</label>
-                  <input className={styles.urlInput} type="text" placeholder="https://api.example.com/v1" value={formUrl} onChange={(e) => setFormUrl(e.target.value)} />
+                  <input className={styles.urlInput} type="text" placeholder="https://api.example.com/v1" value={formUrl} onChange={(e) => { setFormUrl(e.target.value); setTestState({ status: 'idle', message: '' }) }} />
                 </div>
 
                 <div className={styles.field}>
@@ -400,6 +458,9 @@ export default function ProvidersPage() {
               </div>
 
               <div className={styles.editorActions}>
+                <button className={styles.testBtn} onClick={testProviderConnection} disabled={testState.status === 'testing' || !formKey.trim()} type="button">
+                  {testState.status === 'testing' ? 'Testing...' : 'Test connection'}
+                </button>
                 <button className={styles.saveBtn} onClick={saveKey} disabled={saving || !formKey.trim()} type="button">
                   {saving ? 'Saving…' : 'Save provider'}
                 </button>
@@ -407,6 +468,11 @@ export default function ProvidersPage() {
                   <button className={styles.deleteBtn} onClick={deleteKey} type="button">Remove</button>
                 )}
               </div>
+              {testState.status !== 'idle' && (
+                <div className={`${styles.connectionResult} ${testState.status === 'success' ? styles.connectionSuccess : ''} ${testState.status === 'error' ? styles.connectionError : ''}`} role="status">
+                  {testState.message}
+                </div>
+              )}
             </div>
           )}
 

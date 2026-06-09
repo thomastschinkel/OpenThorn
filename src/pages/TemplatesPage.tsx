@@ -24,7 +24,9 @@ const CATEGORY_COLORS: Record<string, { bg: string; color: string; border: strin
 }
 
 export default function TemplatesPage() {
-  usePageTitle('Templates')
+  usePageTitle('Templates', {
+    description: 'Start a new OpenThorn project from a ready-made website template.',
+  })
   const { user, loading } = useAuth()
   const navigate = useNavigate()
   const [htmlMap, setHtmlMap] = useState<Record<string, string>>({})

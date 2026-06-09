@@ -15,6 +15,7 @@ interface Project {
   user_id: string
   title: string
   preview_url: string | null
+  netlify_site_id: string | null
   created_at: string
   updated_at: string
   starred: boolean
@@ -68,7 +69,9 @@ const examplePrompts = [
 const INITIAL_VISIBLE = 4
 
 export default function DashboardPage() {
-  usePageTitle('Dashboard')
+  usePageTitle('Dashboard', {
+    description: 'Create, manage, search, publish, and deploy your OpenThorn projects.',
+  })
   const { user, loading: authLoading } = useAuth()
   const navigate = useNavigate()
   const location = useLocation()
@@ -91,6 +94,8 @@ export default function DashboardPage() {
   const [publishDescription, setPublishDescription] = useState('')
   const [publishing, setPublishing] = useState(false)
   const [publishSuccess, setPublishSuccess] = useState<string | null>(null)
+  const [hasEnabledProvider, setHasEnabledProvider] = useState(false)
+  const [checklistModel, setChecklistModel] = useState<SelectedModel | null>(null)
 
   const visiblePrompts = showAllPrompts ? examplePrompts : examplePrompts.slice(0, INITIAL_VISIBLE)
 
@@ -128,7 +133,7 @@ export default function DashboardPage() {
       // Owned projects
       const { data: owned } = await supabase
         .from('projects')
-        .select('id, user_id, title, preview_url, created_at, updated_at, starred')
+        .select('id, user_id, title, preview_url, netlify_site_id, created_at, updated_at, starred')
         .eq('user_id', user.id)
         .order('created_at', { ascending: false })
 
@@ -143,7 +148,7 @@ export default function DashboardPage() {
         const ids = collabRows.map((r) => r.project_id as string)
         const { data: sharedData } = await supabase
           .from('projects')
-          .select('id, user_id, title, preview_url, created_at, updated_at, starred')
+          .select('id, user_id, title, preview_url, netlify_site_id, created_at, updated_at, starred')
           .in('id', ids)
           .order('created_at', { ascending: false })
         shared = (sharedData ?? []).map((p) => ({ ...p, isShared: true }))
@@ -212,6 +217,42 @@ export default function DashboardPage() {
     return () => {
       supabase.removeChannel(ownedChannel)
       supabase.removeChannel(sharedChannel)
+    }
+  }, [user])
+
+  useEffect(() => {
+    if (!user) return
+
+    let cancelled = false
+
+    const fetchProviderStatus = async () => {
+      const { data } = await supabase
+        .from('provider_keys')
+        .select('id')
+        .eq('user_id', user.id)
+        .eq('enabled', true)
+        .limit(1)
+
+      if (!cancelled) setHasEnabledProvider(Boolean(data?.length))
+    }
+
+    fetchProviderStatus()
+
+    const channel = supabase
+      .channel(`dashboard_provider_status_${user.id}`)
+      .on('postgres_changes', {
+        event: '*',
+        schema: 'public',
+        table: 'provider_keys',
+        filter: `user_id=eq.${user.id}`,
+      }, () => {
+        fetchProviderStatus()
+      })
+      .subscribe()
+
+    return () => {
+      cancelled = true
+      supabase.removeChannel(channel)
     }
   }, [user])
 
@@ -409,6 +450,38 @@ export default function DashboardPage() {
   if (authLoading) return null
 
   const hasProjects = !projectsLoading && projects.length > 0
+  const deployedProject = projects.find((p) => p.netlify_site_id)
+  const firstProject = projects[0]
+  const focusPrompt = () => {
+    document.querySelector<HTMLTextAreaElement>('textarea[aria-label="Describe your website idea"]')?.focus()
+  }
+  const onboardingItems = [
+    {
+      label: 'Add provider',
+      complete: hasEnabledProvider,
+      action: 'Providers',
+      onClick: () => navigate('/providers'),
+    },
+    {
+      label: 'Choose model',
+      complete: Boolean(checklistModel),
+      action: 'Select',
+      onClick: focusPrompt,
+    },
+    {
+      label: 'Create project',
+      complete: hasProjects,
+      action: 'Start',
+      onClick: focusPrompt,
+    },
+    {
+      label: 'Deploy',
+      complete: Boolean(deployedProject),
+      action: firstProject ? 'Open' : 'Start',
+      onClick: () => firstProject ? navigate(`/projects/${firstProject.id}`) : focusPrompt(),
+    },
+  ]
+  const onboardingComplete = onboardingItems.every((item) => item.complete)
 
   return (
     <>
@@ -448,7 +521,7 @@ export default function DashboardPage() {
             </h1>
 
             <div className={styles.promptWrapper}>
-              <PromptInput defaultValue={promptDefault} onSubmit={handlePromptSubmit} page="dashboard" />
+              <PromptInput defaultValue={promptDefault} onSubmit={handlePromptSubmit} onModelChange={setChecklistModel} page="dashboard" />
               {modelError && (
                 <p className={styles.modelError}>Please select a model first.</p>
               )}
@@ -475,6 +548,39 @@ export default function DashboardPage() {
                 </button>
               )}
             </div>
+
+            {!onboardingComplete && (
+              <section className={styles.onboardingCard} aria-label="Launch checklist">
+                <div className={styles.onboardingHeader}>
+                  <span className={styles.onboardingEyebrow}>Launch checklist</span>
+                  <span className={styles.onboardingProgress}>
+                    {onboardingItems.filter((item) => item.complete).length}/{onboardingItems.length}
+                  </span>
+                </div>
+                <div className={styles.onboardingItems}>
+                  {onboardingItems.map((item) => (
+                    <button
+                      key={item.label}
+                      className={`${styles.onboardingItem} ${item.complete ? styles.onboardingItemDone : ''}`}
+                      type="button"
+                      onClick={item.onClick}
+                    >
+                      <span className={styles.onboardingCheck} aria-hidden="true">
+                        {item.complete ? (
+                          <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="3" strokeLinecap="round" strokeLinejoin="round">
+                            <polyline points="20 6 9 17 4 12" />
+                          </svg>
+                        ) : (
+                          <span />
+                        )}
+                      </span>
+                      <span>{item.label}</span>
+                      <span className={styles.onboardingAction}>{item.complete ? 'Done' : item.action}</span>
+                    </button>
+                  ))}
+                </div>
+              </section>
+            )}
           </div>
 
           {/* Projects section */}

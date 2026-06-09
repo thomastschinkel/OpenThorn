@@ -48,7 +48,9 @@ function formatRelativeTime(iso: string): string {
 }
 
 export default function ProfilePage() {
-  usePageTitle('Profile')
+  usePageTitle('Profile', {
+    description: 'View your OpenThorn profile and community activity.',
+  })
   const { user } = useAuth()
   const navigate = useNavigate()
 

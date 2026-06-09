@@ -18,23 +18,23 @@ interface DropdownItem {
 }
 
 const solutionsItems: DropdownItem[] = [
-  { label: 'Founders', description: 'Go from idea to working MVP in hours', href: '#' },
-  { label: 'Developers', description: 'Scaffold full-stack apps from a description', href: '#' },
-  { label: 'Product managers', description: 'Skip the handoff, build it directly', href: '#' },
-  { label: 'Designers', description: 'Turn mockups into real interfaces', href: '#' },
-  { label: 'Marketers', description: 'Landing pages, A/B tests, campaigns', href: '#' },
-  { label: 'Agencies', description: 'Deliver client projects in half the time', href: '#' },
-  { label: 'Ops', description: 'Internal tools that match your exact workflow', href: '#' },
+  { label: 'Founders', description: 'Go from idea to working MVP in hours', href: '/blog/introducing-openthorn' },
+  { label: 'Developers', description: 'Scaffold full-stack apps from a description', href: '/faq' },
+  { label: 'Product managers', description: 'Skip the handoff, build it directly', href: '/pricing' },
+  { label: 'Designers', description: 'Turn mockups into real interfaces', href: '/templates' },
+  { label: 'Marketers', description: 'Landing pages, A/B tests, campaigns', href: '/templates' },
+  { label: 'Agencies', description: 'Deliver client projects in half the time', href: '/pricing' },
+  { label: 'Ops', description: 'Internal tools that match your exact workflow', href: '/faq' },
 ]
 
 const useCasesItems: DropdownItem[] = [
-  { label: 'Productivity', description: 'Dashboards, planners, and internal tools', href: '#' },
-  { label: 'E-Commerce & Retail', description: 'Storefronts with payments and inventory', href: '#' },
-  { label: 'Marketing & Sales', description: 'Landing pages, funnels, and CRM portals', href: '#' },
-  { label: 'SaaS & Startups', description: 'Waitlists, onboarding flows, and product pages', href: '#' },
-  { label: 'HR & Recruitment', description: 'Career pages, onboarding, and team tools', href: '#' },
-  { label: 'Education', description: 'Course platforms and learning apps', href: '#' },
-  { label: 'Community platforms', description: 'Forums, directories, and member portals', href: '#' },
+  { label: 'Productivity', description: 'Dashboards, planners, and internal tools', href: '/templates' },
+  { label: 'E-Commerce & Retail', description: 'Storefronts with payments and inventory', href: '/templates' },
+  { label: 'Marketing & Sales', description: 'Landing pages, funnels, and CRM portals', href: '/templates' },
+  { label: 'SaaS & Startups', description: 'Waitlists, onboarding flows, and product pages', href: '/templates' },
+  { label: 'HR & Recruitment', description: 'Career pages, onboarding, and team tools', href: '/templates' },
+  { label: 'Education', description: 'Course platforms and learning apps', href: '/templates' },
+  { label: 'Community platforms', description: 'Forums, directories, and member portals', href: '/community' },
 ]
 
 const resourcesItems: DropdownItem[] = [
@@ -204,7 +204,7 @@ export default function Header({ onSignIn, onSignUp }: HeaderProps) {
                   ? user.user_metadata.full_name.charAt(0).toUpperCase()
                   : user.email?.charAt(0).toUpperCase()}
               </div>
-              <SlideInButton>Dashboard</SlideInButton>
+              <SlideInButton href="/dashboard">Dashboard</SlideInButton>
             </>
           ) : (
             <>
@@ -220,7 +220,7 @@ export default function Header({ onSignIn, onSignUp }: HeaderProps) {
         </div>
       </div>
     </header>
-      <MobileMenu isOpen={mobileOpen} onClose={() => setMobileOpen(false)} />
+      <MobileMenu isOpen={mobileOpen} onClose={() => setMobileOpen(false)} onSignIn={onSignIn} onSignUp={onSignUp} />
     </>
   )
 }

@@ -94,6 +94,105 @@
   border-style: solid;
 }
 
+/* Onboarding checklist */
+.onboardingCard {
+  width: 100%;
+  max-width: 620px;
+  margin: 0 auto;
+  padding: 14px;
+  border: 1px solid var(--color-border);
+  border-radius: var(--radius-lg);
+  background: rgba(255, 255, 255, 0.025);
+  text-align: left;
+}
+
+.onboardingHeader {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+  margin-bottom: 10px;
+}
+
+.onboardingEyebrow,
+.onboardingProgress {
+  font-size: 11px;
+  font-weight: 700;
+  color: var(--color-text-muted);
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+}
+
+.onboardingProgress {
+  color: var(--color-secondary);
+}
+
+.onboardingItems {
+  display: grid;
+  grid-template-columns: repeat(4, minmax(0, 1fr));
+  gap: 8px;
+}
+
+.onboardingItem {
+  display: grid;
+  grid-template-columns: auto minmax(0, 1fr);
+  align-items: center;
+  gap: 7px;
+  min-height: 58px;
+  padding: 10px;
+  border: 1px solid var(--color-border);
+  border-radius: var(--radius-md);
+  background: rgba(255, 255, 255, 0.025);
+  color: var(--color-text-secondary);
+  font-family: var(--font-body);
+  font-size: 12px;
+  font-weight: 600;
+  text-align: left;
+  cursor: pointer;
+  transition: border-color 0.15s ease, background 0.15s ease, color 0.15s ease;
+}
+
+.onboardingItem:hover {
+  border-color: rgba(255, 255, 255, 0.18);
+  background: rgba(255, 255, 255, 0.045);
+  color: var(--color-text);
+}
+
+.onboardingItemDone {
+  color: rgba(255, 255, 255, 0.62);
+}
+
+.onboardingCheck {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 18px;
+  height: 18px;
+  border-radius: 50%;
+  border: 1px solid rgba(255, 255, 255, 0.16);
+  color: #34c98a;
+  grid-row: span 2;
+}
+
+.onboardingCheck span {
+  width: 6px;
+  height: 6px;
+  border-radius: 50%;
+  background: rgba(255, 255, 255, 0.18);
+}
+
+.onboardingItemDone .onboardingCheck {
+  border-color: rgba(52, 201, 138, 0.34);
+  background: rgba(52, 201, 138, 0.1);
+}
+
+.onboardingAction {
+  grid-column: 2;
+  color: var(--color-text-muted);
+  font-size: 11px;
+  font-weight: 500;
+}
+
 /* Projects section */
 .projectsSection {
   margin-top: var(--space-2xl);
@@ -633,6 +732,10 @@
 
   .examples {
     justify-content: flex-start;
+  }
+
+  .onboardingItems {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
   }
 
   .projectGrid {

@@ -739,7 +739,9 @@ export default function ProjectBuilderPage() {
   const prompt = state.prompt || ''
   const initialThinkingLevel = normalizeThinkingLevel(state.thinkingLevel)
   const [title, setTitle] = useState(state.title ?? '')
-  usePageTitle(title || 'Project')
+  usePageTitle(title || 'Project', {
+    description: 'Build, preview, refine, export, and deploy an OpenThorn project.',
+  })
   const [projectFiles, setProjectFiles] = useState<AgentCodeFile[]>([])
   const [activeModel, setActiveModel] = useState<SelectedAgentModel | null>(state.selectedModel ?? null)
   const [activeThinkingLevel, setActiveThinkingLevel] = useState<AgentThinkingLevel>(initialThinkingLevel)

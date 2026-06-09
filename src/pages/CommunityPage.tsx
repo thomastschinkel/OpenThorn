@@ -49,7 +49,9 @@ function postAccentColor(title: string): string {
 }
 
 export default function CommunityPage() {
-  usePageTitle('Community')
+  usePageTitle('Community', {
+    description: 'Browse and remix websites shared by the OpenThorn community.',
+  })
   const { user, loading } = useAuth()
   const navigate = useNavigate()
 
@@ -113,7 +115,11 @@ export default function CommunityPage() {
 
     setLikedSet((prev) => {
       const next = new Set(prev)
-      isLiked ? next.delete(postId) : next.add(postId)
+      if (isLiked) {
+        next.delete(postId)
+      } else {
+        next.add(postId)
+      }
       return next
     })
     setPosts((prev) => prev.map((p) => p.id === postId
