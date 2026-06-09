@@ -40,6 +40,8 @@ export default function AuthModal({ isOpen, onClose, initialMode }: AuthModalPro
   const [error, setError] = useState<string | null>(null)
   const [socialLoading, setSocialLoading] = useState<'google' | 'github' | null>(null)
   const [successEmail, setSuccessEmail] = useState('')
+  const [acceptedTerms, setAcceptedTerms] = useState(false)
+  const [socialTermsError, setSocialTermsError] = useState(false)
 
   useEffect(() => {
     if (isOpen) {
@@ -47,6 +49,8 @@ export default function AuthModal({ isOpen, onClose, initialMode }: AuthModalPro
       setSuccess(null)
       setError(null)
       setLoading(false)
+      setAcceptedTerms(false)
+      setSocialTermsError(false)
     }
   }, [isOpen, initialMode])
 
@@ -68,7 +72,12 @@ export default function AuthModal({ isOpen, onClose, initialMode }: AuthModalPro
   }, [isOpen])
 
   const handleSocialLogin = useCallback(async (provider: 'google' | 'github') => {
+    if (viewMode === 'signup' && !acceptedTerms) {
+      setSocialTermsError(true)
+      return
+    }
     setSocialLoading(provider)
+    setSocialTermsError(false)
     setError(null)
     try {
       if (provider === 'google') await signInWithGoogle()
@@ -77,7 +86,7 @@ export default function AuthModal({ isOpen, onClose, initialMode }: AuthModalPro
       setError('Something went wrong. Please try again.')
       setSocialLoading(null)
     }
-  }, [signInWithGoogle, signInWithGitHub])
+  }, [signInWithGoogle, signInWithGitHub, viewMode, acceptedTerms])
 
   const handleSubmit = useCallback(async (data: { email: string; password: string; name?: string }) => {
     setLoading(true)
@@ -124,6 +133,8 @@ export default function AuthModal({ isOpen, onClose, initialMode }: AuthModalPro
     setViewMode(newMode)
     setError(null)
     setSuccess(null)
+    setAcceptedTerms(false)
+    setSocialTermsError(false)
   }
 
   const renderContent = () => {
@@ -210,6 +221,11 @@ export default function AuthModal({ isOpen, onClose, initialMode }: AuthModalPro
                 loading={socialLoading === 'github'}
               />
             </div>
+            {socialTermsError && (
+              <p className={styles.socialTermsError}>
+                Please accept the Terms of Service and Privacy Policy to continue
+              </p>
+            )}
 
             <div className={styles.divider}>
               <span className={styles.dividerLine} />
@@ -228,6 +244,8 @@ export default function AuthModal({ isOpen, onClose, initialMode }: AuthModalPro
           loading={loading}
           error={error}
           onClearError={() => setError(null)}
+          acceptedTerms={acceptedTerms}
+          onAcceptedTermsChange={(v) => { setAcceptedTerms(v); if (v) setSocialTermsError(false) }}
         />
 
         {/* Forgot password link (signin only) */}

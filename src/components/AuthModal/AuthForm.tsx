@@ -11,18 +11,19 @@ interface AuthFormProps {
   loading: boolean
   error: string | null
   onClearError: () => void
+  acceptedTerms: boolean
+  onAcceptedTermsChange: (value: boolean) => void
 }
 
 export default function AuthForm({
   mode, onSubmit, onForgotPassword, onBackToSignIn,
-  loading, error, onClearError,
+  loading, error, onClearError, acceptedTerms, onAcceptedTermsChange,
 }: AuthFormProps) {
   const [name, setName] = useState('')
   const [email, setEmail] = useState('')
   const [password, setPassword] = useState('')
   const [confirmPassword, setConfirmPassword] = useState('')
   const [showPassword, setShowPassword] = useState(false)
-  const [acceptedTerms, setAcceptedTerms] = useState(false)
   const [fieldErrors, setFieldErrors] = useState<Record<string, string>>({})
 
   const validate = (): boolean => {
@@ -177,7 +178,7 @@ export default function AuthForm({
               type="checkbox"
               className={styles.termsCheckbox}
               checked={acceptedTerms}
-              onChange={(e) => { setAcceptedTerms(e.target.checked); handleInputChange('terms') }}
+              onChange={(e) => { onAcceptedTermsChange(e.target.checked); handleInputChange('terms') }}
               disabled={loading}
             />
             <span className={styles.termsText}>
