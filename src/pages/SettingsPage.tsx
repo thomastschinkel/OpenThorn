@@ -90,7 +90,10 @@ export default function SettingsPage() {
     if (!newEmail.trim()) { setEmailError('Email is required.'); return }
     if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(newEmail)) { setEmailError('Enter a valid email.'); return }
     setEmailLoading(true); setEmailError('')
-    const { error } = await supabase.auth.updateUser({ email: newEmail.trim() })
+    const { error } = await supabase.auth.updateUser(
+      { email: newEmail.trim() },
+      { emailRedirectTo: `${window.location.origin}/settings` }
+    )
     setEmailLoading(false)
     if (error) { setEmailError(error.message); return }
     setEmailSuccess(true)
