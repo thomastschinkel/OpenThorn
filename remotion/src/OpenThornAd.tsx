@@ -1,10 +1,11 @@
-import type { ReactNode } from "react";
+import type { CSSProperties, ReactNode } from "react";
 import {
   AbsoluteFill,
   Audio,
   Easing,
   Img,
   interpolate,
+  random,
   Sequence,
   spring,
   staticFile,
@@ -16,11 +17,11 @@ import { loadFont as loadFraunces } from "@remotion/google-fonts/Fraunces";
 import { loadFont as loadRoboto } from "@remotion/google-fonts/Roboto";
 
 const { fontFamily: fraunces } = loadFraunces("normal", {
-  weights: ["300"],
+  weights: ["300", "400"],
   subsets: ["latin"],
 });
 const { fontFamily: roboto } = loadRoboto("normal", {
-  weights: ["400"],
+  weights: ["400", "500"],
   subsets: ["latin"],
 });
 
@@ -67,6 +68,12 @@ function sceneOpacity(frame: number, start: number, end: number, isLast = false)
   return fadeIn * fadeOut;
 }
 
+/** Gentle settle-in scale for a scene — 1.045 → 1 over the first ~26 frames */
+function sceneScale(frame: number, start: number): number {
+  const t = p(frame, start, 26);
+  return 1.045 - t * 0.045;
+}
+
 export const OpenThornAd = () => {
   const frame = useCurrentFrame();
 
@@ -74,40 +81,65 @@ export const OpenThornAd = () => {
     <AbsoluteFill style={{ background: palette.bg, overflow: "hidden" }}>
       <AudioLayer />
 
+      {/* Ambient depth — drifting aurora + particles, runs under every scene */}
+      <AuroraBackground />
+      <ParticleField />
+
       {/* Scene 1 — Logo reveal (0–120f) */}
-      <AbsoluteFill style={{ opacity: sceneOpacity(frame, SCENE.logo, SCENE_END.logo) }}>
+      <AbsoluteFill
+        style={{
+          opacity: sceneOpacity(frame, SCENE.logo, SCENE_END.logo),
+          transform: `scale(${sceneScale(frame, SCENE.logo)})`,
+        }}
+      >
         <LogoRevealScene />
       </AbsoluteFill>
 
       {/* Scene 2 — "Your keys." (112–210f) */}
-      <AbsoluteFill style={{ opacity: sceneOpacity(frame, SCENE.keys, SCENE_END.keys) }}>
+      <AbsoluteFill
+        style={{
+          opacity: sceneOpacity(frame, SCENE.keys, SCENE_END.keys),
+          transform: `scale(${sceneScale(frame, SCENE.keys)})`,
+        }}
+      >
         <KeysScene startFrame={SCENE.keys} />
       </AbsoluteFill>
 
       {/* Scene 3 — "Any provider." (202–300f) */}
-      <AbsoluteFill style={{ opacity: sceneOpacity(frame, SCENE.provider, SCENE_END.provider) }}>
+      <AbsoluteFill
+        style={{
+          opacity: sceneOpacity(frame, SCENE.provider, SCENE_END.provider),
+          transform: `scale(${sceneScale(frame, SCENE.provider)})`,
+        }}
+      >
         <ProviderSplitScene startFrame={SCENE.provider} />
       </AbsoluteFill>
 
       {/* Scene 4 — "No platform tax." (292–390f) */}
-      <AbsoluteFill style={{ opacity: sceneOpacity(frame, SCENE.tax, SCENE_END.tax) }}>
+      <AbsoluteFill
+        style={{
+          opacity: sceneOpacity(frame, SCENE.tax, SCENE_END.tax),
+          transform: `scale(${sceneScale(frame, SCENE.tax)})`,
+        }}
+      >
         <TaxScene startFrame={SCENE.tax} />
       </AbsoluteFill>
 
       {/* Scene 5 — Final (382–510f) */}
-      <AbsoluteFill style={{ opacity: sceneOpacity(frame, SCENE.final, SCENE_END.final, true) }}>
+      <AbsoluteFill
+        style={{
+          opacity: sceneOpacity(frame, SCENE.final, SCENE_END.final, true),
+          transform: `scale(${sceneScale(frame, SCENE.final)})`,
+        }}
+      >
         <FinalScene startFrame={SCENE.final} />
       </AbsoluteFill>
-
-      {/* Hairline separators for split scenes — rendered above scene layers */}
-      <HairlineSeparator startFrame={SCENE.keys} endFrame={SCENE_END.keys} />
-      <HairlineSeparator startFrame={SCENE.provider} endFrame={SCENE_END.provider} />
-      <HairlineSeparator startFrame={SCENE.tax} endFrame={SCENE_END.tax} />
 
       {/* Subtitles */}
       <CaptionLayer />
 
-      {/* Film grain — topmost layer */}
+      {/* Cinematic finish — vignette under grain */}
+      <Vignette />
       <GrainOverlay />
     </AbsoluteFill>
   );
@@ -169,6 +201,156 @@ function AudioLayer() {
   );
 }
 
+// ─── Ambient layers ─────────────────────────────────────────────────────────────
+
+/** Three soft gradient blobs slowly orbiting — adds depth behind every scene */
+function AuroraBackground() {
+  const frame = useCurrentFrame();
+
+  const blobs = [
+    { color: palette.purple, size: 1100, cx: 0.28, cy: 0.3, rx: 160, ry: 110, speed: 0.012, phase: 0, alpha: "30" },
+    { color: palette.teal, size: 900, cx: 0.74, cy: 0.66, rx: 140, ry: 130, speed: 0.009, phase: 2.1, alpha: "22" },
+    { color: palette.amber, size: 760, cx: 0.52, cy: 0.12, rx: 120, ry: 90, speed: 0.007, phase: 4.4, alpha: "16" },
+  ];
+
+  return (
+    <AbsoluteFill style={{ pointerEvents: "none" }}>
+      {blobs.map((b, i) => {
+        const x = b.cx * 1920 + Math.cos(frame * b.speed + b.phase) * b.rx;
+        const y = b.cy * 1080 + Math.sin(frame * b.speed * 1.3 + b.phase) * b.ry;
+        return (
+          <div
+            key={i}
+            style={{
+              position: "absolute",
+              left: x - b.size / 2,
+              top: y - b.size / 2,
+              width: b.size,
+              height: b.size,
+              borderRadius: "50%",
+              background: `radial-gradient(circle, ${b.color}${b.alpha} 0%, transparent 68%)`,
+              filter: "blur(70px)",
+            }}
+          />
+        );
+      })}
+    </AbsoluteFill>
+  );
+}
+
+/** Sparse dust motes drifting upward */
+function ParticleField() {
+  const frame = useCurrentFrame();
+  const count = 16;
+
+  return (
+    <AbsoluteFill style={{ pointerEvents: "none" }}>
+      {Array.from({ length: count }).map((_, i) => {
+        const x = random(`px-${i}`) * 1920;
+        const size = 2 + random(`ps-${i}`) * 3;
+        const speed = 0.25 + random(`pv-${i}`) * 0.45;
+        const offset = random(`po-${i}`) * 1300;
+        const cycle = 1300;
+        const yRaw = (offset + frame * speed) % cycle;
+        const y = 1130 - yRaw;
+        // fade in/out near the wrap edges so respawns are invisible
+        const edgeFade = interpolate(yRaw, [0, 120, cycle - 120, cycle], [0, 1, 1, 0], {
+          extrapolateLeft: "clamp",
+          extrapolateRight: "clamp",
+        });
+        const sway = Math.sin(frame * 0.02 + i * 1.7) * 18;
+        const tint = i % 3 === 0 ? palette.teal : i % 3 === 1 ? palette.purple : palette.text;
+        return (
+          <div
+            key={i}
+            style={{
+              position: "absolute",
+              left: x + sway,
+              top: y,
+              width: size,
+              height: size,
+              borderRadius: "50%",
+              background: tint,
+              opacity: edgeFade * (0.1 + random(`pa-${i}`) * 0.2),
+              filter: "blur(0.5px)",
+            }}
+          />
+        );
+      })}
+    </AbsoluteFill>
+  );
+}
+
+function Vignette() {
+  return (
+    <AbsoluteFill
+      style={{
+        pointerEvents: "none",
+        background:
+          "radial-gradient(ellipse 78% 68% at 50% 46%, transparent 58%, rgba(0,0,0,0.42) 100%)",
+      }}
+    />
+  );
+}
+
+// ─── Typography ─────────────────────────────────────────────────────────────────
+
+/** Word-by-word masked rise — each word slides up out of an overflow-hidden mask */
+function MaskedWords({
+  text,
+  startFrame,
+  delayPerWord = 5,
+  riseDuration = 26,
+  style,
+}: {
+  text: string;
+  startFrame: number;
+  delayPerWord?: number;
+  riseDuration?: number;
+  style?: CSSProperties;
+}) {
+  const frame = useCurrentFrame();
+  const words = text.split(" ");
+
+  return (
+    <div
+      style={{
+        display: "flex",
+        flexWrap: "wrap",
+        columnGap: "0.26em",
+        userSelect: "none",
+        ...style,
+      }}
+    >
+      {words.map((word, i) => {
+        const t = p(frame, startFrame + i * delayPerWord, riseDuration);
+        return (
+          <span
+            key={`${word}-${i}`}
+            style={{
+              display: "inline-block",
+              overflow: "hidden",
+              // breathing room so descenders aren't clipped by the mask
+              paddingBottom: "0.14em",
+              marginBottom: "-0.14em",
+            }}
+          >
+            <span
+              style={{
+                display: "inline-block",
+                transform: `translateY(${(1 - t) * 108}%)`,
+                opacity: Math.min(1, t * 1.6),
+              }}
+            >
+              {word}
+            </span>
+          </span>
+        );
+      })}
+    </div>
+  );
+}
+
 // ─── Scene Components ──────────────────────────────────────────────────────────
 
 function LogoRevealScene() {
@@ -186,8 +368,7 @@ function LogoRevealScene() {
     extrapolateRight: "clamp",
   });
 
-  const nameIn = p(frame, 14, 22);
-  const tagIn = p(frame, 28, 20);
+  const tagIn = p(frame, 34, 20);
 
   return (
     <AbsoluteFill style={{ alignItems: "center", justifyContent: "center", flexDirection: "column" }}>
@@ -202,6 +383,26 @@ function LogoRevealScene() {
           filter: "blur(80px)",
         }}
       />
+
+      {/* Expanding concentric rings behind the logo */}
+      {[0, 1, 2].map((i) => {
+        const ringT = p(frame, 4 + i * 9, 70);
+        const ringSize = 160 + ringT * (420 + i * 140);
+        return (
+          <div
+            key={i}
+            style={{
+              position: "absolute",
+              width: ringSize,
+              height: ringSize,
+              borderRadius: "50%",
+              border: `1px solid ${palette.purple}`,
+              opacity: (1 - ringT) * 0.35,
+            }}
+          />
+        );
+      })}
+
       <Img
         src={staticFile("logo.png")}
         style={{
@@ -210,32 +411,34 @@ function LogoRevealScene() {
           objectFit: "contain",
           transform: `scale(${0.5 + scale * 0.5})`,
           position: "relative",
+          filter: `drop-shadow(0 0 ${24 * glow}px ${palette.purple}88)`,
         }}
       />
-      <div
-        style={{
-          fontFamily: fraunces,
-          fontSize: 112,
-          fontWeight: 300,
-          color: palette.text,
-          letterSpacing: "-0.02em",
-          marginTop: 36,
-          opacity: nameIn,
-          transform: `translateY(${(1 - nameIn) * 20}px)`,
-          userSelect: "none",
-          position: "relative",
-        }}
-      >
-        Meet OpenThorn.
+
+      <div style={{ marginTop: 36, position: "relative" }}>
+        <MaskedWords
+          text="Meet OpenThorn."
+          startFrame={14}
+          delayPerWord={7}
+          style={{
+            fontFamily: fraunces,
+            fontSize: 112,
+            fontWeight: 300,
+            color: palette.text,
+            letterSpacing: "-0.02em",
+            justifyContent: "center",
+          }}
+        />
       </div>
+
       <div
         style={{
           fontFamily: roboto,
-          fontSize: 28,
-          fontWeight: 400,
+          fontSize: 26,
+          fontWeight: 500,
           color: palette.muted,
-          marginTop: 16,
-          letterSpacing: "0.08em",
+          marginTop: 18,
+          letterSpacing: "0.26em",
           textTransform: "uppercase",
           opacity: tagIn,
           transform: `translateY(${(1 - tagIn) * 12}px)`,
@@ -258,6 +461,7 @@ function KeysScene({ startFrame }: { startFrame: number }) {
           startFrame={startFrame}
           durationInFrames={SCENE_END.keys - startFrame + 20}
           slideFrom="left"
+          accent={palette.purple}
         />
       </SplitHalf>
       <SplitHalf side="right">
@@ -283,9 +487,9 @@ const PROVIDERS = [
 
 function ProviderSplitScene({ startFrame }: { startFrame: number }) {
   const frame = useCurrentFrame();
+  const { fps } = useVideoConfig();
   const local = frame - startFrame;
-  const textIn = p(local, 0, 22);
-  const underlineIn = p(local, 14, 18);
+  const underlineIn = p(local, 16, 18);
 
   return (
     <>
@@ -302,7 +506,10 @@ function ProviderSplitScene({ startFrame }: { startFrame: number }) {
           }}
         >
           <div style={{ position: "relative", display: "inline-block" }}>
-            <div
+            <MaskedWords
+              text="Any provider."
+              startFrame={startFrame}
+              delayPerWord={6}
               style={{
                 fontFamily: fraunces,
                 fontSize: 150,
@@ -311,13 +518,8 @@ function ProviderSplitScene({ startFrame }: { startFrame: number }) {
                 lineHeight: 1,
                 letterSpacing: "-0.02em",
                 whiteSpace: "nowrap",
-                opacity: textIn,
-                transform: `translateY(${(1 - textIn) * 24}px)`,
-                userSelect: "none",
               }}
-            >
-              Any provider.
-            </div>
+            />
             <div
               style={{
                 position: "absolute",
@@ -325,7 +527,7 @@ function ProviderSplitScene({ startFrame }: { startFrame: number }) {
                 left: 0,
                 height: 3,
                 width: `${underlineIn * 100}%`,
-                background: palette.teal,
+                background: `linear-gradient(90deg, ${palette.teal}, ${palette.teal}44)`,
                 borderRadius: 99,
                 boxShadow: `0 0 20px ${palette.teal}`,
               }}
@@ -334,33 +536,58 @@ function ProviderSplitScene({ startFrame }: { startFrame: number }) {
           <div
             style={{
               display: "flex",
-              gap: 36,
+              gap: 18,
               alignItems: "center",
-              marginTop: 52,
+              marginTop: 56,
               flexWrap: "wrap",
             }}
           >
             {PROVIDERS.map(({ src, name }, i) => {
-              const logoIn = p(local, 28 + i * 7, 16);
+              const pop = spring({
+                frame: local - (30 + i * 6),
+                fps,
+                config: { damping: 14, stiffness: 160, mass: 0.7 },
+              });
               return (
                 <div
                   key={name}
                   style={{
-                    opacity: logoIn * 0.55,
-                    transform: `translateY(${(1 - logoIn) * 14}px)`,
+                    display: "flex",
+                    alignItems: "center",
+                    gap: 12,
+                    padding: "12px 22px",
+                    borderRadius: 16,
+                    background: "rgba(255,255,255,0.055)",
+                    border: "1px solid rgba(255,255,255,0.12)",
+                    backdropFilter: "blur(12px)",
+                    boxShadow: "0 8px 28px rgba(0,0,0,0.35)",
+                    opacity: pop,
+                    transform: `translateY(${(1 - pop) * 22}px) scale(${0.92 + pop * 0.08})`,
                   }}
                 >
                   <Img
                     src={staticFile(src)}
                     alt={name}
                     style={{
-                      height: 44,
+                      height: 30,
                       width: "auto",
-                      maxWidth: 100,
+                      maxWidth: 70,
                       objectFit: "contain",
-                      filter: "grayscale(1) brightness(1.4)",
+                      filter: "grayscale(1) brightness(1.6)",
                     }}
                   />
+                  <span
+                    style={{
+                      fontFamily: roboto,
+                      fontSize: 21,
+                      fontWeight: 500,
+                      color: palette.muted,
+                      userSelect: "none",
+                      whiteSpace: "nowrap",
+                    }}
+                  >
+                    {name}
+                  </span>
                 </div>
               );
             })}
@@ -373,6 +600,7 @@ function ProviderSplitScene({ startFrame }: { startFrame: number }) {
           startFrame={startFrame}
           durationInFrames={SCENE_END.provider - startFrame + 20}
           slideFrom="right"
+          accent={palette.teal}
         />
       </SplitHalf>
     </>
@@ -388,6 +616,7 @@ function TaxScene({ startFrame }: { startFrame: number }) {
           startFrame={startFrame}
           durationInFrames={SCENE_END.tax - startFrame + 20}
           slideFrom="left"
+          accent={palette.amber}
         />
       </SplitHalf>
       <SplitHalf side="right">
@@ -415,10 +644,20 @@ function FinalScene({ startFrame }: { startFrame: number }) {
   });
 
   const nameIn = p(local, 18, 22);
-  const taglineIn = p(local, 36, 22);
-  const urlIn = p(local, 54, 22);
+  const taglineIn = p(local, 38, 22);
+  const ctaPop = spring({
+    frame: local - 56,
+    fps,
+    config: { damping: 13, stiffness: 150, mass: 0.8 },
+  });
 
   const glow = interpolate(local, [0, 60, 100], [0, 0.65, 0.45], {
+    extrapolateLeft: "clamp",
+    extrapolateRight: "clamp",
+  });
+
+  // shimmer sweep across the gradient wordmark
+  const shimmerX = interpolate(local, [20, 110], [-60, 160], {
     extrapolateLeft: "clamp",
     extrapolateRight: "clamp",
   });
@@ -434,6 +673,7 @@ function FinalScene({ startFrame }: { startFrame: number }) {
       <Sequence from={startFrame} durationInFrames={SCENE_END.final - startFrame + 20}>
         <Video
           src={staticFile("scene5.mp4")}
+          loop
           style={{
             position: "absolute",
             inset: 0,
@@ -470,25 +710,32 @@ function FinalScene({ startFrame }: { startFrame: number }) {
           transform: `scale(${0.5 + logoScale * 0.5})`,
           position: "relative",
           zIndex: 1,
+          filter: `drop-shadow(0 0 ${22 * glow}px ${palette.purple}88)`,
         }}
       />
+
+      {/* Gradient wordmark with shimmer sweep */}
       <div
         style={{
-          fontFamily: fraunces,
-          fontSize: 72,
-          fontWeight: 300,
-          color: palette.text,
-          letterSpacing: "-0.02em",
-          marginTop: 32,
-          opacity: nameIn,
-          transform: `translateY(${(1 - nameIn) * 20}px)`,
           position: "relative",
           zIndex: 1,
+          marginTop: 32,
+          fontFamily: fraunces,
+          fontSize: 84,
+          fontWeight: 400,
+          letterSpacing: "-0.02em",
+          backgroundImage: `linear-gradient(100deg, ${palette.text} ${shimmerX - 40}%, ${palette.purple} ${shimmerX - 12}%, ${palette.teal} ${shimmerX}%, ${palette.text} ${shimmerX + 28}%)`,
+          WebkitBackgroundClip: "text",
+          backgroundClip: "text",
+          color: "transparent",
+          opacity: nameIn,
+          transform: `translateY(${(1 - nameIn) * 20}px)`,
           userSelect: "none",
         }}
       >
         OpenThorn
       </div>
+
       <div
         style={{
           fontFamily: roboto,
@@ -501,25 +748,39 @@ function FinalScene({ startFrame }: { startFrame: number }) {
           position: "relative",
           zIndex: 1,
           userSelect: "none",
+          letterSpacing: "0.04em",
         }}
       >
         Build for free.
       </div>
+
+      {/* CTA pill */}
       <div
         style={{
-          fontFamily: roboto,
-          fontSize: 24,
-          fontWeight: 400,
-          color: palette.purple,
-          marginTop: 12,
-          opacity: urlIn,
-          transform: `translateY(${(1 - urlIn) * 12}px)`,
+          marginTop: 30,
+          padding: "16px 44px",
+          borderRadius: 999,
+          background: `linear-gradient(120deg, ${palette.purple}26, ${palette.teal}1f)`,
+          border: `1px solid ${palette.purple}66`,
+          boxShadow: `0 0 ${30 * glow}px ${palette.purple}55, inset 0 1px 0 rgba(255,255,255,0.12)`,
+          opacity: ctaPop,
+          transform: `translateY(${(1 - ctaPop) * 18}px) scale(${0.94 + ctaPop * 0.06})`,
           position: "relative",
           zIndex: 1,
-          userSelect: "none",
         }}
       >
-        openthorn.app
+        <span
+          style={{
+            fontFamily: roboto,
+            fontSize: 26,
+            fontWeight: 500,
+            color: palette.text,
+            letterSpacing: "0.03em",
+            userSelect: "none",
+          }}
+        >
+          openthorn.app
+        </span>
       </div>
 
       {/* Fade to black */}
@@ -563,38 +824,72 @@ function VideoPanel({
   startFrame,
   durationInFrames,
   slideFrom,
+  accent,
 }: {
   src: string;
   startFrame: number;
   durationInFrames: number;
   slideFrom: "left" | "right";
+  accent: string;
 }) {
   const frame = useCurrentFrame();
   const local = frame - startFrame;
-  const slideIn = p(local, 0, 22);
+  const slideIn = p(local, 0, 26);
   const dir = slideFrom === "left" ? -1 : 1;
+
+  // slow Ken Burns push-in across the panel's lifetime
+  const kenBurns = interpolate(local, [0, durationInFrames], [1.04, 1.14], {
+    extrapolateLeft: "clamp",
+    extrapolateRight: "clamp",
+  });
 
   return (
     <div
       style={{
-        width: 820,
-        height: 560,
-        borderRadius: 14,
-        border: "1px solid rgba(255,255,255,0.1)",
-        boxShadow: "0 32px 120px rgba(0,0,0,0.6)",
-        overflow: "hidden",
+        padding: 1.5,
+        borderRadius: 18,
+        background: `linear-gradient(145deg, ${accent}66, rgba(255,255,255,0.1) 38%, rgba(255,255,255,0.04) 62%, ${accent}33)`,
+        boxShadow: `0 32px 120px rgba(0,0,0,0.6), 0 0 70px ${accent}1f`,
         opacity: slideIn,
-        transform: `translateX(${(1 - slideIn) * dir * 60}px)`,
+        transform: `translateX(${(1 - slideIn) * dir * 70}px) scale(${0.97 + slideIn * 0.03})`,
         flexShrink: 0,
       }}
     >
-      <Sequence from={startFrame} durationInFrames={durationInFrames}>
-        <Video
-          src={staticFile(src)}
-          style={{ width: "100%", height: "100%", objectFit: "cover" }}
-          muted
+      <div
+        style={{
+          width: 820,
+          height: 560,
+          borderRadius: 16.5,
+          overflow: "hidden",
+          position: "relative",
+          background: palette.bg,
+        }}
+      >
+        <Sequence from={startFrame} durationInFrames={durationInFrames}>
+          {/* loop: some clips are shorter than their scene; seeking past the end stalls the render */}
+          <Video
+            src={staticFile(src)}
+            loop
+            style={{
+              width: "100%",
+              height: "100%",
+              objectFit: "cover",
+              transform: `scale(${kenBurns})`,
+            }}
+            muted
+          />
+        </Sequence>
+        {/* glass sheen across the top edge */}
+        <div
+          style={{
+            position: "absolute",
+            inset: 0,
+            background:
+              "linear-gradient(165deg, rgba(255,255,255,0.09) 0%, transparent 26%)",
+            pointerEvents: "none",
+          }}
         />
-      </Sequence>
+      </div>
     </div>
   );
 }
@@ -614,8 +909,7 @@ function SplitTextBlock({
 }) {
   const frame = useCurrentFrame();
   const local = frame - startFrame;
-  const textIn = p(local, 0, 22);
-  const supportIn = p(local, 12, 18);
+  const supportIn = p(local, 16, 20);
   const underlineIn = p(local, 14, 18);
 
   return (
@@ -631,7 +925,10 @@ function SplitTextBlock({
       }}
     >
       <div style={{ position: "relative", display: "inline-block" }}>
-        <div
+        <MaskedWords
+          text={headline}
+          startFrame={startFrame}
+          delayPerWord={6}
           style={{
             fontFamily: fraunces,
             fontSize,
@@ -640,13 +937,8 @@ function SplitTextBlock({
             lineHeight: 1,
             letterSpacing: "-0.02em",
             whiteSpace: "nowrap",
-            opacity: textIn,
-            transform: `translateY(${(1 - textIn) * 24}px)`,
-            userSelect: "none",
           }}
-        >
-          {headline}
-        </div>
+        />
         <div
           style={{
             position: "absolute",
@@ -654,7 +946,7 @@ function SplitTextBlock({
             left: 0,
             height: 3,
             width: `${underlineIn * 100}%`,
-            background: accent,
+            background: `linear-gradient(90deg, ${accent}, ${accent}44)`,
             borderRadius: 99,
             boxShadow: `0 0 20px ${accent}`,
           }}
@@ -670,34 +962,12 @@ function SplitTextBlock({
           opacity: supportIn,
           transform: `translateY(${(1 - supportIn) * 16}px)`,
           userSelect: "none",
+          letterSpacing: "0.02em",
         }}
       >
         {support}
       </div>
     </div>
-  );
-}
-
-function HairlineSeparator({ startFrame, endFrame }: { startFrame: number; endFrame: number }) {
-  const frame = useCurrentFrame();
-  const fadeIn = p(frame, startFrame, 12);
-  const fadeOut = 1 - p(frame, endFrame - 12, 12);
-  const opacity = fadeIn * fadeOut;
-
-  return (
-    <div
-      style={{
-        position: "absolute",
-        left: "50%",
-        top: 60,
-        bottom: 60,
-        width: 1,
-        transform: "translateX(-0.5px)",
-        background: "rgba(255,255,255,0.14)",
-        opacity,
-        pointerEvents: "none",
-      }}
-    />
   );
 }
 
@@ -737,9 +1007,10 @@ function CaptionLayer() {
     >
       <div
         style={{
-          background: "rgba(0,0,0,0.62)",
-          backdropFilter: "blur(8px)",
-          borderRadius: 8,
+          background: "rgba(12,9,16,0.66)",
+          backdropFilter: "blur(10px)",
+          border: "1px solid rgba(255,255,255,0.08)",
+          borderRadius: 12,
           padding: "10px 28px",
           maxWidth: 1200,
           opacity: amount,
