@@ -830,6 +830,7 @@ export default function ProjectBuilderPage() {
   const isTemplateProjectRef = useRef(Boolean(state.isTemplate))
   const templateNameRef = useRef(state.templateName ?? '')
   const resumePromptRef = useRef<string | null>(null)
+  const previewFrameRef = useRef<HTMLIFrameElement>(null)
 
   const activeCodeFile = projectFiles.find((file) => file.path === activeFile) ?? projectFiles[0] ?? EMPTY_CODE_FILE
   const userInitial = user?.user_metadata?.full_name?.charAt(0).toUpperCase() ?? user?.email?.charAt(0).toUpperCase() ?? 'U'
@@ -2476,9 +2477,13 @@ export default function ProjectBuilderPage() {
                   )}
 
                   {firstRunComplete && (previewStatus === 'ready' || (previewStatus === 'building' && lastReadyHtml)) && (
-                    <div className={styles.previewRebuild}>
+                    <div
+                      className={styles.previewRebuild}
+                      onMouseDown={() => previewFrameRef.current?.contentWindow?.focus()}
+                    >
                       {previewStatus === 'building' && <div className={styles.rebuildOverlay} />}
                       <iframe
+                        ref={previewFrameRef}
                         className={styles.previewFrame}
                         srcDoc={previewStatus === 'ready' ? previewHtml : lastReadyHtml}
                         sandbox="allow-scripts"
