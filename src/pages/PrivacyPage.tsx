@@ -66,11 +66,13 @@ export default function PrivacyPage() {
         </li>
         <li>
           <strong>Aggregated usage data</strong> - anonymous page views and visit
-          statistics collected via Vercel Web Analytics. This service is cookieless: it
-          stores no cookies or identifiers in your browser and does not track you across
-          sites or sessions. Visitors are counted using a temporary hash derived from the
-          incoming request that is discarded and cannot be used to identify you across
-          days or websites.
+          statistics collected via Vercel Web Analytics, and anonymous performance
+          metrics (such as page load and responsiveness timings, route, device type, and
+          connection speed) collected via Vercel Speed Insights. Both services are
+          cookieless: they store no cookies or identifiers in your browser and do not
+          track you across sites or sessions. Visitors are counted using a temporary hash
+          derived from the incoming request that is discarded and cannot be used to
+          identify you across days or websites.
         </li>
       </ul>
 
@@ -86,10 +88,11 @@ export default function PrivacyPage() {
           processed under Art. 6(1)(f) GDPR (legitimate interests).
         </li>
         <li>
-          <strong>Anonymous usage statistics</strong> - cookieless, aggregated page-view
-          analytics used to understand how the service is used, processed under
-          Art. 6(1)(f) GDPR (legitimate interests). No persistent identifiers are stored
-          and no cross-site or cross-session tracking takes place.
+          <strong>Anonymous usage and performance statistics</strong> - cookieless,
+          aggregated page-view analytics and web performance metrics used to understand
+          how the service is used and to keep it fast, processed under Art. 6(1)(f) GDPR
+          (legitimate interests). No persistent identifiers are stored and no cross-site
+          or cross-session tracking takes place.
         </li>
         <li>
           <strong>Legal compliance</strong> - records or disclosures required by law are
@@ -107,10 +110,11 @@ export default function PrivacyPage() {
       <p>We use service providers and integrations that may process personal data:</p>
       <ul>
         <li>
-          <strong>Vercel Inc.</strong> (hosting, infrastructure, and web analytics) -
-          request data, including IP addresses and technical logs, may be processed by
-          Vercel. We also use Vercel Web Analytics, a cookieless analytics service that
-          records anonymous, aggregated page views without storing cookies or persistent
+          <strong>Vercel Inc.</strong> (hosting, infrastructure, web analytics, and
+          performance monitoring) - request data, including IP addresses and technical
+          logs, may be processed by Vercel. We also use Vercel Web Analytics and Vercel
+          Speed Insights, cookieless services that record anonymous, aggregated page
+          views and web performance metrics without storing cookies or persistent
           identifiers in your browser.
         </li>
         <li>

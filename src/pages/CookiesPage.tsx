@@ -49,12 +49,14 @@ export default function CookiesPage() {
         </li>
       </ul>
 
-      <h2>4. Cookieless Analytics</h2>
+      <h2>4. Cookieless Analytics and Performance Monitoring</h2>
       <p>
         OpenThorn uses <strong>Vercel Web Analytics</strong> to count anonymous page
-        views. This service is cookieless: it does not set cookies, does not store
-        identifiers in localStorage or sessionStorage, and does not track you across
-        sites or sessions. Because nothing is stored on your device for analytics
+        views and <strong>Vercel Speed Insights</strong> to measure anonymous web
+        performance metrics (such as page load and responsiveness timings). Both
+        services are cookieless: they do not set cookies, do not store identifiers in
+        localStorage or sessionStorage, and do not track you across sites or sessions.
+        Because nothing is stored on your device for analytics or performance-measurement
         purposes, this does not require cookie consent under the ePrivacy rules. See the
         Privacy Policy for details on how this data is processed.
       </p>
