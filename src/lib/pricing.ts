@@ -23,7 +23,10 @@ const qualityMap: Record<string, { index: number; strengths: string }> = {
   'openai/gpt-4.1': { index: 82, strengths: 'Solid general coding, mature SDK' },
   'openai/o3': { index: 90, strengths: 'Deep reasoning, complex problem-solving' },
   'openai/o4-mini': { index: 78, strengths: 'Fast reasoning, cost-efficient' },
-  'google/gemini-3.1-pro': { index: 90, strengths: 'Multimodal, 1M+ context' },
+  'google/gemini-3.5-flash': { index: 92, strengths: 'Agentic, frontier performance, coding' },
+  'google/gemini-3.1-pro-preview': { index: 90, strengths: 'Multimodal, 1M+ context' },
+  'google/gemini-3.1-flash-lite': { index: 72, strengths: 'Cost-efficient, high-volume tasks' },
+  'google/gemini-3-flash-preview': { index: 85, strengths: 'Multimodal understanding, agentic tasks' },
   'google/gemini-2.5-pro': { index: 87, strengths: 'Large context, strong reasoning' },
   'google/gemini-2.5-flash': { index: 78, strengths: 'High-speed, low-cost operations' },
   'deepseek/deepseek-v4-pro': { index: 86, strengths: 'Extreme cost-to-performance value' },
@@ -43,7 +46,8 @@ const flagshipIds = [
   'openai/gpt-5.5', 'openai/gpt-5.4', 'openai/gpt-4.1',
   'openai/o3', 'openai/o4-mini',
   // Google
-  'google/gemini-3.1-pro', 'google/gemini-2.5-pro', 'google/gemini-2.5-flash',
+  'google/gemini-3.5-flash', 'google/gemini-3.1-pro-preview', 'google/gemini-3.1-flash-lite',
+  'google/gemini-3-flash-preview', 'google/gemini-2.5-pro', 'google/gemini-2.5-flash',
   // DeepSeek
   'deepseek/deepseek-v4-pro', 'deepseek/deepseek-v4-flash',
   // Mistral

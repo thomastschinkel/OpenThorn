@@ -24,12 +24,23 @@ export default class ErrorBoundary extends Component<Props, State> {
     console.error('[ErrorBoundary]', error, info.componentStack)
   }
 
+  static isChunkError(error: Error | null): boolean {
+    if (!error) return false
+    const msg = error.message ?? ''
+    return (
+      msg.includes('Failed to fetch dynamically imported module') ||
+      msg.includes('Importing a module script failed') ||
+      error.name === 'ChunkLoadError'
+    )
+  }
+
   handleReset = () => {
     this.setState({ hasError: false, error: null })
   }
 
   render() {
     if (this.state.hasError) {
+      const isChunk = ErrorBoundary.isChunkError(this.state.error)
       return (
         <div className={styles.root}>
           <div className={styles.card}>
@@ -39,12 +50,19 @@ export default class ErrorBoundary extends Component<Props, State> {
                 <path d="M12 8v4M12 16h.01" />
               </svg>
             </span>
-            <h1 className={styles.title}>Something went sideways</h1>
+            <h1 className={styles.title}>
+              {isChunk ? 'Update available' : 'Something went sideways'}
+            </h1>
             <p className={styles.message}>
-              {this.state.error?.message || 'An unexpected error occurred. We\'ve logged it and will investigate.'}
+              {isChunk
+                ? 'OpenThorn was updated. Refresh the page to load the latest version.'
+                : (this.state.error?.message || 'An unexpected error occurred. We\'ve logged it and will investigate.')}
             </p>
-            <button className={styles.button} onClick={this.handleReset}>
-              Reload
+            <button
+              className={styles.button}
+              onClick={isChunk ? () => window.location.reload() : this.handleReset}
+            >
+              {isChunk ? 'Refresh page' : 'Reload'}
             </button>
           </div>
         </div>
