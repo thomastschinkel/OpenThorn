@@ -55,6 +55,12 @@ import {
   createChangelogEntry,
   generateSessionId,
 } from './agent-memory'
+import {
+  DEFAULT_BASE_URLS,
+  DEFAULT_PROVIDER_MODELS,
+  PROVIDER_DEFS,
+  parseProviderModels,
+} from './providers'
 
 // ─── Types ──────────────────────────────────────────────────────────────────
 
@@ -191,16 +197,6 @@ interface ToolResult {
 
 // ─── Constants ──────────────────────────────────────────────────────────────
 
-const DEFAULT_BASE_URLS: Record<string, string> = {
-  openai: 'https://api.openai.com/v1',
-  anthropic: 'https://api.anthropic.com/v1',
-  google: 'https://generativelanguage.googleapis.com/v1beta',
-  deepseek: 'https://api.deepseek.com/v1',
-  mistral: 'https://api.mistral.ai/v1',
-  groq: 'https://api.groq.com/openai/v1',
-  together: 'https://api.together.xyz/v1',
-}
-
 const ALLOWED_PROVIDER_HOSTS = new Set([
   'api.openai.com',
   'api.anthropic.com',
@@ -216,9 +212,14 @@ const ALLOWED_PROVIDER_HOSTS = new Set([
   'api.perplexity.ai',
   'api.fireworks.ai',
   'api.cerebras.ai',
+  'api.cohere.com',
+  'api.cohere.ai',
   'api.github.com',
   'models.github.com',
   'integrate.api.nvidia.com',
+  'localhost',
+  '127.0.0.1',
+  'bedrock-runtime.us-east-1.amazonaws.com',
 ])
 
 const MAX_OUTPUT_TOKENS = 8192
@@ -265,6 +266,22 @@ const MAX_PROVIDER_FAILOVERS = 2
 // ─── Anthropic Settings ─────────────────────────────────────────────────────
 
 const ANTHROPIC_THINKING_BUDGET = 4000
+
+function supportsManualAnthropicThinking(modelId: string): boolean {
+  const id = modelId.toLowerCase()
+  return !/(claude-fable|claude-mythos|claude-opus-4-[78])/.test(id)
+}
+
+function sanitizeGeminiToolSchema(value: unknown): unknown {
+  if (Array.isArray(value)) return value.map(sanitizeGeminiToolSchema)
+  if (!value || typeof value !== 'object') return value
+
+  return Object.fromEntries(
+    Object.entries(value as Record<string, unknown>)
+      .filter(([key]) => key !== 'additionalProperties')
+      .map(([key, nested]) => [key, sanitizeGeminiToolSchema(nested)]),
+  )
+}
 
 // ─── Circuit Breaker ────────────────────────────────────────────────────────
 
@@ -2091,10 +2108,14 @@ async function callModelWithTools({
   signal?: AbortSignal; onText: (chunk: string) => void
   thinkingBudget?: number
 }): Promise<ModelCallResult> {
-  if (providerId === 'anthropic') {
+  const providerDef = PROVIDER_DEFS[providerId]
+  if (providerDef?.apiFormat === 'bedrock') {
+    throw new Error('Amazon Bedrock requires a server-side Bedrock Converse adapter and is not available through the browser agent yet.')
+  }
+  if (providerDef?.apiFormat === 'anthropic' || providerId === 'anthropic') {
     return callAnthropicWithTools({ baseUrl, apiKey, modelId, system, tools, messages, signal, onText, thinkingBudget })
   }
-  if (providerId === 'google') {
+  if (providerDef?.apiFormat === 'gemini' || providerId === 'google') {
     return callGeminiWithTools({ baseUrl, apiKey, modelId, system, tools, messages, signal, onText, thinkingBudget })
   }
   return callOpenAIWithTools({ providerId, baseUrl, apiKey, modelId, system, tools, messages, signal, onText, thinkingBudget })
@@ -2118,6 +2139,12 @@ async function callOpenAIWithTools({
   signal?: AbortSignal; onText: (chunk: string) => void; thinkingBudget?: number
 }): Promise<ModelCallResult> {
   const url = baseUrl.endsWith('/chat/completions') ? baseUrl : `${baseUrl}/chat/completions`
+  const headers: Record<string, string> = { 'Content-Type': 'application/json' }
+  if (providerId === 'azure') {
+    headers['api-key'] = apiKey
+  } else {
+    headers.Authorization = `Bearer ${apiKey}`
+  }
 
   const openaiMessages = [
     { role: 'system', content: system },
@@ -2154,7 +2181,7 @@ async function callOpenAIWithTools({
 
         const response = await fetch(url, {
           method: 'POST', redirect: 'manual',
-          headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${apiKey}` },
+          headers,
           body: JSON.stringify({
             model: modelId, messages: openaiMessages,
             temperature: 0.22, max_tokens: MAX_OUTPUT_TOKENS, ...attempt,
@@ -2343,7 +2370,7 @@ async function callAnthropicWithTools({
   }
 
   const body: Record<string, unknown> = {
-    model: modelId, max_tokens: MAX_OUTPUT_TOKENS, temperature: 0.22,
+    model: modelId, max_tokens: MAX_OUTPUT_TOKENS,
     messages: anthropicMessages, stream: true,
     system: [{ type: 'text', text: system, cache_control: { type: 'ephemeral' } }],
   }
@@ -2356,7 +2383,7 @@ async function callAnthropicWithTools({
   // Extended thinking requires temperature:1, and max_tokens must exceed the
   // thinking budget (the visible output is the remainder) — size it so the
   // model still has room for tool calls after reasoning.
-  if (budget > 0 && tools.length > 0) {
+  if (budget > 0 && tools.length > 0 && supportsManualAnthropicThinking(modelId)) {
     body.thinking = { type: 'enabled', budget_tokens: budget }
     body.temperature = 1
     body.max_tokens = budget + MAX_OUTPUT_TOKENS
@@ -2493,7 +2520,11 @@ async function callGeminiWithTools({
   const cleanModel = modelId.replace(/^models\//, '')
   const url = `${baseUrl}/models/${encodeURIComponent(cleanModel)}:streamGenerateContent?alt=sse`
 
-  const functionDeclarations = tools.map((t) => ({ name: t.name, description: t.description, parameters: t.input_schema }))
+  const functionDeclarations = tools.map((t) => ({
+    name: t.name,
+    description: t.description,
+    parameters: sanitizeGeminiToolSchema(t.input_schema),
+  }))
   const systemParts = system ? [{ text: system }] : []
 
   const contents = messages.map((msg) => {
@@ -2719,13 +2750,7 @@ function buildUserPrompt(
 // ─── Provider Resolution with Fallback ──────────────────────────────────────
 
 function parseModels(raw: string | null | undefined): ModelInfo[] {
-  return (raw ?? '')
-    .split(',')
-    .map((item) => {
-      const [name, id] = item.split('|').map((p) => p.trim())
-      return { name: name || id || '', id: id || name || '' }
-    })
-    .filter((m) => m.id.length > 0)
+  return parseProviderModels(raw)
 }
 
 function validateProviderUrl(raw: string): string {
@@ -2734,7 +2759,12 @@ function validateProviderUrl(raw: string): string {
   try { hostname = new URL(clean).hostname.toLowerCase() } catch {
     throw new Error(`Invalid base URL: ${clean.slice(0, 100)}`)
   }
-  if (!ALLOWED_PROVIDER_HOSTS.has(hostname)) {
+  const isAllowedHost =
+    ALLOWED_PROVIDER_HOSTS.has(hostname) ||
+    hostname.endsWith('.openai.azure.com') ||
+    hostname.endsWith('.services.ai.azure.com') ||
+    /^bedrock-runtime\.[a-z0-9-]+\.amazonaws\.com$/.test(hostname)
+  if (!isAllowedHost) {
     throw new Error(
       `Provider URL host "${hostname}" is not in the allowed list. ` +
       `Use one of: ${[...ALLOWED_PROVIDER_HOSTS].sort().join(', ')}`,
@@ -2828,7 +2858,10 @@ async function resolveProviderWithFallback(
         .eq('provider_id', key.provider_id)
         .maybeSingle()
 
-      const defaultModels = parseModels(getRecordString(defaultRow, 'models'))
+      const configuredDefaults = parseModels(getRecordString(defaultRow, 'models'))
+      const defaultModels = configuredDefaults.length > 0
+        ? configuredDefaults
+        : DEFAULT_PROVIDER_MODELS[key.provider_id] ?? []
       const customModels = parseModels(key.models)
       const merged = mergeModels(defaultModels, customModels)
 

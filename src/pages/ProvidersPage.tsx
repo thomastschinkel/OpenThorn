@@ -2,6 +2,15 @@ import { useState, useEffect, useCallback } from 'react'
 import { useAuth } from '../lib/AuthContext'
 import { supabase } from '../lib/supabase'
 import { encryptApiKey, decryptApiKey } from '../lib/crypto'
+import {
+  DEFAULT_PROVIDER_MODELS,
+  LOGO_MAP,
+  PROVIDERS,
+  PROVIDER_DEFS,
+  parseProviderModels,
+  serializeProviderModels,
+  type ProviderModel,
+} from '../lib/providers'
 import DashboardSidebar from '../components/DashboardSidebar/DashboardSidebar'
 import { usePageTitle } from '../lib/usePageTitle'
 import styles from './ProvidersPage.module.css'
@@ -21,51 +30,46 @@ interface ProviderKey {
   is_custom: boolean
 }
 
-interface ProviderDef {
-  id: string
-  name: string
-  baseUrl: string
-  color: string
-}
+function extractModelList(payload: unknown, providerId: string): ProviderModel[] {
+  const record = payload && typeof payload === 'object' ? payload as Record<string, unknown> : {}
+  const rawModels = Array.isArray(record.data)
+    ? record.data
+    : Array.isArray(record.models)
+      ? record.models
+      : []
 
-const PROVIDERS: ProviderDef[] = [
-  { id: 'openai', name: 'OpenAI', baseUrl: 'https://api.openai.com/v1', color: '#74AA9C' },
-  { id: 'anthropic', name: 'Anthropic', baseUrl: 'https://api.anthropic.com/v1', color: '#D4A574' },
-  { id: 'google', name: 'Google Gemini', baseUrl: 'https://generativelanguage.googleapis.com/v1beta', color: '#4285F4' },
-  { id: 'deepseek', name: 'DeepSeek', baseUrl: 'https://api.deepseek.com/v1', color: '#4D6BFE' },
-  { id: 'mistral', name: 'Mistral AI', baseUrl: 'https://api.mistral.ai/v1', color: '#F59E0B' },
-  { id: 'groq', name: 'Groq', baseUrl: 'https://api.groq.com/openai/v1', color: '#F97316' },
-  { id: 'together', name: 'Together AI', baseUrl: 'https://api.together.xyz/v1', color: '#6366F1' },
-  { id: 'xai', name: 'xAI (Grok)', baseUrl: 'https://api.x.ai/v1', color: '#E5E7EB' },
-  { id: 'cohere', name: 'Cohere', baseUrl: 'https://api.cohere.com/v1', color: '#39D353' },
-  { id: 'perplexity', name: 'Perplexity AI', baseUrl: 'https://api.perplexity.ai', color: '#20B2AA' },
-  { id: 'openrouter', name: 'OpenRouter', baseUrl: 'https://openrouter.ai/api/v1', color: '#6B46C1' },
-  { id: 'ollama', name: 'Ollama', baseUrl: 'http://localhost:11434/v1', color: '#374151' },
-  { id: 'fireworks', name: 'Fireworks AI', baseUrl: 'https://api.fireworks.ai/inference/v1', color: '#EF4444' },
-  { id: 'cerebras', name: 'Cerebras', baseUrl: 'https://api.cerebras.ai/v1', color: '#F59E0B' },
-  { id: 'azure', name: 'Azure OpenAI', baseUrl: 'https://YOUR_RESOURCE.openai.azure.com/openai/deployments', color: '#0078D4' },
-  { id: 'bedrock', name: 'Amazon Bedrock', baseUrl: 'https://bedrock-runtime.us-east-1.amazonaws.com', color: '#FF9900' },
-  { id: 'nvidia', name: 'Nvidia NIM', baseUrl: 'https://integrate.api.nvidia.com/v1', color: '#76B900' },
-]
+  return rawModels
+    .map((item) => {
+      const model = item && typeof item === 'object' ? item as Record<string, unknown> : {}
+      const supportedMethods = Array.isArray(model.supportedGenerationMethods)
+        ? model.supportedGenerationMethods
+        : Array.isArray(model.supportedActions)
+          ? model.supportedActions
+          : []
+      if (
+        providerId === 'google' &&
+        supportedMethods.length > 0 &&
+        !supportedMethods.some((method) => typeof method === 'string' && method.toLowerCase() === 'generatecontent')
+      ) {
+        return null
+      }
 
-const LOGO_MAP: Record<string, string> = {
-  openai: '/assets/openai.png',
-  anthropic: '/assets/anthropic.png',
-  google: '/assets/google.png',
-  deepseek: '/assets/deepseek.webp',
-  mistral: '/assets/mistralai.png',
-  groq: '/assets/groq.png',
-  together: '/assets/togetherai.png',
-  xai: '/assets/xai.png',
-  cohere: '/assets/cohere.png',
-  perplexity: '/assets/perplexity.png',
-  openrouter: '/assets/openrouter.png',
-  ollama: '/assets/ollama.png',
-  fireworks: '/assets/fireworks.png',
-  cerebras: '/assets/celebras.png',
-  azure: '/assets/azure.png',
-  bedrock: '/assets/bedrock.png',
-  nvidia: '/assets/nvidia.png',
+      let rawId = ''
+      if (providerId === 'google' && typeof model.baseModelId === 'string') {
+        rawId = model.baseModelId
+      } else if (typeof model.id === 'string') {
+        rawId = model.id
+      } else if (typeof model.name === 'string') {
+        rawId = model.name
+      }
+
+      const id = providerId === 'google' ? rawId.replace(/^models\//, '') : rawId
+      const name = typeof model.displayName === 'string' && model.displayName.trim()
+        ? model.displayName.trim()
+        : id
+      return { name, id }
+    })
+    .filter((model): model is ProviderModel => Boolean(model?.id))
 }
 
 export default function ProvidersPage() {
@@ -86,7 +90,7 @@ export default function ProvidersPage() {
   const [formCustom, setFormCustom] = useState(false)
   const [saving, setSaving] = useState(false)
   const [showKey, setShowKey] = useState(false)
-  const [defaultModels, setDefaultModels] = useState<Record<string, {name: string, id: string}[]>>({})
+  const [defaultModels, setDefaultModels] = useState<Record<string, ProviderModel[]>>(DEFAULT_PROVIDER_MODELS)
   const [newModelName, setNewModelName] = useState('')
   const [newModelId, setNewModelId] = useState('')
   const [showAdvanced, setShowAdvanced] = useState(false)
@@ -96,19 +100,13 @@ export default function ProvidersPage() {
     message: '',
   })
 
-  const parseModels = (raw: string): {name: string, id: string}[] => {
-    return raw.split(',').map((m) => {
-      const [name, id] = m.split('|').map((s) => s.trim())
-      return { name: name || id || '', id: id || name || '' }
-    }).filter((m) => m.id)
-  }
-
   useEffect(() => {
     supabase.from('default_models').select('*').then(({ data }) => {
       if (data) {
-        const map: Record<string, {name: string, id: string}[]> = {}
+        const map: Record<string, ProviderModel[]> = { ...DEFAULT_PROVIDER_MODELS }
         data.forEach((d: { provider_id: string; models: string }) => {
-          map[d.provider_id] = parseModels(d.models)
+          const models = parseProviderModels(d.models)
+          if (models.length > 0) map[d.provider_id] = models
         })
         setDefaultModels(map)
       }
@@ -145,7 +143,7 @@ export default function ProvidersPage() {
 
   const openEditor = useCallback((providerId: string) => {
     const existing = savedKeys.find((k) => k.provider_id === providerId)
-    const def = PROVIDERS.find((p) => p.id === providerId)
+    const def = PROVIDER_DEFS[providerId]
     if (existing) {
       setFormKey(existing.api_key)
       setFormUrl(existing.base_url)
@@ -170,7 +168,7 @@ export default function ProvidersPage() {
   const saveKey = async () => {
     if (!user || !editingProvider || !formKey.trim()) return
     setSaving(true)
-    const def = PROVIDERS.find((p) => p.id === editingProvider)
+    const def = PROVIDER_DEFS[editingProvider]
     const encryptedKey = await encryptApiKey(formKey.trim(), user.id)
     const payload = {
       user_id: user.id,
@@ -179,7 +177,7 @@ export default function ProvidersPage() {
       api_key: encryptedKey,
       base_url: formUrl.trim() || (def?.baseUrl ?? ''),
       models: formModels.trim(),
-      enabled: formEnabled,
+      enabled: formEnabled && (def?.testable ?? true),
       is_custom: formCustom,
       updated_at: new Date().toISOString(),
     }
@@ -206,7 +204,7 @@ export default function ProvidersPage() {
     if (!editingProvider || !formKey.trim()) return
 
     setTestState({ status: 'testing', message: 'Testing connection...' })
-    const def = PROVIDERS.find((p) => p.id === editingProvider)
+    const def = PROVIDER_DEFS[editingProvider]
     const providerId = formCustom ? 'custom' : editingProvider
     const baseUrl = (formUrl.trim() || def?.baseUrl || '').replace(/\/+$/, '')
 
@@ -215,17 +213,16 @@ export default function ProvidersPage() {
       return
     }
 
-    if (providerId === 'bedrock') {
-      setTestState({ status: 'error', message: 'Bedrock requires AWS request signing, so it cannot be tested from the browser.' })
+    if (def && !def.testable) {
+      setTestState({ status: 'error', message: def.testNote ?? 'This provider cannot be tested from the browser.' })
       return
     }
 
     try {
+      const modelListPath = def?.modelListPath ?? '/models'
       const url = providerId === 'google'
         ? `${baseUrl}/models?key=${encodeURIComponent(formKey.trim())}`
-        : providerId === 'azure'
-          ? `${baseUrl}?api-version=2024-02-15-preview`
-          : `${baseUrl}/models`
+        : `${baseUrl}${modelListPath}`
 
       const headers: Record<string, string> = {}
       if (providerId === 'anthropic') {
@@ -243,7 +240,13 @@ export default function ProvidersPage() {
         throw new Error(`Provider returned ${response.status}${body ? `: ${body.slice(0, 120)}` : ''}`)
       }
 
-      setTestState({ status: 'success', message: 'Connection looks good.' })
+      const payload = await response.json().catch(() => null)
+      const remoteModels = def?.syncModels === false ? [] : extractModelList(payload, providerId)
+      if (remoteModels.length > 0) {
+        setTestState({ status: 'success', message: `Connection looks good. Synced ${remoteModels.length} model${remoteModels.length === 1 ? '' : 's'}.` })
+      } else {
+        setTestState({ status: 'success', message: 'Connection looks good.' })
+      }
     } catch (err) {
       setTestState({
         status: 'error',
@@ -265,6 +268,8 @@ export default function ProvidersPage() {
 
   const toggleEnabled = async (key: ProviderKey) => {
     if (!user) return
+    const def = PROVIDER_DEFS[key.provider_id]
+    if (def && !def.testable) return
     const newEnabled = !key.enabled
     const { error } = await supabase.from('provider_keys')
       .update({ enabled: newEnabled, updated_at: new Date().toISOString() })
@@ -361,7 +366,12 @@ export default function ProvidersPage() {
                   <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round"><polyline points="15 18 9 12 15 6"/></svg>
                 </button>
                 <label className={styles.toggle}>
-                  <input type="checkbox" checked={formEnabled} onChange={() => {
+                  <input type="checkbox" checked={formEnabled} disabled={editingDef ? !editingDef.testable : false} onChange={() => {
+                    if (editingDef && !editingDef.testable) {
+                      setToggleWarning(true)
+                      setTimeout(() => setToggleWarning(false), 3000)
+                      return
+                    }
                     if (!formEnabled && !formKey.trim()) {
                       setToggleWarning(true)
                       setTimeout(() => setToggleWarning(false), 3000)
@@ -374,7 +384,7 @@ export default function ProvidersPage() {
                 </label>
               </div>
               {toggleWarning && (
-                <div className={styles.toggleWarning}>Set an API key first before enabling</div>
+                <div className={styles.toggleWarning}>{editingDef && !editingDef.testable ? editingDef.testNote : 'Set an API key first before enabling'}</div>
               )}
 
               <div className={styles.editorHeader}>
@@ -420,7 +430,7 @@ export default function ProvidersPage() {
                 <div className={styles.field}>
                   <label className={styles.fieldLabel}>Models</label>
                   <div className={styles.modelList}>
-                    {[...(defaultModels[editingProvider] || []), ...parseModels(formModels)].map((m) => {
+                    {[...(defaultModels[editingProvider] || []), ...parseProviderModels(formModels)].map((m) => {
                       const isDefault = (defaultModels[editingProvider] || []).some((d) => d.id === m.id)
                       return (
                         <span key={m.id} className={`${styles.modelPill} ${!isDefault ? styles.modelPillCustom : ''}`} title={m.id}>
@@ -430,7 +440,7 @@ export default function ProvidersPage() {
                           {m.name}
                           {!isDefault && (
                             <button className={styles.modelRemove} onClick={() => {
-                              const updated = parseModels(formModels).filter((x) => x.id !== m.id).map((x) => `${x.name}|${x.id}`).join(', ')
+                              const updated = serializeProviderModels(parseProviderModels(formModels).filter((x) => x.id !== m.id))
                               setFormModels(updated)
                             }} type="button" aria-label={`Remove ${m.name}`}>
                               <svg width="10" height="10" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5"><line x1="18" y1="6" x2="6" y2="18"/><line x1="6" y1="6" x2="18" y2="18"/></svg>
@@ -456,10 +466,9 @@ export default function ProvidersPage() {
                           className={styles.addModelBtn}
                           onClick={() => {
                             if (!newModelName.trim() || !newModelId.trim()) return
-                            const current = parseModels(formModels)
+                            const current = parseProviderModels(formModels)
                             if (!current.some((m) => m.id === newModelId.trim())) {
-                              const updated = [...current, { name: newModelName.trim(), id: newModelId.trim() }].map((x) => `${x.name}|${x.id}`).join(', ')
-                              setFormModels(updated)
+                              setFormModels(serializeProviderModels([...current, { name: newModelName.trim(), id: newModelId.trim() }]))
                             }
                             setNewModelName('')
                             setNewModelId('')
@@ -480,7 +489,7 @@ export default function ProvidersPage() {
                   {testState.status === 'testing' ? 'Testing...' : 'Test connection'}
                 </button>
                 <button className={styles.saveBtn} onClick={saveKey} disabled={saving || !formKey.trim()} type="button">
-                  {saving ? 'Saving…' : 'Save provider'}
+                  {saving ? 'Saving...' : 'Save provider'}
                 </button>
                 {savedKeys.some((k) => k.provider_id === editingProvider) && (
                   <button className={styles.deleteBtn} onClick={deleteKey} type="button">Remove</button>
@@ -516,7 +525,7 @@ export default function ProvidersPage() {
                         </div>
                         <div>
                           <span className={styles.enabledName}>{key.provider_name}</span>
-                          <span className={styles.enabledKey}>{key.api_key.slice(0, 6)}••••••••{key.api_key.slice(-4)}</span>
+                          <span className={styles.enabledKey}>{key.api_key.slice(0, 6)}........{key.api_key.slice(-4)}</span>
                           {key.models && (
                             <span className={styles.enabledModels}>{key.models.split(',').length} model{key.models.split(',').length !== 1 ? 's' : ''} configured</span>
                           )}
@@ -524,7 +533,7 @@ export default function ProvidersPage() {
                       </div>
                       <div className={styles.enabledRight}>
                         <label className={styles.toggle}>
-                          <input type="checkbox" checked={key.enabled} onChange={() => toggleEnabled(key)} />
+                          <input type="checkbox" checked={key.enabled} disabled={def ? !def.testable : false} onChange={() => toggleEnabled(key)} />
                           <span className={styles.toggleSlider} />
                         </label>
                         <button className={styles.editBtn} onClick={() => openEditor(key.provider_id)} type="button">

@@ -2,6 +2,12 @@ import { useState, useEffect, useRef, useCallback } from 'react'
 import { motion, AnimatePresence } from 'framer-motion'
 import { supabase } from '../../lib/supabase'
 import { useAuth } from '../../lib/AuthContext'
+import {
+  DEFAULT_PROVIDER_MODELS,
+  LOGO_MAP,
+  PROVIDER_DEFS,
+  parseProviderModels,
+} from '../../lib/providers'
 import styles from './ModelSelector.module.css'
 
 // ── Types ──────────────────────────────────────────────
@@ -37,39 +43,9 @@ interface ModelSelectorProps {
 
 // ── Constants ──────────────────────────────────────────
 
-const PROVIDER_DEFS: Record<string, { name: string; color: string }> = {
-  anthropic: { name: 'Anthropic', color: '#D4A574' },
-  openai: { name: 'OpenAI', color: '#74AA9C' },
-  google: { name: 'Google Gemini', color: '#4285F4' },
-  deepseek: { name: 'DeepSeek', color: '#4D6BFE' },
-  mistral: { name: 'Mistral AI', color: '#F59E0B' },
-  groq: { name: 'Groq', color: '#F97316' },
-  together: { name: 'Together AI', color: '#6366F1' },
-}
-
-const LOGO_MAP: Record<string, string> = {
-  anthropic: '/assets/anthropic.png',
-  openai: '/assets/openai.png',
-  google: '/assets/google.png',
-  deepseek: '/assets/deepseek.webp',
-  mistral: '/assets/mistralai.png',
-  groq: '/assets/groq.png',
-  together: '/assets/togetherai.png',
-}
-
 const LANDING_PROVIDERS = ['anthropic', 'openai', 'google']
 
 // ── Helpers ────────────────────────────────────────────
-
-function parseModels(raw: string): ModelInfo[] {
-  return raw
-    .split(',')
-    .map((m) => {
-      const [name, id] = m.split('|').map((s) => s.trim())
-      return { name: name || id || '', id: id || name || '' }
-    })
-    .filter((m) => m.id)
-}
 
 // ── Component ──────────────────────────────────────────
 
@@ -143,7 +119,7 @@ export default function ModelSelector({ page, selectedModel, onModelSelect, plac
               provider_name: def?.name ?? pid,
               color: def?.color ?? '#888',
               logo: LOGO_MAP[pid] ?? '',
-              models: row ? parseModels(row.models) : [],
+              models: row ? parseProviderModels(row.models) : DEFAULT_PROVIDER_MODELS[pid] ?? [],
             }
           }).filter((g) => g.models.length > 0)
 
@@ -175,14 +151,14 @@ export default function ModelSelector({ page, selectedModel, onModelSelect, plac
           const defaultMap: Record<string, ModelInfo[]> = {}
           if (defaults) {
             defaults.forEach((d: { provider_id: string; models: string }) => {
-              defaultMap[d.provider_id] = parseModels(d.models)
+              defaultMap[d.provider_id] = parseProviderModels(d.models)
             })
           }
 
           const groups: ProviderGroup[] = keys.map((k: { provider_id: string; provider_name: string; models: string }) => {
             const def = PROVIDER_DEFS[k.provider_id]
-            const defaultModels = defaultMap[k.provider_id] ?? []
-            const customModels = parseModels(k.models ?? '')
+            const defaultModels = defaultMap[k.provider_id] ?? DEFAULT_PROVIDER_MODELS[k.provider_id] ?? []
+            const customModels = parseProviderModels(k.models ?? '')
             const seen = new Set(defaultModels.map((m) => m.id))
             const merged = [...defaultModels, ...customModels.filter((m) => !seen.has(m.id))]
 
