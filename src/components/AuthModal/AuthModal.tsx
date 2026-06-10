@@ -2,6 +2,7 @@ import { useState, useEffect, useCallback } from 'react'
 import { useNavigate } from 'react-router-dom'
 import { motion, AnimatePresence } from 'framer-motion'
 import { useAuth } from '../../lib/AuthContext'
+import { getErrorMessage, logError } from '../../lib/errors'
 import SocialButton from './SocialButton'
 import AuthForm from './AuthForm'
 import styles from './AuthModal.module.css'
@@ -82,8 +83,9 @@ export default function AuthModal({ isOpen, onClose, initialMode }: AuthModalPro
     try {
       if (provider === 'google') await signInWithGoogle()
       else await signInWithGitHub()
-    } catch {
-      setError('Something went wrong. Please try again.')
+    } catch (error) {
+      logError('AuthSocialLogin', error)
+      setError(getErrorMessage(error, 'Something went wrong. Please try again.'))
       setSocialLoading(null)
     }
   }, [signInWithGoogle, signInWithGitHub, viewMode, acceptedTerms])
@@ -92,40 +94,51 @@ export default function AuthModal({ isOpen, onClose, initialMode }: AuthModalPro
     setLoading(true)
     setError(null)
 
-    if (viewMode === 'signup') {
-      const result = await signUp(data.email, data.password, data.name ?? '')
-      setLoading(false)
-      if (result.error) {
-        setError(result.error)
-      } else if (result.needsConfirmation) {
-        setSuccessEmail(data.email)
-        setSuccess('signup')
+    try {
+      if (viewMode === 'signup') {
+        const result = await signUp(data.email, data.password, data.name ?? '')
+        if (result.error) {
+          setError(result.error)
+        } else if (result.needsConfirmation) {
+          setSuccessEmail(data.email)
+          setSuccess('signup')
+        } else {
+          onClose()
+          navigate('/dashboard')
+        }
       } else {
-        onClose()
-        navigate('/dashboard')
+        const result = await signIn(data.email, data.password)
+        if (result.error) {
+          setError(result.error)
+        } else {
+          onClose()
+          navigate('/dashboard')
+        }
       }
-    } else {
-      const result = await signIn(data.email, data.password)
+    } catch (error) {
+      logError('AuthSubmit', error)
+      setError(getErrorMessage(error, 'Authentication failed. Please try again.'))
+    } finally {
       setLoading(false)
-      if (result.error) {
-        setError(result.error)
-      } else {
-        onClose()
-        navigate('/dashboard')
-      }
     }
   }, [viewMode, signIn, signUp, onClose, navigate])
 
   const handleForgotPassword = useCallback(async (email: string) => {
     setLoading(true)
     setError(null)
-    const result = await resetPassword(email)
-    setLoading(false)
-    if (result.error) {
-      setError(result.error)
-    } else {
-      setSuccessEmail(email)
-      setSuccess('resetPassword')
+    try {
+      const result = await resetPassword(email)
+      if (result.error) {
+        setError(result.error)
+      } else {
+        setSuccessEmail(email)
+        setSuccess('resetPassword')
+      }
+    } catch (error) {
+      logError('AuthForgotPassword', error)
+      setError(getErrorMessage(error, 'Could not send a reset link. Please try again.'))
+    } finally {
+      setLoading(false)
     }
   }, [resetPassword])
 

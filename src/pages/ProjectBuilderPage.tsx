@@ -6,6 +6,7 @@ import remarkGfm from 'remark-gfm'
 import JSZip from 'jszip'
 import { useAuth } from '../lib/AuthContext'
 import { supabase } from '../lib/supabase'
+import { getErrorMessage, isAbortError, logError } from '../lib/errors'
 import { deployToNetlify } from '../lib/deploy'
 import { buildPreview, escapeHtml } from '../lib/preview-bundle'
 import { capturePreviewThumbnail } from '../lib/preview-screenshot'
@@ -812,6 +813,7 @@ export default function ProjectBuilderPage() {
   const [publishModalOpen, setPublishModalOpen] = useState(false)
   const [publishDescription, setPublishDescription] = useState('')
   const [publishing, setPublishing] = useState(false)
+  const [publishError, setPublishError] = useState('')
   const [publishSuccess, setPublishSuccess] = useState(false)
   const [netlifySiteId, setNetlifySiteId] = useState<string | null>(null)
   const titleInputRef = useRef<HTMLInputElement>(null)
@@ -899,12 +901,15 @@ export default function ProjectBuilderPage() {
     if (!user || !projectId) return
 
     const loadProject = async () => {
+      try {
       // Verify ownership before upserting to prevent IDOR
-      const { data: existing } = await supabase
+      const { data: existing, error: existingError } = await supabase
         .from('projects')
         .select('user_id, title, files, chat_history, netlify_site_id, generating, generating_by, selected_model')
         .eq('id', projectId)
-        .single()
+        .maybeSingle()
+
+      if (existingError) throw existingError
 
       if (existing && existing.user_id !== user.id) {
         // Project belongs to another user — redirect away
@@ -1015,10 +1020,22 @@ export default function ProjectBuilderPage() {
         }, { onConflict: 'id' })
 
       if (error) {
-        console.error('Failed to sync project:', error.message)
+        throw error
       }
 
       setFilesLoaded(true)
+      } catch (error) {
+        logError('ProjectLoad', error)
+        setMessages((current) => current.length > 0 ? current : [{
+          id: 'project-load-error',
+          role: 'assistant',
+          content: 'I could not load this project. Please go back to the dashboard and try opening it again.',
+          timeline: [],
+          error: true,
+        }])
+        setChatHistoryLoaded(true)
+        setFilesLoaded(true)
+      }
     }
 
     loadProject()
@@ -1031,6 +1048,7 @@ export default function ProjectBuilderPage() {
     let cancelled = false
 
     const loadCollaborators = async () => {
+      try {
       const { data, error } = await supabase
         .from('project_collaborators')
         .select('*')
@@ -1041,7 +1059,7 @@ export default function ProjectBuilderPage() {
 
       if (error) {
         if (!/does not exist|schema cache|permission denied/i.test(error.message)) {
-          console.error('Failed to load collaborators:', error.message)
+          throw error
         }
         return
       }
@@ -1059,6 +1077,10 @@ export default function ProjectBuilderPage() {
           accountVerified: true,
         }
       }))
+      } catch (error) {
+        logError('ProjectLoadCollaborators', error)
+        setInviteError(getErrorMessage(error, 'Could not load collaborators.'))
+      }
     }
 
     loadCollaborators()
@@ -1163,13 +1185,15 @@ export default function ProjectBuilderPage() {
     if (!user || !projectId || !firstRunComplete || isViewOnly) return
 
     const saveFiles = async () => {
-      const { error } = await supabase
-        .from('projects')
-        .update({ files: projectFiles as unknown as Record<string, unknown>[] })
-        .eq('id', projectId)
+      try {
+        const { error } = await supabase
+          .from('projects')
+          .update({ files: projectFiles as unknown as Record<string, unknown>[] })
+          .eq('id', projectId)
 
-      if (error) {
-        console.error('Failed to save project files:', error.message)
+        if (error) throw error
+      } catch (error) {
+        logError('ProjectSaveFiles', error)
       }
     }
 
@@ -1185,13 +1209,15 @@ export default function ProjectBuilderPage() {
     if (!hasAssistantMessages) return
 
     const saveChat = async () => {
-      const { error } = await supabase
-        .from('projects')
-        .update({ chat_history: messages as unknown as Record<string, unknown>[] })
-        .eq('id', projectId)
+      try {
+        const { error } = await supabase
+          .from('projects')
+          .update({ chat_history: messages as unknown as Record<string, unknown>[] })
+          .eq('id', projectId)
 
-      if (error) {
-        console.error('Failed to save chat history:', error.message)
+        if (error) throw error
+      } catch (error) {
+        logError('ProjectSaveChat', error)
       }
     }
 
@@ -1203,50 +1229,49 @@ export default function ProjectBuilderPage() {
     if (!user || !projectId || previewStatus !== 'ready' || !previewHtml || isViewOnly) return
 
     const savePreview = async () => {
-      const result = await buildPreview(
-        projectFiles.map((f) => ({ path: f.path, content: f.code })),
-      )
+      try {
+        const result = await buildPreview(
+          projectFiles.map((f) => ({ path: f.path, content: f.code })),
+        )
 
-      if (result.errors.length > 0) {
-        console.error('Preview build failed:', result.errors)
-        return
-      }
-
-      const jpegBlob = await capturePreviewThumbnail(result.html)
-      if (!jpegBlob) {
-        console.warn('Preview screenshot capture failed, skipping thumbnail')
-        return
-      }
-
-      const thumbnailPath = `previews/${projectId}/${Date.now()}/thumbnail.png`
-
-      const { error: uploadError } = await supabase.storage
-        .from('deployments')
-        .upload(thumbnailPath, jpegBlob, {
-          contentType: 'image/png',
-          upsert: false,
-          cacheControl: '3600',
-        })
-
-      if (uploadError) {
-        console.error('Failed to save preview thumbnail:', uploadError.message)
-        return
-      }
-
-      const { data: urlData } = supabase.storage
-        .from('deployments')
-        .getPublicUrl(thumbnailPath)
-
-      if (urlData?.publicUrl) {
-        const { error: updateError } = await supabase
-          .from('projects')
-          .update({ preview_url: urlData.publicUrl })
-          .eq('id', projectId)
-          .eq('user_id', user.id)
-
-        if (updateError) {
-          console.error('Failed to save preview URL:', updateError.message)
+        if (result.errors.length > 0) {
+          logError('ProjectPreviewBuild', result.errors)
+          return
         }
+
+        const jpegBlob = await capturePreviewThumbnail(result.html)
+        if (!jpegBlob) {
+          console.warn('Preview screenshot capture failed, skipping thumbnail')
+          return
+        }
+
+        const thumbnailPath = `previews/${projectId}/${Date.now()}/thumbnail.png`
+
+        const { error: uploadError } = await supabase.storage
+          .from('deployments')
+          .upload(thumbnailPath, jpegBlob, {
+            contentType: 'image/png',
+            upsert: false,
+            cacheControl: '3600',
+          })
+
+        if (uploadError) throw uploadError
+
+        const { data: urlData } = supabase.storage
+          .from('deployments')
+          .getPublicUrl(thumbnailPath)
+
+        if (urlData?.publicUrl) {
+          const { error: updateError } = await supabase
+            .from('projects')
+            .update({ preview_url: urlData.publicUrl })
+            .eq('id', projectId)
+            .eq('user_id', user.id)
+
+          if (updateError) throw updateError
+        }
+      } catch (error) {
+        logError('ProjectSavePreview', error)
       }
     }
 
@@ -1256,36 +1281,42 @@ export default function ProjectBuilderPage() {
   const handlePublishToCommunity = useCallback(async () => {
     if (!user || publishing) return
     setPublishing(true)
+    setPublishError('')
 
-    const { data: projectData } = await supabase
-      .from('projects')
-      .select('preview_url')
-      .eq('id', projectId)
-      .single()
+    try {
+      const { data: projectData, error: fetchError } = await supabase
+        .from('projects')
+        .select('preview_url')
+        .eq('id', projectId)
+        .maybeSingle()
 
-    const authorName =
-      user.user_metadata?.full_name ??
-      user.email?.split('@')[0] ??
-      'Anonymous'
+      if (fetchError) throw fetchError
 
-    const { error } = await supabase.from('community_posts').insert({
-      project_id: projectId,
-      user_id: user.id,
-      title: title || 'Untitled project',
-      description: publishDescription.trim() || null,
-      preview_url: projectData?.preview_url ?? null,
-      author_name: authorName,
-      files_snapshot: projectFiles as unknown as Record<string, unknown>[],
-    })
+      const authorName =
+        user.user_metadata?.full_name ??
+        user.email?.split('@')[0] ??
+        'Anonymous'
 
-    setPublishing(false)
-    if (!error) {
+      const { error } = await supabase.from('community_posts').insert({
+        project_id: projectId,
+        user_id: user.id,
+        title: title || 'Untitled project',
+        description: publishDescription.trim() || null,
+        preview_url: projectData?.preview_url ?? null,
+        author_name: authorName,
+        files_snapshot: projectFiles as unknown as Record<string, unknown>[],
+      })
+
+      if (error) throw error
       setPublishModalOpen(false)
       setPublishDescription('')
       setPublishSuccess(true)
       setTimeout(() => setPublishSuccess(false), 3000)
-    } else {
-      console.error('Failed to publish:', error.message)
+    } catch (error) {
+      logError('ProjectPublish', error)
+      setPublishError(getErrorMessage(error, 'Could not publish this project. Please try again.'))
+    } finally {
+      setPublishing(false)
     }
   }, [user, publishing, projectId, title, publishDescription, projectFiles])
 
@@ -1353,7 +1384,8 @@ export default function ProjectBuilderPage() {
     const normalizedEmail = email.trim().toLowerCase()
     // profiles is locked to self-only via RLS; use the SECURITY DEFINER lookup
     // so we can resolve an invitee's account without exposing the table.
-    const { data } = await supabase.rpc('find_account_by_email', { lookup_email: normalizedEmail })
+    const { data, error } = await supabase.rpc('find_account_by_email', { lookup_email: normalizedEmail })
+    if (error) throw error
 
     const row = Array.isArray(data) ? data[0] : data
     if (!row) return null
@@ -1387,7 +1419,15 @@ export default function ProjectBuilderPage() {
     }
 
     setInviteLoading(true)
-    const account = await findOpenThornAccount(normalizedEmail)
+    let account: Awaited<ReturnType<typeof findOpenThornAccount>>
+    try {
+      account = await findOpenThornAccount(normalizedEmail)
+    } catch (error) {
+      logError('ProjectFindCollaborator', error)
+      setInviteLoading(false)
+      setInviteError(getErrorMessage(error, 'Could not look up that account.'))
+      return
+    }
 
     if (!account) {
       setInviteLoading(false)
@@ -1427,12 +1467,16 @@ export default function ProjectBuilderPage() {
         }, { onConflict: 'project_id,user_id' })
 
       if (error && !/does not exist|schema cache|permission denied/i.test(error.message)) {
-        console.error('Failed to persist collaborator:', error.message)
+        logError('ProjectPersistCollaborator', error)
+        setCollaborators((current) => current.filter((collaborator) => collaborator.id !== account.id))
+        setInviteStatus('')
+        setInviteError(getErrorMessage(error, 'Could not invite this collaborator.'))
       }
     }
   }, [buildInviteLink, collaborators, findOpenThornAccount, inviteEmail, invitePermission, projectId, user])
 
   const handlePermissionChange = useCallback((collaboratorId: string, permission: SharePermission) => {
+    const previousCollaborators = collaborators
     setCollaborators((current) => current.map((collaborator) => (
       collaborator.id === collaboratorId ? { ...collaborator, permission } : collaborator
     )))
@@ -1446,13 +1490,20 @@ export default function ProjectBuilderPage() {
         .eq('user_id', collaboratorId)
         .then(({ error }) => {
           if (error && !/does not exist|schema cache|permission denied/i.test(error.message)) {
-            console.error('Failed to update collaborator:', error.message)
+            logError('ProjectUpdateCollaborator', error)
+            setCollaborators(previousCollaborators)
+            setInviteError(getErrorMessage(error, 'Could not update collaborator permissions.'))
           }
+        }, (error: unknown) => {
+          logError('ProjectUpdateCollaborator', error)
+          setCollaborators(previousCollaborators)
+          setInviteError(getErrorMessage(error, 'Could not update collaborator permissions.'))
         })
     }
   }, [collaborators, projectId])
 
   const handleRemoveCollaborator = useCallback((collaboratorId: string) => {
+    const previousCollaborators = collaborators
     setCollaborators((current) => current.filter((collaborator) => collaborator.id !== collaboratorId))
 
     if (projectId) {
@@ -1463,20 +1514,31 @@ export default function ProjectBuilderPage() {
         .eq('user_id', collaboratorId)
         .then(({ error }) => {
           if (error && !/does not exist|schema cache|permission denied/i.test(error.message)) {
-            console.error('Failed to remove collaborator:', error.message)
+            logError('ProjectRemoveCollaborator', error)
+            setCollaborators(previousCollaborators)
+            setInviteError(getErrorMessage(error, 'Could not remove this collaborator.'))
           }
+        }, (error: unknown) => {
+          logError('ProjectRemoveCollaborator', error)
+          setCollaborators(previousCollaborators)
+          setInviteError(getErrorMessage(error, 'Could not remove this collaborator.'))
         })
     }
-  }, [projectId])
+  }, [collaborators, projectId])
 
   const handleCopyLink = useCallback(async () => {
     const link = inviteLink || buildInviteLink()
     if (!shareLink) setShareLink(link)
 
     if (navigator.clipboard) {
+      try {
       await navigator.clipboard.writeText(link)
       setLinkCopied(true)
       window.setTimeout(() => setLinkCopied(false), 1800)
+      } catch (error) {
+        logError('ProjectCopyInviteLink', error)
+        setInviteError(getErrorMessage(error, 'Could not copy the link.'))
+      }
     }
   }, [buildInviteLink, inviteLink, shareLink])
 
@@ -1486,8 +1548,8 @@ export default function ProjectBuilderPage() {
       setTitle(trimmed)
       if (user && projectId) {
         supabase.from('projects').update({ title: trimmed }).eq('id', projectId).then(({ error }) => {
-          if (error) console.error('Failed to save project title:', error.message)
-        })
+          if (error) logError('ProjectSaveTitle', error)
+        }, (error: unknown) => logError('ProjectSaveTitle', error))
       }
     }
     setTitleEditing(false)
@@ -1624,8 +1686,8 @@ export default function ProjectBuilderPage() {
             pushStatus(`Project title set to "${event.text}".`, 'success')
             if (user && projectId) {
               supabase.from('projects').update({ title: event.text }).eq('id', projectId).then(({ error }) => {
-                if (error) console.error('Failed to save project title:', error.message)
-              })
+                if (error) logError('ProjectSaveTitle', error)
+              }, (error: unknown) => logError('ProjectSaveTitle', error))
             }
           }
 
@@ -1678,8 +1740,8 @@ export default function ProjectBuilderPage() {
                   setTitle(doneData.title.trim())
                   if (user && projectId) {
                     supabase.from('projects').update({ title: doneData.title.trim() }).eq('id', projectId).then(({ error }) => {
-                      if (error) console.error('Failed to save project title:', error.message)
-                    })
+                      if (error) logError('ProjectSaveTitle', error)
+                    }, (error: unknown) => logError('ProjectSaveTitle', error))
                   }
                 }
                 if (typeof doneData.summary === 'string' && doneData.summary.trim()) {
@@ -1720,7 +1782,9 @@ export default function ProjectBuilderPage() {
         modelName: result.modelName,
       })
     } catch (err) {
-      if (err instanceof DOMException && err.name === 'AbortError') return
+      if (isAbortError(err)) return
+      const message = getErrorMessage(err, 'The generation failed. Please try again.')
+      logError('ProjectAgentRun', err)
       setAgentStatus('')
       for (let i = timeline.length - 1; i >= 0; i--) {
         if (timeline[i].type === 'tool_call' && timeline[i].toolStatus === 'running') {
@@ -1730,6 +1794,7 @@ export default function ProjectBuilderPage() {
       updateAssistantMessage(assistantId, {
         title: 'Error',
         timeline: [...timeline],
+        summary: message,
         error: true,
       })
     } finally {
@@ -1935,7 +2000,7 @@ export default function ProjectBuilderPage() {
           <button
             className={styles.publishBtn}
             type="button"
-            onClick={() => { setPublishDescription(''); setPublishModalOpen(true) }}
+            onClick={() => { setPublishDescription(''); setPublishError(''); setPublishModalOpen(true) }}
             disabled={!firstRunComplete}
             title={!firstRunComplete ? 'Build the project first before publishing' : 'Publish to Community'}
           >
@@ -2588,9 +2653,9 @@ export default function ProjectBuilderPage() {
 
     {/* Publish to Community modal — outside root to avoid stacking context issues */}
     {publishModalOpen && (
-        <div className={styles.publishBackdrop} onClick={(e) => { if (e.target === e.currentTarget) setPublishModalOpen(false) }}>
+        <div className={styles.publishBackdrop} onClick={(e) => { if (e.target === e.currentTarget) { setPublishError(''); setPublishModalOpen(false) } }}>
           <div className={styles.publishModal}>
-            <button className={styles.publishClose} type="button" onClick={() => setPublishModalOpen(false)} aria-label="Close">
+            <button className={styles.publishClose} type="button" onClick={() => { setPublishError(''); setPublishModalOpen(false) }} aria-label="Close">
               <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round"><line x1="18" y1="6" x2="6" y2="18"/><line x1="6" y1="6" x2="18" y2="18"/></svg>
             </button>
             <h2 className={styles.publishModalTitle}>Publish to Community</h2>
@@ -2608,6 +2673,7 @@ export default function ProjectBuilderPage() {
               rows={3}
               maxLength={280}
             />
+            {publishError && <p className={styles.publishModalError}>{publishError}</p>}
             <button
               className={styles.publishModalBtn}
               type="button"

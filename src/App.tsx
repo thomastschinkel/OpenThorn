@@ -2,6 +2,7 @@ import { useState, useEffect, lazy, Suspense } from 'react'
 import { Routes, Route } from 'react-router-dom'
 import { usePageTitle } from './lib/usePageTitle'
 import { useJsonLd } from './lib/useJsonLd'
+import { getErrorMessage, logError } from './lib/errors'
 import ErrorBoundary from './components/ErrorBoundary/ErrorBoundary'
 import Header from './components/Header/Header'
 import HeroSection from './components/HeroSection/HeroSection'
@@ -90,31 +91,60 @@ function Layout({ children }: { children: React.ReactNode }) {
 }
 
 export default function App() {
+  const [globalError, setGlobalError] = useState<string | null>(null)
+
+  useEffect(() => {
+    const handleUnhandledError = (event: ErrorEvent) => {
+      logError('UnhandledError', event.error ?? event.message)
+      setGlobalError(getErrorMessage(event.error ?? event.message, 'The app hit an unexpected error.'))
+    }
+
+    const handleUnhandledRejection = (event: PromiseRejectionEvent) => {
+      logError('UnhandledRejection', event.reason)
+      setGlobalError(getErrorMessage(event.reason, 'A background action failed. Please try again.'))
+    }
+
+    window.addEventListener('error', handleUnhandledError)
+    window.addEventListener('unhandledrejection', handleUnhandledRejection)
+    return () => {
+      window.removeEventListener('error', handleUnhandledError)
+      window.removeEventListener('unhandledrejection', handleUnhandledRejection)
+    }
+  }, [])
+
   return (
     <ErrorBoundary>
       <div className={styles.app}>
-        <Suspense fallback={null}>
-        <Routes>
-          <Route path="/" element={<Layout><HomePage /></Layout>} />
-          <Route path="/pricing" element={<Layout><PricingPage /></Layout>} />
-          <Route path="/privacy" element={<Layout><PrivacyPage /></Layout>} />
-          <Route path="/terms" element={<Layout><TermsPage /></Layout>} />
-          <Route path="/cookies" element={<Layout><CookiesPage /></Layout>} />
-          <Route path="/imprint" element={<Layout><ImprintPage /></Layout>} />
-          <Route path="/moderation" element={<Layout><ModerationPage /></Layout>} />
-          <Route path="/blog" element={<Layout><BlogPage /></Layout>} />
-          <Route path="/blog/:slug" element={<Layout><BlogPostPage /></Layout>} />
-          <Route path="/faq" element={<Layout><FaqPage /></Layout>} />
-          <Route path="/dashboard" element={<ProtectedRoute pageName="the Dashboard"><DashboardPage /></ProtectedRoute>} />
-          <Route path="/projects/:projectId" element={<ProtectedRoute pageName="your project"><ProjectBuilderPage /></ProtectedRoute>} />
-          <Route path="/templates" element={<ProtectedRoute pageName="Templates"><TemplatesPage /></ProtectedRoute>} />
-          <Route path="/community" element={<ProtectedRoute pageName="Community"><CommunityPage /></ProtectedRoute>} />
-          <Route path="/providers" element={<ProtectedRoute pageName="Providers"><ProvidersPage /></ProtectedRoute>} />
-          <Route path="/profile" element={<ProtectedRoute pageName="Profile"><ProfilePage /></ProtectedRoute>} />
-          <Route path="/settings" element={<ProtectedRoute pageName="Settings"><SettingsPage /></ProtectedRoute>} />
-          <Route path="*" element={<NotFoundPage />} />
-        </Routes>
+        <Suspense fallback={<div className={styles.routeLoading}>Loading...</div>}>
+          <Routes>
+            <Route path="/" element={<Layout><HomePage /></Layout>} />
+            <Route path="/pricing" element={<Layout><PricingPage /></Layout>} />
+            <Route path="/privacy" element={<Layout><PrivacyPage /></Layout>} />
+            <Route path="/terms" element={<Layout><TermsPage /></Layout>} />
+            <Route path="/cookies" element={<Layout><CookiesPage /></Layout>} />
+            <Route path="/imprint" element={<Layout><ImprintPage /></Layout>} />
+            <Route path="/moderation" element={<Layout><ModerationPage /></Layout>} />
+            <Route path="/blog" element={<Layout><BlogPage /></Layout>} />
+            <Route path="/blog/:slug" element={<Layout><BlogPostPage /></Layout>} />
+            <Route path="/faq" element={<Layout><FaqPage /></Layout>} />
+            <Route path="/dashboard" element={<ProtectedRoute pageName="the Dashboard"><DashboardPage /></ProtectedRoute>} />
+            <Route path="/projects/:projectId" element={<ProtectedRoute pageName="your project"><ProjectBuilderPage /></ProtectedRoute>} />
+            <Route path="/templates" element={<ProtectedRoute pageName="Templates"><TemplatesPage /></ProtectedRoute>} />
+            <Route path="/community" element={<ProtectedRoute pageName="Community"><CommunityPage /></ProtectedRoute>} />
+            <Route path="/providers" element={<ProtectedRoute pageName="Providers"><ProvidersPage /></ProtectedRoute>} />
+            <Route path="/profile" element={<ProtectedRoute pageName="Profile"><ProfilePage /></ProtectedRoute>} />
+            <Route path="/settings" element={<ProtectedRoute pageName="Settings"><SettingsPage /></ProtectedRoute>} />
+            <Route path="*" element={<NotFoundPage />} />
+          </Routes>
         </Suspense>
+        {globalError && (
+          <div className={styles.globalError} role="alert">
+            <span>{globalError}</span>
+            <button type="button" onClick={() => setGlobalError(null)} aria-label="Dismiss error">
+              Dismiss
+            </button>
+          </div>
+        )}
       </div>
     </ErrorBoundary>
   )

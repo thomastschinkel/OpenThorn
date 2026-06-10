@@ -1,3 +1,52 @@
 .app {
   min-height: 100vh;
 }
+
+.routeLoading {
+  min-height: 60vh;
+  display: grid;
+  place-items: center;
+  color: var(--color-text-secondary);
+  font-size: 14px;
+  font-weight: 600;
+}
+
+.globalError {
+  position: fixed;
+  left: 50%;
+  bottom: 24px;
+  z-index: 1000;
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  max-width: min(520px, calc(100vw - 32px));
+  padding: 12px 14px;
+  color: #ffd1cb;
+  background: rgba(55, 18, 18, 0.96);
+  border: 1px solid rgba(255, 181, 169, 0.28);
+  border-radius: 10px;
+  box-shadow: 0 18px 48px rgba(0, 0, 0, 0.35);
+  transform: translateX(-50%);
+}
+
+.globalError span {
+  min-width: 0;
+  font-size: 13px;
+  line-height: 1.4;
+}
+
+.globalError button {
+  flex: 0 0 auto;
+  border: 0;
+  border-radius: 6px;
+  padding: 6px 10px;
+  color: #ffffff;
+  background: rgba(255, 255, 255, 0.12);
+  font-size: 12px;
+  font-weight: 700;
+  cursor: pointer;
+}
+
+.globalError button:hover {
+  background: rgba(255, 255, 255, 0.18);
+}

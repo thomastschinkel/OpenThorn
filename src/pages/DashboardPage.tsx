@@ -2,6 +2,7 @@ import { useState, useEffect, useCallback, useRef } from 'react'
 import { useNavigate, useLocation } from 'react-router-dom'
 import { useAuth } from '../lib/AuthContext'
 import { supabase } from '../lib/supabase'
+import { getErrorMessage, logError, parseStoredJson } from '../lib/errors'
 import { usePageTitle } from '../lib/usePageTitle'
 import type { AgentThinkingLevel } from '../lib/agent-thinking'
 import DashboardSidebar, { type ProjectFilter, type SidebarNotification } from '../components/DashboardSidebar/DashboardSidebar'
@@ -94,14 +95,10 @@ export default function DashboardPage() {
   const [publishDescription, setPublishDescription] = useState('')
   const [publishing, setPublishing] = useState(false)
   const [publishSuccess, setPublishSuccess] = useState<string | null>(null)
+  const [appError, setAppError] = useState('')
   const [hasEnabledProvider, setHasEnabledProvider] = useState(false)
   const [checklistModel, setChecklistModel] = useState<SelectedModel | null>(() => {
-    try {
-      const stored = localStorage.getItem('dashboard:selectedModel')
-      return stored ? (JSON.parse(stored) as SelectedModel) : null
-    } catch {
-      return null
-    }
+    return parseStoredJson<SelectedModel | null>(localStorage.getItem('dashboard:selectedModel'), null)
   })
   const [sidebarOpen, setSidebarOpen] = useState(false)
 
@@ -138,27 +135,33 @@ export default function DashboardPage() {
     const SEEN_KEY = `seen_shared_projects_${user.id}`
 
     const fetchProjects = async () => {
+      try {
       // Owned projects
-      const { data: owned } = await supabase
+      const { data: owned, error: ownedError } = await supabase
         .from('projects')
         .select('id, user_id, title, preview_url, netlify_site_id, created_at, updated_at, starred')
         .eq('user_id', user.id)
         .order('created_at', { ascending: false })
 
+      if (ownedError) throw ownedError
+
       // Shared projects — look up via collaborator records
-      const { data: collabRows } = await supabase
+      const { data: collabRows, error: collabError } = await supabase
         .from('project_collaborators')
         .select('project_id')
         .eq('user_id', user.id)
 
+      if (collabError) throw collabError
+
       let shared: Project[] = []
       if (collabRows && collabRows.length > 0) {
         const ids = collabRows.map((r) => r.project_id as string)
-        const { data: sharedData } = await supabase
+        const { data: sharedData, error: sharedError } = await supabase
           .from('projects')
           .select('id, user_id, title, preview_url, netlify_site_id, created_at, updated_at, starred')
           .in('id', ids)
           .order('created_at', { ascending: false })
+        if (sharedError) throw sharedError
         shared = (sharedData ?? []).map((p) => ({ ...p, isShared: true }))
       }
 
@@ -172,11 +175,11 @@ export default function DashboardPage() {
         }
       }
       setProjects(all)
-      setProjectsLoading(false)
+      setAppError('')
 
       // Notify about shared projects the user hasn't seen yet — persists across refreshes
       if (shared.length > 0) {
-        const notifiedIds: string[] = JSON.parse(localStorage.getItem(SEEN_KEY) ?? '[]')
+        const notifiedIds = parseStoredJson<string[]>(localStorage.getItem(SEEN_KEY), [])
         const notifiedSet = new Set(notifiedIds)
         const novel = shared.filter((p) => !notifiedSet.has(p.id))
         if (novel.length > 0) {
@@ -193,6 +196,12 @@ export default function DashboardPage() {
             return newItems.length > 0 ? [...newItems, ...prev] : prev
           })
         }
+      }
+      } catch (error) {
+        logError('DashboardProjects', error)
+        setAppError(getErrorMessage(error, 'Could not load your projects.'))
+      } finally {
+        setProjectsLoading(false)
       }
     }
 
@@ -234,14 +243,19 @@ export default function DashboardPage() {
     let cancelled = false
 
     const fetchProviderStatus = async () => {
-      const { data } = await supabase
-        .from('provider_keys')
-        .select('id')
-        .eq('user_id', user.id)
-        .eq('enabled', true)
-        .limit(1)
+      try {
+        const { data, error } = await supabase
+          .from('provider_keys')
+          .select('id')
+          .eq('user_id', user.id)
+          .eq('enabled', true)
+          .limit(1)
 
-      if (!cancelled) setHasEnabledProvider(Boolean(data?.length))
+        if (error) throw error
+        if (!cancelled) setHasEnabledProvider(Boolean(data?.length))
+      } catch (error) {
+        logError('DashboardProviderStatus', error)
+      }
     }
 
     fetchProviderStatus()
@@ -271,7 +285,11 @@ export default function DashboardPage() {
       .from('notifications')
       .select('id, text, time_label, created_at')
       .order('created_at', { ascending: false })
-      .then(({ data }) => {
+      .then(({ data, error }) => {
+        if (error) {
+          logError('DashboardNotifications', error)
+          return
+        }
         if (!data || data.length === 0) return
         setSidebarNotifications((prev) => {
           const existingIds = new Set(prev.map((n) => n.id))
@@ -280,7 +298,7 @@ export default function DashboardPage() {
             .filter((n) => !existingIds.has(n.id))
           return incoming.length > 0 ? [...prev, ...incoming] : prev
         })
-      })
+      }, (error: unknown) => logError('DashboardNotifications', error))
   }, [user])
 
   const handlePromptSubmit = useCallback(async (
@@ -318,7 +336,9 @@ export default function DashboardPage() {
         }, { onConflict: 'id' })
 
       if (error) {
-        console.error('Failed to save project:', error.message)
+        logError('DashboardCreateProject', error)
+        setAppError(getErrorMessage(error, 'Could not create the project. Please try again.'))
+        return false
       }
     }
 
@@ -332,10 +352,15 @@ export default function DashboardPage() {
     e.stopPropagation()
     setContextMenu(null)
     if (!user) return
-    const { error } = await supabase.from('projects').delete().eq('id', projectId).eq('user_id', user.id)
-    if (error) console.error('Failed to delete project:', error.message)
+    const previousProjects = projects
     setProjects((prev) => prev.filter((p) => p.id !== projectId))
-  }, [user])
+    const { error } = await supabase.from('projects').delete().eq('id', projectId).eq('user_id', user.id)
+    if (error) {
+      logError('DashboardDeleteProject', error)
+      setAppError(getErrorMessage(error, 'Could not delete the project.'))
+      setProjects(previousProjects)
+    }
+  }, [projects, user])
 
   const handleRenameStart = useCallback((project: Project, e: React.MouseEvent) => {
     e.stopPropagation()
@@ -352,9 +377,11 @@ export default function DashboardPage() {
       .eq('id', renamingProject.id)
       .eq('user_id', user.id)
     if (error) {
-      console.error('Failed to rename project:', error.message)
+      logError('DashboardRenameProject', error)
+      setAppError(getErrorMessage(error, 'Could not rename the project.'))
     } else {
       setProjects((prev) => prev.map((p) => p.id === renamingProject.id ? { ...p, title: newTitle } : p))
+      setAppError('')
     }
     setRenamingProject(null)
   }, [renamingProject, user])
@@ -383,7 +410,8 @@ export default function DashboardPage() {
       .single()
 
     if (fetchError) {
-      console.error('Failed to fetch project files:', fetchError.message)
+      logError('DashboardFetchPublishFiles', fetchError)
+      setAppError(getErrorMessage(fetchError, 'Could not prepare the project for publishing.'))
       setPublishing(false)
       return
     }
@@ -405,9 +433,11 @@ export default function DashboardPage() {
 
     setPublishing(false)
     if (error) {
-      console.error('Failed to publish:', error.message)
+      logError('DashboardPublishProject', error)
+      setAppError(getErrorMessage(error, 'Could not publish the project.'))
       return
     }
+    setAppError('')
     setPublishingProject(null)
     setPublishSuccess(publishingProject.title)
     setTimeout(() => setPublishSuccess(null), 3000)
@@ -426,7 +456,8 @@ export default function DashboardPage() {
       .eq('id', projectId)
       .eq('user_id', user.id)
     if (error) {
-      console.error('Failed to update starred:', error.message)
+      logError('DashboardStarProject', error)
+      setAppError(getErrorMessage(error, 'Could not update the project.'))
       setProjects((prev) => prev.map((p) => p.id === projectId ? { ...p, starred: !newStarred } : p))
     }
   }, [projects, user])
@@ -515,7 +546,7 @@ export default function DashboardPage() {
           setSidebarNotifications((prev) => prev.map((n) => ({ ...n, unread: false })))
           const seenKey = `seen_shared_projects_${user?.id}`
           const sharedIds = projects.filter((p) => p.isShared).map((p) => p.id)
-          const existing: string[] = JSON.parse(localStorage.getItem(seenKey) ?? '[]')
+          const existing = parseStoredJson<string[]>(localStorage.getItem(seenKey), [])
           localStorage.setItem(seenKey, JSON.stringify([...new Set([...existing, ...sharedIds])]))
         }}
         isOpen={sidebarOpen}
@@ -564,6 +595,14 @@ export default function DashboardPage() {
               />
               {modelError && (
                 <p className={styles.modelError}>Please select a model first.</p>
+              )}
+              {appError && (
+                <div className={styles.appError} role="alert">
+                  <span>{appError}</span>
+                  <button type="button" onClick={() => setAppError('')} aria-label="Dismiss error">
+                    Dismiss
+                  </button>
+                </div>
               )}
             </div>
 

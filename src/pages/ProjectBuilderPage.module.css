@@ -2651,6 +2651,14 @@
 .publishModalBtn:hover:not(:disabled) { background: #6a5ae0; }
 .publishModalBtn:disabled { opacity: 0.5; cursor: not-allowed; }
 
+.publishModalError {
+  margin: -4px 0 4px;
+  color: #ffb5a9;
+  font-size: 12.5px;
+  font-weight: 700;
+  line-height: 1.4;
+}
+
 /* Success toast */
 .publishSuccessToast {
   position: fixed;

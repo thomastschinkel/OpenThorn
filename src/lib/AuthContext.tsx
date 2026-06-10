@@ -1,6 +1,7 @@
 import { createContext, useContext, useEffect, useState, type ReactNode } from 'react'
 import type { User, Session } from '@supabase/supabase-js'
 import { supabase } from './supabase'
+import { getErrorMessage, logError } from './errors'
 
 interface AuthContextValue {
   user: User | null
@@ -23,11 +24,20 @@ export function SupabaseAuthProvider({ children }: { children: ReactNode }) {
 
   useEffect(() => {
     // Restore session on mount
-    supabase.auth.getSession().then(({ data: { session } }) => {
-      setSession(session)
-      setUser(session?.user ?? null)
-      setLoading(false)
-    })
+    supabase.auth.getSession()
+      .then(({ data: { session }, error }) => {
+        if (error) {
+          logError('AuthSession', error)
+        }
+        setSession(session)
+        setUser(session?.user ?? null)
+      })
+      .catch((error) => {
+        logError('AuthSession', error)
+        setSession(null)
+        setUser(null)
+      })
+      .finally(() => setLoading(false))
 
     // Listen for auth state changes
     const { data: { subscription } } = supabase.auth.onAuthStateChange((_event, session) => {
@@ -41,47 +51,68 @@ export function SupabaseAuthProvider({ children }: { children: ReactNode }) {
   }, [])
 
   const signIn = async (email: string, password: string): Promise<{ error?: string }> => {
-    const { error } = await supabase.auth.signInWithPassword({ email, password })
-    if (error) return { error: error.message }
-    return {}
+    try {
+      const { error } = await supabase.auth.signInWithPassword({ email, password })
+      if (error) return { error: error.message }
+      return {}
+    } catch (error) {
+      logError('AuthSignIn', error)
+      return { error: getErrorMessage(error, 'Could not sign in. Please try again.') }
+    }
   }
 
   const signUp = async (email: string, password: string, name: string): Promise<{ error?: string; needsConfirmation?: boolean }> => {
-    const { data, error } = await supabase.auth.signUp({
-      email,
-      password,
-      options: { data: { full_name: name } },
-    })
-    if (error) return { error: error.message }
-    // If no session returned, email confirmation is required
-    if (!data.session) return { needsConfirmation: true }
-    return {}
+    try {
+      const { data, error } = await supabase.auth.signUp({
+        email,
+        password,
+        options: { data: { full_name: name } },
+      })
+      if (error) return { error: error.message }
+      // If no session returned, email confirmation is required
+      if (!data.session) return { needsConfirmation: true }
+      return {}
+    } catch (error) {
+      logError('AuthSignUp', error)
+      return { error: getErrorMessage(error, 'Could not create your account. Please try again.') }
+    }
   }
 
   const resetPassword = async (email: string): Promise<{ error?: string }> => {
-    const { error } = await supabase.auth.resetPasswordForEmail(email, {
-      redirectTo: `${window.location.origin}/dashboard`,
-    })
-    if (error) return { error: error.message }
-    return {}
+    try {
+      const { error } = await supabase.auth.resetPasswordForEmail(email, {
+        redirectTo: `${window.location.origin}/dashboard`,
+      })
+      if (error) return { error: error.message }
+      return {}
+    } catch (error) {
+      logError('AuthPasswordReset', error)
+      return { error: getErrorMessage(error, 'Could not send a reset link. Please try again.') }
+    }
   }
 
   const signInWithGoogle = async () => {
-    await supabase.auth.signInWithOAuth({
+    const { error } = await supabase.auth.signInWithOAuth({
       provider: 'google',
       options: { redirectTo: window.location.origin },
     })
+    if (error) throw error
   }
 
   const signInWithGitHub = async () => {
-    await supabase.auth.signInWithOAuth({
+    const { error } = await supabase.auth.signInWithOAuth({
       provider: 'github',
       options: { redirectTo: window.location.origin },
     })
+    if (error) throw error
   }
 
   const signOut = async () => {
-    await supabase.auth.signOut()
+    const { error } = await supabase.auth.signOut()
+    if (error) {
+      logError('AuthSignOut', error)
+      throw error
+    }
   }
 
   return (
