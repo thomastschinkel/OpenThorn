@@ -3,6 +3,7 @@ import ReactMarkdown from 'react-markdown'
 import remarkGfm from 'remark-gfm'
 import { getPostBySlug } from '../data/blogPosts'
 import { usePageTitle } from '../lib/usePageTitle'
+import { useJsonLd } from '../lib/useJsonLd'
 import styles from './BlogPostPage.module.css'
 
 function formatDate(iso: string) {
@@ -22,7 +23,30 @@ export default function BlogPostPage() {
   const { slug } = useParams<{ slug: string }>()
   const post = slug ? getPostBySlug(slug) : undefined
 
-  usePageTitle(post?.title, post ? { description: post.excerpt } : undefined)
+  usePageTitle(post?.title, post ? { description: post.excerpt, image: post.ogImage } : undefined)
+
+  useJsonLd(
+    post
+      ? {
+          '@context': 'https://schema.org',
+          '@type': 'BlogPosting',
+          headline: post.title,
+          description: post.excerpt,
+          datePublished: post.date,
+          url: `https://www.openthorn.app/blog/${post.slug}`,
+          author: { '@type': 'Organization', name: 'OpenThorn' },
+          publisher: {
+            '@type': 'Organization',
+            name: 'OpenThorn',
+            logo: {
+              '@type': 'ImageObject',
+              url: 'https://www.openthorn.app/logo.png',
+            },
+          },
+          image: post.ogImage ?? 'https://www.openthorn.app/logo.png',
+        }
+      : {}
+  )
 
   if (!post) return <Navigate to="/blog" replace />
 

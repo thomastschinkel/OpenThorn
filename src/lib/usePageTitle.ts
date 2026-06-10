@@ -5,10 +5,13 @@ const DEFAULT_TITLE = 'OpenThorn — The BYOK AI Website Builder'
 const DEFAULT_DESCRIPTION =
   'OpenThorn is the BYOK AI website builder — describe what you want, get a complete, deployable website. No subscription, no lock-in.'
 const SITE_URL = 'https://www.openthorn.app'
+const DEFAULT_OG_IMAGE = 'https://www.openthorn.app/logo.png'
 
 interface PageMeta {
   /** Meta description for this page. Falls back to the site default when omitted. */
   description?: string
+  /** Absolute URL for og:image and twitter:image. Falls back to site logo when omitted. */
+  image?: string
 }
 
 function setMetaContent(selector: string, value: string) {
@@ -26,14 +29,16 @@ function setCanonical(href: string) {
   link.setAttribute('href', href)
 }
 
-function applyMeta(title: string, description: string, url: string) {
+function applyMeta(title: string, description: string, url: string, image: string) {
   document.title = title
   setMetaContent('meta[name="description"]', description)
   setMetaContent('meta[property="og:title"]', title)
   setMetaContent('meta[property="og:description"]', description)
   setMetaContent('meta[property="og:url"]', url)
+  setMetaContent('meta[property="og:image"]', image)
   setMetaContent('meta[name="twitter:title"]', title)
   setMetaContent('meta[name="twitter:description"]', description)
+  setMetaContent('meta[name="twitter:image"]', image)
   setCanonical(url)
 }
 
@@ -46,15 +51,17 @@ function applyMeta(title: string, description: string, url: string) {
  */
 export function usePageTitle(title?: string, meta?: PageMeta) {
   const description = meta?.description
+  const image = meta?.image
   useEffect(() => {
     const fullTitle = title ? `${title} — ${SITE_NAME}` : DEFAULT_TITLE
     const desc = description || DEFAULT_DESCRIPTION
     const url = SITE_URL + window.location.pathname
+    const img = image || DEFAULT_OG_IMAGE
 
-    applyMeta(fullTitle, desc, url)
+    applyMeta(fullTitle, desc, url, img)
 
     return () => {
-      applyMeta(DEFAULT_TITLE, DEFAULT_DESCRIPTION, SITE_URL + window.location.pathname)
+      applyMeta(DEFAULT_TITLE, DEFAULT_DESCRIPTION, SITE_URL + window.location.pathname, DEFAULT_OG_IMAGE)
     }
-  }, [title, description])
+  }, [title, description, image])
 }

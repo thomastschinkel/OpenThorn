@@ -6,6 +6,8 @@ export interface BlogPost {
   date: string
   excerpt: string
   coverVideo?: string
+  /** Absolute URL for og:image. Falls back to site logo when omitted. */
+  ogImage?: string
   content: string
 }
 

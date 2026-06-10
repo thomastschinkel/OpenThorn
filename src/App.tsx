@@ -2,6 +2,7 @@ import { useState, useEffect, lazy, Suspense } from 'react'
 import { Routes, Route, Navigate } from 'react-router-dom'
 import { useAuth } from './lib/AuthContext'
 import { usePageTitle } from './lib/usePageTitle'
+import { useJsonLd } from './lib/useJsonLd'
 import ErrorBoundary from './components/ErrorBoundary/ErrorBoundary'
 import Header from './components/Header/Header'
 import HeroSection from './components/HeroSection/HeroSection'
@@ -36,6 +37,22 @@ const NotFoundPage = lazy(() => import('./pages/NotFoundPage'))
 function HomePage() {
   const { user, loading } = useAuth()
   usePageTitle()
+  useJsonLd({
+    '@context': 'https://schema.org',
+    '@type': 'SoftwareApplication',
+    name: 'OpenThorn',
+    applicationCategory: 'DeveloperApplication',
+    operatingSystem: 'Web',
+    description:
+      'OpenThorn is the BYOK AI website builder — describe what you want, get a complete, deployable website. No subscription, no lock-in.',
+    url: 'https://www.openthorn.app',
+    offers: {
+      '@type': 'Offer',
+      price: '0',
+      priceCurrency: 'USD',
+      description: 'Free to use — bring your own API keys',
+    },
+  })
 
   if (loading) return null
   if (user) return <Navigate to="/dashboard" replace />
