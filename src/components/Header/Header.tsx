@@ -179,7 +179,7 @@ export default function Header({ onSignIn, onSignUp }: HeaderProps) {
           <span className={styles.divider} />
 
           {/* GitHub */}
-          <a href="https://github.com/thomastschinkel/OpenThorn" className={styles.navItem} target="_blank" rel="noopener noreferrer">
+          <a href="https://github.com/BuildingTechAlternatives/OpenThorn" className={styles.navItem} target="_blank" rel="noopener noreferrer">
             GitHub
           </a>
 

@@ -1,6 +1,6 @@
 # OpenThorn
 
-**AI-powered website builder. Describe what you want — get a complete, deployable website.**
+**AI-powered website builder. Describe what you want â€” get a complete, deployable website.**
 
 OpenThorn is a bring-your-own-key (BYOK) platform that generates full, production-ready websites from natural language prompts. Users connect their own LLM provider API keys, so there are no subscriptions and no lock-in.
 
@@ -8,13 +8,13 @@ OpenThorn is a bring-your-own-key (BYOK) platform that generates full, productio
 
 ## Features
 
-- **Natural-language generation** — describe a website in plain language; the agent writes, bundles, and previews it in-browser
-- **Multi-provider AI** — connect OpenAI, Anthropic, Google Gemini, DeepSeek, Mistral, Groq, Together AI, xAI, Cohere, Perplexity, OpenRouter, Ollama, Fireworks, Cerebras, Azure OpenAI, Amazon Bedrock, or Nvidia NIM
-- **Live preview** — instant in-browser preview powered by esbuild-wasm (no server round-trip)
-- **One-click deploy** — publish directly to Netlify via the integrated deployment API
-- **Real-time collaboration** — multiplayer editing with presence indicators (Supabase Realtime)
-- **Encrypted key storage** — API keys are encrypted at rest with AES-256-GCM and never exposed to the client
-- **Templates & community** — start from curated templates or browse community-published projects
+- **Natural-language generation** â€” describe a website in plain language; the agent writes, bundles, and previews it in-browser
+- **Multi-provider AI** â€” connect OpenAI, Anthropic, Google Gemini, DeepSeek, Mistral, Groq, Together AI, xAI, Cohere, Perplexity, OpenRouter, Ollama, Fireworks, Cerebras, Azure OpenAI, Amazon Bedrock, or Nvidia NIM
+- **Live preview** â€” instant in-browser preview powered by esbuild-wasm (no server round-trip)
+- **One-click deploy** â€” publish directly to Netlify via the integrated deployment API
+- **Real-time collaboration** â€” multiplayer editing with presence indicators (Supabase Realtime)
+- **Encrypted key storage** â€” API keys are encrypted at rest with AES-256-GCM and never exposed to the client
+- **Templates & community** â€” start from curated templates or browse community-published projects
 
 ---
 
@@ -45,7 +45,7 @@ OpenThorn is a bring-your-own-key (BYOK) platform that generates full, productio
 ### Installation
 
 ```bash
-git clone https://github.com/thomastschinkel/OpenThorn.git
+git clone https://github.com/BuildingTechAlternatives/OpenThorn.git
 cd OpenThorn
 npm install
 ```
@@ -65,7 +65,7 @@ cp .env.example .env
 | `SUPABASE_URL` | Yes | Supabase project URL (server) |
 | `SUPABASE_ANON_KEY` | Yes | Supabase anon key (server) |
 | `NETLIFY_TOKEN` | Yes | Netlify personal access token |
-| `KEY_ENCRYPTION_SECRET` | Yes | 48-byte secret for API key encryption — generate with `openssl rand -base64 48` |
+| `KEY_ENCRYPTION_SECRET` | Yes | 48-byte secret for API key encryption â€” generate with `openssl rand -base64 48` |
 | `UPSTASH_REDIS_REST_URL` | No | Upstash Redis URL for production rate limiting |
 | `UPSTASH_REDIS_REST_TOKEN` | No | Upstash Redis token |
 
@@ -104,25 +104,25 @@ Starts Vite on `http://localhost:5173` with local API shims for the serverless f
 ## Project Structure
 
 ```
-├── src/
-│   ├── components/        # Reusable UI components
-│   ├── pages/             # Route-level pages (code-split)
-│   ├── lib/               # Core utilities
-│   │   ├── agent.ts       # AI agent orchestration
-│   │   ├── crypto.ts      # AES-256-GCM key encryption
-│   │   ├── deploy.ts      # Netlify deployment client
-│   │   └── preview-bundle.ts  # In-browser esbuild bundler
-│   └── data/              # Static content (blog posts)
-├── api/
-│   ├── _shared.ts         # JWT verification, rate limiting, encryption
-│   ├── deploy-netlify.ts  # Netlify deployment endpoint
-│   └── provider-keys.ts   # API key storage endpoint
-├── supabase/
-│   └── migrations/        # Database schema migrations
-├── public/                # Static assets and provider logos
-├── docs/                  # Security documentation
-├── vercel.json            # Vercel deployment config (SPA routing + security headers)
-└── .env.example           # Environment variable template
+â”œâ”€â”€ src/
+â”‚   â”œâ”€â”€ components/        # Reusable UI components
+â”‚   â”œâ”€â”€ pages/             # Route-level pages (code-split)
+â”‚   â”œâ”€â”€ lib/               # Core utilities
+â”‚   â”‚   â”œâ”€â”€ agent.ts       # AI agent orchestration
+â”‚   â”‚   â”œâ”€â”€ crypto.ts      # AES-256-GCM key encryption
+â”‚   â”‚   â”œâ”€â”€ deploy.ts      # Netlify deployment client
+â”‚   â”‚   â””â”€â”€ preview-bundle.ts  # In-browser esbuild bundler
+â”‚   â””â”€â”€ data/              # Static content (blog posts)
+â”œâ”€â”€ api/
+â”‚   â”œâ”€â”€ _shared.ts         # JWT verification, rate limiting, encryption
+â”‚   â”œâ”€â”€ deploy-netlify.ts  # Netlify deployment endpoint
+â”‚   â””â”€â”€ provider-keys.ts   # API key storage endpoint
+â”œâ”€â”€ supabase/
+â”‚   â””â”€â”€ migrations/        # Database schema migrations
+â”œâ”€â”€ public/                # Static assets and provider logos
+â”œâ”€â”€ docs/                  # Security documentation
+â”œâ”€â”€ vercel.json            # Vercel deployment config (SPA routing + security headers)
+â””â”€â”€ .env.example           # Environment variable template
 ```
 
 ---
@@ -134,8 +134,8 @@ The project deploys on **Vercel** with the configuration in `vercel.json`.
 ### Deploy to Vercel
 
 1. Import the repository in the [Vercel dashboard](https://vercel.com/new)
-2. Set all required environment variables under **Project → Settings → Environment Variables**
-3. Deploy — Vercel will run `npm run build` automatically
+2. Set all required environment variables under **Project â†’ Settings â†’ Environment Variables**
+3. Deploy â€” Vercel will run `npm run build` automatically
 
 ### Security Headers
 
@@ -145,18 +145,18 @@ The project deploys on **Vercel** with the configuration in `vercel.json`.
 - `X-Frame-Options: DENY`
 - `X-Content-Type-Options: nosniff`
 - `Referrer-Policy: strict-origin-when-cross-origin`
-- `Content-Security-Policy` (strict allowlist — self, fonts, esm.sh, blob:, wss:)
+- `Content-Security-Policy` (strict allowlist â€” self, fonts, esm.sh, blob:, wss:)
 - `Permissions-Policy` (camera, microphone, geolocation disabled)
 
 ---
 
 ## Security
 
-- **Encrypted keys** — provider API keys are encrypted with AES-256-GCM before storage; the raw key never leaves the server
-- **Row-level security** — all Supabase tables are protected by PostgreSQL RLS policies
-- **Server-side JWT verification** — every API call validates the Supabase JWT before processing
-- **Rate limiting** — per-user, per-endpoint limits (in-memory in development; Upstash Redis in production)
-- **No source maps** — production builds omit source maps
+- **Encrypted keys** â€” provider API keys are encrypted with AES-256-GCM before storage; the raw key never leaves the server
+- **Row-level security** â€” all Supabase tables are protected by PostgreSQL RLS policies
+- **Server-side JWT verification** â€” every API call validates the Supabase JWT before processing
+- **Rate limiting** â€” per-user, per-endpoint limits (in-memory in development; Upstash Redis in production)
+- **No source maps** â€” production builds omit source maps
 
 See `docs/security-csp.md` for Content Security Policy details.
 
