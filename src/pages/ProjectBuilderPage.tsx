@@ -2479,16 +2479,22 @@ export default function ProjectBuilderPage() {
                   {firstRunComplete && (previewStatus === 'ready' || (previewStatus === 'building' && lastReadyHtml)) && (
                     <div
                       className={styles.previewRebuild}
-                      onPointerDown={() => {
+                      onPointerDown={(e) => {
+                        // Touch taps must pass straight through to the iframe — stealing
+                        // focus on a touch pointerdown swallows the tap on mobile. Keyboard
+                        // routing only matters for physical keyboards (mouse/pen) anyway.
+                        if (e.pointerType === 'touch') return
                         // Route keyboard input (space, arrow keys, etc.) into the game.
                         // Focus the iframe element itself — contentWindow.focus() alone is
                         // unreliable for a sandboxed (opaque-origin) iframe.
                         previewFrameRef.current?.focus()
                         previewFrameRef.current?.contentWindow?.focus()
                       }}
-                      onMouseEnter={() => {
+                      onPointerEnter={(e) => {
                         // Hover-to-play: let keys reach the game without an explicit click,
                         // but never yank focus away while the user is typing in the chat/inputs.
+                        // Skip touch so it doesn't interfere with tapping the preview.
+                        if (e.pointerType === 'touch') return
                         const el = document.activeElement
                         const tag = el?.tagName
                         if (tag === 'INPUT' || tag === 'TEXTAREA' || (el as HTMLElement | null)?.isContentEditable) return

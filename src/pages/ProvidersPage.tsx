@@ -90,6 +90,7 @@ export default function ProvidersPage() {
   const [newModelName, setNewModelName] = useState('')
   const [newModelId, setNewModelId] = useState('')
   const [showAdvanced, setShowAdvanced] = useState(false)
+  const [sidebarOpen, setSidebarOpen] = useState(false)
   const [testState, setTestState] = useState<{ status: 'idle' | 'testing' | 'success' | 'error'; message: string }>({
     status: 'idle',
     message: '',
@@ -301,12 +302,29 @@ export default function ProvidersPage() {
 
   if (authLoading) return null
 
-  const enabledKeys = savedKeys.filter((k) => k.enabled)
   const editingDef = PROVIDERS.find((p) => p.id === editingProvider)
 
   return (
     <div className={styles.root}>
-      <DashboardSidebar />
+      <DashboardSidebar isOpen={sidebarOpen} onClose={() => setSidebarOpen(false)} />
+
+      <div className={styles.mobileTopbar}>
+        <button
+          className={styles.mobileMenuBtn}
+          onClick={() => setSidebarOpen(true)}
+          aria-label="Open menu"
+          type="button"
+        >
+          <svg width={22} height={22} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+            <line x1="3" y1="6" x2="21" y2="6"/>
+            <line x1="3" y1="12" x2="21" y2="12"/>
+            <line x1="3" y1="18" x2="21" y2="18"/>
+          </svg>
+        </button>
+        <a href="/dashboard" className={styles.mobileLogo}>
+          <img src="/assets/logo.png" alt="OpenThorn" className={styles.mobileLogoImg} />
+        </a>
+      </div>
 
       <main className={styles.main}>
         <div className={styles.content}>
@@ -316,7 +334,7 @@ export default function ProvidersPage() {
           </div>
 
           {/* Empty state */}
-          {!loading && !editingProvider && enabledKeys.length === 0 && (
+          {!loading && !editingProvider && savedKeys.length === 0 && (
             <div className={styles.emptyState}>
               <div className={styles.emptyIcon}>
                 <svg width="48" height="48" viewBox="0 0 24 24" fill="none" stroke="var(--color-accent)" strokeWidth="1.2" strokeLinecap="round" strokeLinejoin="round" opacity="0.5">
@@ -483,10 +501,10 @@ export default function ProvidersPage() {
           </p>
 
           {/* Enabled providers list + add button */}
-          {!editingProvider && !loading && enabledKeys.length > 0 && (
+          {!editingProvider && !loading && savedKeys.length > 0 && (
             <>
               <div className={styles.enabledList}>
-                {enabledKeys.map((key) => {
+                {savedKeys.map((key) => {
                   const def = PROVIDERS.find((p) => p.id === key.provider_id)
                   return (
                     <div key={key.id} className={styles.enabledCard}>

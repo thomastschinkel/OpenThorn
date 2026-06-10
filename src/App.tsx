@@ -1,6 +1,5 @@
 import { useState, useEffect, lazy, Suspense } from 'react'
-import { Routes, Route, Navigate } from 'react-router-dom'
-import { useAuth } from './lib/AuthContext'
+import { Routes, Route } from 'react-router-dom'
 import { usePageTitle } from './lib/usePageTitle'
 import { useJsonLd } from './lib/useJsonLd'
 import ErrorBoundary from './components/ErrorBoundary/ErrorBoundary'
@@ -35,7 +34,6 @@ const SettingsPage = lazy(() => import('./pages/SettingsPage'))
 const NotFoundPage = lazy(() => import('./pages/NotFoundPage'))
 
 function HomePage() {
-  const { user, loading } = useAuth()
   usePageTitle()
   useJsonLd({
     '@context': 'https://schema.org',
@@ -53,9 +51,6 @@ function HomePage() {
       description: 'Free to use — bring your own API keys',
     },
   })
-
-  if (loading) return null
-  if (user) return <Navigate to="/dashboard" replace />
 
   return (
     <>

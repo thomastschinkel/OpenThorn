@@ -69,6 +69,7 @@ export default function CommunityPage() {
   const [editDesc, setEditDesc] = useState('')
   const [deleteConfirm, setDeleteConfirm] = useState(false)
   const [saving, setSaving] = useState(false)
+  const [sidebarOpen, setSidebarOpen] = useState(false)
 
   useEffect(() => {
     if (!user) return
@@ -209,7 +210,25 @@ export default function CommunityPage() {
   return (
     <>
       <div className={styles.root}>
-      <DashboardSidebar />
+      <DashboardSidebar isOpen={sidebarOpen} onClose={() => setSidebarOpen(false)} />
+
+      <div className={styles.mobileTopbar}>
+        <button
+          className={styles.mobileMenuBtn}
+          onClick={() => setSidebarOpen(true)}
+          aria-label="Open menu"
+          type="button"
+        >
+          <svg width={22} height={22} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+            <line x1="3" y1="6" x2="21" y2="6"/>
+            <line x1="3" y1="12" x2="21" y2="12"/>
+            <line x1="3" y1="18" x2="21" y2="18"/>
+          </svg>
+        </button>
+        <a href="/dashboard" className={styles.mobileLogo}>
+          <img src="/assets/logo.png" alt="OpenThorn" className={styles.mobileLogoImg} />
+        </a>
+      </div>
 
       <main className={styles.main}>
         <div className={styles.header}>
