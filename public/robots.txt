@@ -1,4 +1,4 @@
 User-agent: *
 Allow: /
 
-Sitemap: https://openthorn.vercel.app/sitemap.xml
+Sitemap: https://www.openthorn.app/sitemap.xml

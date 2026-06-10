@@ -4,7 +4,7 @@ const SITE_NAME = 'OpenThorn'
 const DEFAULT_TITLE = 'OpenThorn — The BYOK AI Website Builder'
 const DEFAULT_DESCRIPTION =
   'OpenThorn is the BYOK AI website builder — describe what you want, get a complete, deployable website. No subscription, no lock-in.'
-const SITE_URL = 'https://openthorn.vercel.app'
+const SITE_URL = 'https://www.openthorn.app'
 
 interface PageMeta {
   /** Meta description for this page. Falls back to the site default when omitted. */
