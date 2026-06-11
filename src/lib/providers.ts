@@ -178,7 +178,8 @@ export const PROVIDERS: ProviderDef[] = [
     color: '#76B900',
     logo: '/assets/nvidia.png',
     apiFormat: 'openai',
-    testable: true,
+    testable: false,
+    testNote: 'NVIDIA NIM does not set CORS headers on /v1/models, so connection testing is not available from the browser.',
   },
 ]
 
