@@ -2,6 +2,39 @@
   "generatedAt": "2026-06-11",
   "days": [
     {
+      "date": "2026-06-11",
+      "entries": [
+        {
+          "category": "Improved",
+          "message": "Show classified agent errors with actionable tips in the builder chat",
+          "sha": "fd844571d4b3809d99fa6556ed5f390b8a03ab36",
+          "shortSha": "fd84457",
+          "url": "https://github.com/BuildingTechAlternatives/OpenThorn/commit/fd844571d4b3809d99fa6556ed5f390b8a03ab36"
+        },
+        {
+          "category": "Improved",
+          "message": "Lazily migrate enc: provider keys to server-side senc: encryption",
+          "sha": "86780660dcd7b6859aa2b827c9060657222fe82b",
+          "shortSha": "8678066",
+          "url": "https://github.com/BuildingTechAlternatives/OpenThorn/commit/86780660dcd7b6859aa2b827c9060657222fe82b"
+        },
+        {
+          "category": "Improved",
+          "message": "Replace local MP4 with YouTube embed on blog",
+          "sha": "c4c09dc75242ea6b1ebf26c139d3f34bb33523bf",
+          "shortSha": "c4c09dc",
+          "url": "https://github.com/BuildingTechAlternatives/OpenThorn/commit/c4c09dc75242ea6b1ebf26c139d3f34bb33523bf"
+        },
+        {
+          "category": "New",
+          "message": "Add auto-generated changelog page at /changelog",
+          "sha": "946bb449db50b6d16afe4b3948846a89a37d9d71",
+          "shortSha": "946bb44",
+          "url": "https://github.com/BuildingTechAlternatives/OpenThorn/commit/946bb449db50b6d16afe4b3948846a89a37d9d71"
+        }
+      ]
+    },
+    {
       "date": "2026-06-10",
       "entries": [
         {
@@ -1866,13 +1899,6 @@
           "sha": "22359bbccd0fa8fb042b6451ad814640f12505c9",
           "shortSha": "22359bb",
           "url": "https://github.com/BuildingTechAlternatives/OpenThorn/commit/22359bbccd0fa8fb042b6451ad814640f12505c9"
-        },
-        {
-          "category": "Improved",
-          "message": "feat: add global styles and design system tokens",
-          "sha": "5b1e3b9caa1d9647c7e8be5ecc113530481f88df",
-          "shortSha": "5b1e3b9",
-          "url": "https://github.com/BuildingTechAlternatives/OpenThorn/commit/5b1e3b9caa1d9647c7e8be5ecc113530481f88df"
         }
       ]
     }

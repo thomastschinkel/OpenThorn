@@ -2,6 +2,10 @@
 
 This file provides guidance to Claude Code (claude.ai/code) when working with code in this repository.
 
+## Git
+
+Never add `Co-Authored-By` lines to commit messages. Thomas is the sole developer on this project.
+
 ## Project
 
 **OpenThorn** (package/repo name: `bloom`) — a BYOK (bring-your-own-key) AI website builder. Users connect their own LLM provider API keys; a custom agent generates complete websites, previews them in-browser via esbuild-wasm, and deploys them to Netlify. The product name is OpenThorn; internal naming (package, dev plugin, some paths) still uses "bloom". Custom DOM events are namespaced `openthorn:` (e.g. `openthorn:require-auth`).

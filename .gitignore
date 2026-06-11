@@ -15,3 +15,4 @@ remotion/out/
 remotion/studio*.log
 remotion/.*/
 remotion/skills/
+.vercel
