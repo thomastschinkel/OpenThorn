@@ -45,21 +45,19 @@ export default function BlogPage() {
               </span>
             </div>
 
-            {featured.coverVideo && (
+            {featured.coverYoutube && (
               <div className={styles.featuredMedia}>
-                <video
+                <img
                   className={styles.featuredVideo}
-                  src={`${featured.coverVideo}#t=2`}
-                  muted
-                  playsInline
-                  preload="metadata"
+                  src={`https://img.youtube.com/vi/${featured.coverYoutube}/maxresdefault.jpg`}
+                  alt=""
                   aria-hidden="true"
                 />
                 <div className={styles.videoGlow} />
               </div>
             )}
 
-            {!featured.coverVideo && featured.coverImage && (
+            {!featured.coverYoutube && featured.coverImage && (
               <div className={styles.featuredMedia}>
                 <img
                   className={styles.featuredVideo}

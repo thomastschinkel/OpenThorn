@@ -57,7 +57,7 @@
   background: var(--color-surface);
   margin-bottom: 48px;
   display: block;
-  border: 1px solid rgba(148, 137, 251, 0.15);
+  border: none;
 }
 
 /* Markdown article body */

@@ -78,17 +78,17 @@ export default function BlogPostPage() {
           </div>
         </header>
 
-        {post.coverVideo && (
-          <video
+        {post.coverYoutube && (
+          <iframe
             className={styles.video}
-            src={post.coverVideo}
-            controls
-            playsInline
-            preload="metadata"
+            src={`https://www.youtube-nocookie.com/embed/${post.coverYoutube}`}
+            title="Video"
+            allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture"
+            allowFullScreen
           />
         )}
 
-        {!post.coverVideo && post.coverImage && (
+        {!post.coverYoutube && post.coverImage && (
           <img className={styles.cover} src={post.coverImage} alt="" />
         )}
 

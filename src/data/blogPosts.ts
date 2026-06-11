@@ -7,7 +7,7 @@ export interface BlogPost {
   title: string
   date: string
   excerpt: string
-  coverVideo?: string
+  coverYoutube?: string
   /** Site-relative path for the cover/preview image shown on the blog pages. */
   coverImage?: string
   /** Absolute URL for og:image. Falls back to site logo when omitted. */
