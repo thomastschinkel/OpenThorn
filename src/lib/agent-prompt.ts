@@ -552,16 +552,22 @@ export function getReasoningParams(
   const id = modelId.toLowerCase()
 
   if (providerId === 'google') {
-    // Gemini 2.5 family supports a thinking budget (in tokens). Flash/Pro 2.5.
-    if (/gemini-2\.5|thinking/.test(id)) {
+    // Gemini 3.5+ replaced thinkingBudget (integer) with thinkingLevel (string enum).
+    if (/gemini-3\.[0-9]|thinking/.test(id)) {
+      const level = thinkingBudget >= 6000 ? 'high' : thinkingBudget >= 3000 ? 'medium' : thinkingBudget >= 1000 ? 'low' : 'minimal'
+      return { thinkingConfig: { thinkingLevel: level } }
+    }
+    // Gemini 2.5 uses an integer token budget.
+    if (/gemini-2\.5/.test(id)) {
       return { thinkingConfig: { thinkingBudget: Math.min(thinkingBudget, 8192) } }
     }
     return {}
   }
 
   // OpenAI-compatible reasoning models use `reasoning_effort`.
+  // Covers: OpenAI o-series / GPT-5, GPT-OSS (Groq/Cerebras), xAI Grok reasoning, DeepSeek reasoner.
   const isReasoner =
-    /(^|[/_-])o[1345]($|[/_-])|gpt-5|gpt5|o3|o4|reasoner|deepseek-r/.test(id)
+    /(^|[/_-])o[1345]($|[/_-])|gpt-5|gpt5|o3|o4|reasoner|deepseek-r|gpt-oss|grok.+reasoning/.test(id)
   if (isReasoner) {
     const effort = thinkingBudget >= 6000 ? 'high' : thinkingBudget >= 3000 ? 'medium' : 'low'
     return { reasoning_effort: effort }

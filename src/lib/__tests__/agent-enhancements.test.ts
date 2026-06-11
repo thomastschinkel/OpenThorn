@@ -189,16 +189,33 @@ describe('getReasoningParams', () => {
     expect(getReasoningParams('openai', 'o1', 1000)).toEqual({ reasoning_effort: 'low' })
   })
 
-  it('maps Gemini 2.5 to a thinking budget', () => {
+  it('maps Gemini 2.5 to a thinkingBudget integer', () => {
     const out = getReasoningParams('google', 'gemini-2.5-flash', 5000) as {
       thinkingConfig: { thinkingBudget: number }
     }
     expect(out.thinkingConfig.thinkingBudget).toBe(5000)
   })
 
+  it('maps Gemini 3.5+ to a thinkingLevel string', () => {
+    expect(getReasoningParams('google', 'gemini-3.5-flash', 7000)).toEqual({ thinkingConfig: { thinkingLevel: 'high' } })
+    expect(getReasoningParams('google', 'gemini-3.5-flash', 4000)).toEqual({ thinkingConfig: { thinkingLevel: 'medium' } })
+    expect(getReasoningParams('google', 'gemini-3.5-flash', 1500)).toEqual({ thinkingConfig: { thinkingLevel: 'low' } })
+    expect(getReasoningParams('google', 'gemini-3.5-flash', 500)).toEqual({ thinkingConfig: { thinkingLevel: 'minimal' } })
+  })
+
+  it('maps gpt-oss (Groq/Cerebras) to reasoning_effort', () => {
+    expect(getReasoningParams('groq', 'openai/gpt-oss-120b', 7000)).toEqual({ reasoning_effort: 'high' })
+    expect(getReasoningParams('cerebras', 'gpt-oss-120b', 4000)).toEqual({ reasoning_effort: 'medium' })
+  })
+
+  it('maps grok reasoning models to reasoning_effort', () => {
+    expect(getReasoningParams('xai', 'grok-4.20-reasoning', 7000)).toEqual({ reasoning_effort: 'high' })
+  })
+
   it('returns nothing for non-reasoning models', () => {
     expect(getReasoningParams('openai', 'gpt-4o', 4000)).toEqual({})
     expect(getReasoningParams('google', 'gemini-1.5-pro', 4000)).toEqual({})
+    expect(getReasoningParams('perplexity', 'sonar-reasoning-pro', 4000)).toEqual({})
   })
 })
 

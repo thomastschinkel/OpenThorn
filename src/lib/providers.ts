@@ -218,17 +218,19 @@ export const DEFAULT_PROVIDER_MODELS: Record<string, ProviderModel[]> = {
   ],
   mistral: [
     { name: 'Mistral Large', id: 'mistral-large-latest' },
-    { name: 'Mistral Medium', id: 'mistral-medium-latest' },
+    { name: 'Mistral Medium 3.5', id: 'mistral-medium-3.5' },
     { name: 'Codestral', id: 'codestral-latest' },
   ],
   groq: [
+    { name: 'Groq Compound', id: 'groq/compound' },
     { name: 'GPT OSS 120B', id: 'openai/gpt-oss-120b' },
-    { name: 'GPT OSS 20B', id: 'openai/gpt-oss-20b' },
+    { name: 'Llama 4 Scout 17B', id: 'meta-llama/llama-4-scout-17b-16e-instruct' },
     { name: 'Llama 3.3 70B Versatile', id: 'llama-3.3-70b-versatile' },
   ],
   together: [
-    { name: 'Qwen3 Coder 480B', id: 'Qwen/Qwen3-Coder-480B-A35B-Instruct-FP8' },
+    { name: 'DeepSeek V4 Pro', id: 'deepseek-ai/DeepSeek-V4-Pro' },
     { name: 'DeepSeek V3.1', id: 'deepseek-ai/DeepSeek-V3.1' },
+    { name: 'Qwen3 Coder 480B', id: 'Qwen/Qwen3-Coder-480B-A35B-Instruct-FP8' },
     { name: 'Llama 3.3 70B Turbo', id: 'meta-llama/Llama-3.3-70B-Instruct-Turbo' },
   ],
   xai: [
@@ -257,13 +259,13 @@ export const DEFAULT_PROVIDER_MODELS: Record<string, ProviderModel[]> = {
     { name: 'Qwen 2.5 Coder', id: 'qwen2.5-coder' },
   ],
   fireworks: [
-    { name: 'DeepSeek V3', id: 'accounts/fireworks/models/deepseek-v3' },
+    { name: 'DeepSeek V3.2', id: 'accounts/fireworks/models/deepseek-v3p2' },
     { name: 'Llama 3.3 70B Instruct', id: 'accounts/fireworks/models/llama-v3p3-70b-instruct' },
     { name: 'Qwen3 235B A22B', id: 'accounts/fireworks/models/qwen3-235b-a22b' },
   ],
   cerebras: [
-    { name: 'GLM 4.7', id: 'zai-glm-4.7' },
     { name: 'GPT OSS 120B', id: 'gpt-oss-120b' },
+    { name: 'Llama 4 Scout 17B', id: 'llama-4-scout-17b-16e-instruct' },
     { name: 'Llama 3.3 70B', id: 'llama3.3-70b' },
   ],
   azure: [
