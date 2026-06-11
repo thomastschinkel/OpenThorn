@@ -5,6 +5,69 @@
       "date": "2026-06-11",
       "entries": [
         {
+          "category": "Fix",
+          "message": "Fix OpenRouter default models",
+          "sha": "49a621939d2e03b784f6648a748f3613b6a99f64",
+          "shortSha": "49a6219",
+          "url": "https://github.com/BuildingTechAlternatives/OpenThorn/commit/49a621939d2e03b784f6648a748f3613b6a99f64"
+        },
+        {
+          "category": "Improved",
+          "message": "Remove NVIDIA NIM provider and CORS proxy infrastructure",
+          "sha": "34bce7a4924755903decf1b9621bf87957c414ff",
+          "shortSha": "34bce7a",
+          "url": "https://github.com/BuildingTechAlternatives/OpenThorn/commit/34bce7a4924755903decf1b9621bf87957c414ff"
+        },
+        {
+          "category": "Fix",
+          "message": "Fix /api/proxy 404: match VercelReq/VercelRes pattern of other API functions",
+          "sha": "5fc570be80accfa37b52034227ae9c1c59e9b43f",
+          "shortSha": "5fc570b",
+          "url": "https://github.com/BuildingTechAlternatives/OpenThorn/commit/5fc570be80accfa37b52034227ae9c1c59e9b43f"
+        },
+        {
+          "category": "New",
+          "message": "Add server-side CORS proxy for NVIDIA NIM and future CORS-blocked providers",
+          "sha": "99822646d6d01b57588326f0d8479e4d21adf753",
+          "shortSha": "9982264",
+          "url": "https://github.com/BuildingTechAlternatives/OpenThorn/commit/99822646d6d01b57588326f0d8479e4d21adf753"
+        },
+        {
+          "category": "Improved",
+          "message": "Block NVIDIA NIM in agent: no CORS headers on chat/completions endpoint",
+          "sha": "eccd51920f97354eab57c8eb8df7089f9487423d",
+          "shortSha": "eccd519",
+          "url": "https://github.com/BuildingTechAlternatives/OpenThorn/commit/eccd51920f97354eab57c8eb8df7089f9487423d"
+        },
+        {
+          "category": "Improved",
+          "message": "Disable browser connection test for NVIDIA NIM (CORS blocks /v1/models)",
+          "sha": "68d58add3f3dce4eed48ae2bc60b5f09d254db8b",
+          "shortSha": "68d58ad",
+          "url": "https://github.com/BuildingTechAlternatives/OpenThorn/commit/68d58add3f3dce4eed48ae2bc60b5f09d254db8b"
+        },
+        {
+          "category": "Improved",
+          "message": "Update provider model lists and fix reasoning API params for Gemini 3.5+, gpt-oss, and Grok",
+          "sha": "2eb05d0086f029366f9a39e30c64ffe903638ff1",
+          "shortSha": "2eb05d0",
+          "url": "https://github.com/BuildingTechAlternatives/OpenThorn/commit/2eb05d0086f029366f9a39e30c64ffe903638ff1"
+        },
+        {
+          "category": "New",
+          "message": "Add demo assets, refresh changelog snapshot, ignore .vercel, document git conventions",
+          "sha": "7b18b8863cf8c1999fccf18603d6dfa5b572a168",
+          "shortSha": "7b18b88",
+          "url": "https://github.com/BuildingTechAlternatives/OpenThorn/commit/7b18b8863cf8c1999fccf18603d6dfa5b572a168"
+        },
+        {
+          "category": "Fix",
+          "message": "Fix FUNCTION_INVOCATION_FAILED on all API routes: ESM needs .js extension on relative imports",
+          "sha": "d002eeb946b6dcdc3400973a69e91bb7aad6fdcf",
+          "shortSha": "d002eeb",
+          "url": "https://github.com/BuildingTechAlternatives/OpenThorn/commit/d002eeb946b6dcdc3400973a69e91bb7aad6fdcf"
+        },
+        {
           "category": "Improved",
           "message": "Show classified agent errors with actionable tips in the builder chat",
           "sha": "fd844571d4b3809d99fa6556ed5f390b8a03ab36",
@@ -1843,62 +1906,6 @@
           "sha": "ef62648392732e8a79aae3f2c0d0d83a4e9415d1",
           "shortSha": "ef62648",
           "url": "https://github.com/BuildingTechAlternatives/OpenThorn/commit/ef62648392732e8a79aae3f2c0d0d83a4e9415d1"
-        },
-        {
-          "category": "Improved",
-          "message": "feat: add ReelCarousel to Meet Bloom — autoplay image slider with Bloom workflow slides, progress bar, animated transitions",
-          "sha": "ce1b615f0059f62326e073f47c2c6f14b2df3924",
-          "shortSha": "ce1b615",
-          "url": "https://github.com/BuildingTechAlternatives/OpenThorn/commit/ce1b615f0059f62326e073f47c2c6f14b2df3924"
-        },
-        {
-          "category": "Improved",
-          "message": "feat: add interactive animated gradient background — 3 orbiting blobs with mouse parallax spring physics",
-          "sha": "c9004e971cd96bce09310b6ed416340e757afe24",
-          "shortSha": "c9004e9",
-          "url": "https://github.com/BuildingTechAlternatives/OpenThorn/commit/c9004e971cd96bce09310b6ed416340e757afe24"
-        },
-        {
-          "category": "Improved",
-          "message": "feat: centered classic-modern redesign — Playfair Display + Satoshi, bigger input, refined aesthetic",
-          "sha": "b076ba1b574176c1a24d7ebe6ea1ef830b93ea27",
-          "shortSha": "b076ba1",
-          "url": "https://github.com/BuildingTechAlternatives/OpenThorn/commit/b076ba1b574176c1a24d7ebe6ea1ef830b93ea27"
-        },
-        {
-          "category": "Improved",
-          "message": "feat: complete dark editorial redesign — asymmetric layouts, grain texture, timeline UX, split layouts, zero AI-slop patterns",
-          "sha": "5c79e3115641f874666635272a8a9b05a26cf587",
-          "shortSha": "5c79e31",
-          "url": "https://github.com/BuildingTechAlternatives/OpenThorn/commit/5c79e3115641f874666635272a8a9b05a26cf587"
-        },
-        {
-          "category": "Improved",
-          "message": "feat: wire all homepage sections into App shell with TypeScript fixes",
-          "sha": "9c97c303f6977a4144d2942b3f0e542d72f0e5ae",
-          "shortSha": "9c97c30",
-          "url": "https://github.com/BuildingTechAlternatives/OpenThorn/commit/9c97c303f6977a4144d2942b3f0e542d72f0e5ae"
-        },
-        {
-          "category": "Improved",
-          "message": "feat: add HeroSection and BottomCTA components",
-          "sha": "98d06ba768ed802c4bcbabc5c9a3bbd8f02263af",
-          "shortSha": "98d06ba",
-          "url": "https://github.com/BuildingTechAlternatives/OpenThorn/commit/98d06ba768ed802c4bcbabc5c9a3bbd8f02263af"
-        },
-        {
-          "category": "Improved",
-          "message": "feat: add Header, MeetBloom, BYOK, and Footer components",
-          "sha": "56f8b0409982c4ef1952f6639d6ccc1c3874b501",
-          "shortSha": "56f8b04",
-          "url": "https://github.com/BuildingTechAlternatives/OpenThorn/commit/56f8b0409982c4ef1952f6639d6ccc1c3874b501"
-        },
-        {
-          "category": "Improved",
-          "message": "feat: add shared PromptInput component",
-          "sha": "22359bbccd0fa8fb042b6451ad814640f12505c9",
-          "shortSha": "22359bb",
-          "url": "https://github.com/BuildingTechAlternatives/OpenThorn/commit/22359bbccd0fa8fb042b6451ad814640f12505c9"
         }
       ]
     }
