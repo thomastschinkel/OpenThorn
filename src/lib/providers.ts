@@ -240,9 +240,9 @@ export const DEFAULT_PROVIDER_MODELS: Record<string, ProviderModel[]> = {
     { name: 'Sonar Deep Research', id: 'sonar-deep-research' },
   ],
   openrouter: [
-    { name: 'Claude Opus 4.8', id: 'anthropic/claude-opus-4.8' },
-    { name: 'GPT-5.5', id: 'openai/gpt-5.5' },
-    { name: 'Gemini 3.5 Flash', id: 'google/gemini-3.5-flash' },
+    { name: 'Claude Sonnet Latest', id: '~anthropic/claude-sonnet-latest' },
+    { name: 'OpenAI GPT Latest', id: '~openai/gpt-latest' },
+    { name: 'Gemini Flash Latest', id: '~google/gemini-flash-latest' },
   ],
   ollama: [
     { name: 'Llama 3.2', id: 'llama3.2' },

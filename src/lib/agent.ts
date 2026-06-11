@@ -2140,6 +2140,10 @@ async function callOpenAIWithTools({
   } else {
     headers.Authorization = `Bearer ${apiKey}`
   }
+  if (providerId === 'openrouter') {
+    headers['HTTP-Referer'] = window.location.origin
+    headers['X-OpenRouter-Title'] = 'OpenThorn'
+  }
 
   const openaiMessages = [
     { role: 'system', content: system },
@@ -2190,7 +2194,9 @@ async function callOpenAIWithTools({
           const errorText = await response.text().catch(() => '')
           let errorPayload: unknown = ''
           try { errorPayload = JSON.parse(errorText) } catch { errorPayload = errorText }
-          lastError = `${response.status}: ${typeof errorPayload === 'string' ? errorPayload.slice(0, 300) : JSON.stringify(errorPayload).slice(0, 300)}`
+          const providerMessage = extractProviderErrorMessage(errorPayload)
+          const fallbackMessage = typeof errorPayload === 'string' ? errorPayload : JSON.stringify(errorPayload)
+          lastError = `${response.status}: ${(providerMessage || fallbackMessage).slice(0, 300)}`
 
           if (response.status === 401 || response.status === 403) break outer
           if (isRetryableStatus(response.status)) {
@@ -2220,6 +2226,19 @@ async function callOpenAIWithTools({
   }
 
   throw new Error(lastError || 'Provider request failed.')
+}
+
+function extractProviderErrorMessage(payload: unknown): string {
+  if (!payload || typeof payload !== 'object') return ''
+  const record = payload as Record<string, unknown>
+  const error = record.error
+  if (typeof error === 'string') return error
+  if (error && typeof error === 'object') {
+    const message = (error as Record<string, unknown>).message
+    if (typeof message === 'string') return message
+  }
+  const message = record.message
+  return typeof message === 'string' ? message : ''
 }
 
 function anyAbort(a: AbortSignal, b: AbortSignal): AbortSignal {
