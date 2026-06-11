@@ -40,6 +40,8 @@ const useCasesItems: DropdownItem[] = [
 
 const resourcesItems: DropdownItem[] = [
   { label: 'Blog', description: 'Product updates, guides, and behind-the-scenes', href: '/blog' },
+  { label: 'Comparisons', description: 'See OpenThorn against Lovable, Bolt.new, and v0', href: '/compare' },
+  { label: 'Glossary', description: 'Plain-English AI builder terms and concepts', href: '/glossary' },
   { label: 'Changelog', description: 'What shipped, straight from our commits', href: '/changelog' },
   { label: 'Templates', description: 'Jump-start your next project', href: '/templates' },
   { label: 'Docs & FAQs', description: 'How OpenThorn works, answered clearly', href: '/faq' },

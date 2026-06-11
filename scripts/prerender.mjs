@@ -182,6 +182,28 @@ const routes = [
       },
     ],
   },
+  {
+    path: '/compare',
+    title: 'Comparisons — OpenThorn',
+    description:
+      'Compare OpenThorn with Lovable, Bolt.new, v0, and other AI website builders on pricing, BYOK support, model choice, and code ownership.',
+    ogType: 'website',
+    lastmod: compareMeta.map((entry) => entry.lastVerified).sort().at(-1),
+    jsonLd: [
+      {
+        '@context': 'https://schema.org',
+        '@type': 'ItemList',
+        name: 'OpenThorn comparisons',
+        itemListElement: compareMeta.map((entry, index) => ({
+          '@type': 'ListItem',
+          position: index + 1,
+          name: entry.title,
+          url: `${SITE_URL}/compare/${entry.slug}`,
+        })),
+      },
+      pageBreadcrumbJsonLd('Comparisons'),
+    ],
+  },
   ...compareMeta.map((entry) => ({
     path: `/compare/${entry.slug}`,
     title: `${entry.title} — OpenThorn`,
@@ -341,6 +363,7 @@ function ogSlug(path) {
 
 function ogEyebrow(path) {
   if (path.startsWith('/blog/')) return 'Blog'
+  if (path === '/compare') return 'Comparisons'
   if (path.startsWith('/compare/')) return 'Comparison'
   if (path === '/glossary') return 'Glossary'
   if (path === '/faq') return 'FAQ'

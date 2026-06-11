@@ -2,6 +2,7 @@
   {
     "slug": "lovable",
     "competitor": "Lovable",
+    "logo": "/assets/lovable.png",
     "title": "OpenThorn vs Lovable",
     "description": "Lovable charges $25+/month for credits; OpenThorn is free and you pay your AI provider directly. An honest comparison of pricing, model choice, and code ownership.",
     "lastVerified": "2026-06-11",
@@ -24,6 +25,7 @@
   {
     "slug": "bolt",
     "competitor": "Bolt.new",
+    "logo": "/assets/bolt-logo.png",
     "title": "OpenThorn vs Bolt.new",
     "description": "Bolt.new sells AI tokens in monthly packs from $25/month; OpenThorn is free and BYOK — you pay your AI provider directly. Pricing, model choice, and ownership compared.",
     "lastVerified": "2026-06-11",
@@ -46,6 +48,7 @@
   {
     "slug": "v0",
     "competitor": "v0 by Vercel",
+    "logo": "/assets/v0.png",
     "title": "OpenThorn vs v0 (Vercel)",
     "description": "v0 meters AI usage in credits on plans from $20/month; OpenThorn is free and BYOK. How the two compare on pricing, model choice, scope, and code ownership.",
     "lastVerified": "2026-06-11",

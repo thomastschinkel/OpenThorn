@@ -28,10 +28,8 @@ const resourcesLinks = [
 
 const resourcesRouteLinks = [
   { label: 'Docs & FAQs', to: '/faq' },
+  { label: 'Comparisons', to: '/compare' },
   { label: 'Glossary', to: '/glossary' },
-  { label: 'vs Lovable', to: '/compare/lovable' },
-  { label: 'vs Bolt.new', to: '/compare/bolt' },
-  { label: 'vs v0', to: '/compare/v0' },
 ]
 
 const legalLinks = [

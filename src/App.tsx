@@ -1,5 +1,5 @@
 import { useState, useEffect, lazy, Suspense } from 'react'
-import { Routes, Route } from 'react-router-dom'
+import { Routes, Route, useLocation } from 'react-router-dom'
 import { Analytics } from '@vercel/analytics/react'
 import { SpeedInsights } from '@vercel/speed-insights/react'
 import { usePageTitle } from './lib/usePageTitle'
@@ -32,6 +32,7 @@ const BlogPage = lazy(() => import('./pages/BlogPage'))
 const BlogPostPage = lazy(() => import('./pages/BlogPostPage'))
 const FaqPage = lazy(() => import('./pages/FaqPage'))
 const ChangelogPage = lazy(() => import('./pages/ChangelogPage'))
+const CompareIndexPage = lazy(() => import('./pages/CompareIndexPage'))
 const ComparePage = lazy(() => import('./pages/ComparePage'))
 const GlossaryPage = lazy(() => import('./pages/GlossaryPage'))
 const ModerationPage = lazy(() => import('./pages/ModerationPage'))
@@ -68,6 +69,16 @@ function HomePage() {
   )
 }
 
+function ScrollToTop() {
+  const { pathname, search } = useLocation()
+
+  useEffect(() => {
+    window.scrollTo({ top: 0, left: 0 })
+  }, [pathname, search])
+
+  return null
+}
+
 function Layout({ children }: { children: React.ReactNode }) {
   const [authModalOpen, setAuthModalOpen] = useState(false)
   const [authModalMode, setAuthModalMode] = useState<'signin' | 'signup'>('signin')
@@ -83,6 +94,7 @@ function Layout({ children }: { children: React.ReactNode }) {
 
   return (
     <>
+      <ScrollToTop />
       <Header onSignIn={openSignIn} onSignUp={openSignUp} />
       <main>{children}</main>
       <Footer />
@@ -133,6 +145,7 @@ export default function App() {
             <Route path="/blog/:slug" element={<Layout><BlogPostPage /></Layout>} />
             <Route path="/faq" element={<Layout><FaqPage /></Layout>} />
             <Route path="/changelog" element={<Layout><ChangelogPage /></Layout>} />
+            <Route path="/compare" element={<Layout><CompareIndexPage /></Layout>} />
             <Route path="/compare/:slug" element={<Layout><ComparePage /></Layout>} />
             <Route path="/glossary" element={<Layout><GlossaryPage /></Layout>} />
             <Route path="/dashboard" element={<ProtectedRoute pageName="the Dashboard"><DashboardPage /></ProtectedRoute>} />

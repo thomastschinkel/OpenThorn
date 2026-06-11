@@ -1,0 +1,244 @@
+.page {
+  min-height: calc(100vh - 64px);
+  padding: 80px 24px 140px;
+  position: relative;
+  overflow: hidden;
+}
+
+.ambient {
+  position: absolute;
+  top: -120px;
+  left: -80px;
+  width: 600px;
+  height: 600px;
+  background: radial-gradient(circle at 30% 30%, rgba(157, 137, 251, 0.12), transparent 70%);
+  pointer-events: none;
+  z-index: 0;
+}
+
+.container {
+  max-width: 1040px;
+  margin: 0 auto;
+  position: relative;
+  z-index: 1;
+}
+
+.header {
+  margin-bottom: 56px;
+  animation: pageRise 0.6s var(--ease-out-expo) both;
+}
+
+.eyebrow {
+  display: inline-block;
+  font-size: 0.7rem;
+  font-weight: 600;
+  letter-spacing: 0.18em;
+  text-transform: uppercase;
+  color: var(--color-accent);
+  margin-bottom: 16px;
+}
+
+.title {
+  font-family: 'Fraunces Variable', serif;
+  font-size: clamp(3.2rem, 9vw, 6.5rem);
+  font-weight: 900;
+  font-style: italic;
+  color: var(--color-text);
+  line-height: 0.95;
+  margin: 0 0 24px;
+}
+
+.subtitle {
+  max-width: 720px;
+  color: var(--color-text-secondary);
+  font-size: 1.05rem;
+  line-height: 1.7;
+  margin: 0 0 28px;
+}
+
+.rule {
+  height: 1px;
+  background: linear-gradient(to right, rgba(157, 137, 251, 0.5), rgba(157, 137, 251, 0.08), transparent);
+}
+
+.featured,
+.card {
+  display: flex;
+  flex-direction: column;
+  text-decoration: none;
+  border: 1px solid rgba(157, 137, 251, 0.14);
+  background: rgba(255, 255, 255, 0.025);
+  transition: border-color 0.2s ease, background 0.2s ease, transform 0.2s ease, box-shadow 0.3s ease;
+}
+
+.featured:hover,
+.card:hover {
+  border-color: rgba(157, 137, 251, 0.35);
+  background: rgba(255, 255, 255, 0.04);
+}
+
+.featured:hover .ctaArrow {
+  transform: translateX(4px);
+}
+
+.featured {
+  gap: 16px;
+  padding: 44px 48px;
+  border-radius: 18px;
+  margin-bottom: 72px;
+  animation: pageRise 0.6s var(--ease-out-expo) 0.1s both;
+}
+
+.featured:hover {
+  transform: translateY(-2px);
+  box-shadow: 0 16px 48px rgba(139, 92, 246, 0.1);
+}
+
+.featuredTop,
+.cardTop {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+}
+
+.featuredMeta {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  justify-content: flex-end;
+  gap: 12px;
+}
+
+.logoWrap {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 52px;
+  height: 52px;
+  border: 1px solid rgba(157, 137, 251, 0.16);
+  border-radius: 12px;
+  background: rgba(255, 255, 255, 0.04);
+  flex: 0 0 auto;
+}
+
+.logo {
+  max-width: 34px;
+  max-height: 34px;
+  object-fit: contain;
+  display: block;
+}
+
+.tag {
+  font-size: 0.7rem;
+  font-weight: 700;
+  letter-spacing: 0.12em;
+  text-transform: uppercase;
+  color: var(--color-bg);
+  background: var(--color-accent);
+  padding: 3px 10px;
+  border-radius: 99px;
+}
+
+.date {
+  font-size: 0.8rem;
+  color: var(--color-text-muted);
+  letter-spacing: 0.04em;
+}
+
+.featuredTitle {
+  font-family: 'Fraunces Variable', serif;
+  font-size: clamp(1.7rem, 3.2vw, 2.5rem);
+  font-weight: 700;
+  color: var(--color-text);
+  line-height: 1.2;
+  margin: 0;
+}
+
+.excerpt {
+  font-size: 0.975rem;
+  color: var(--color-text-secondary);
+  line-height: 1.7;
+  margin: 0;
+}
+
+.verdict {
+  color: var(--color-text);
+  line-height: 1.7;
+  margin: 4px 0 0;
+}
+
+.cta {
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+  width: fit-content;
+  font-size: 0.9rem;
+  font-weight: 600;
+  color: var(--color-accent);
+  margin-top: 4px;
+}
+
+.ctaArrow {
+  flex-shrink: 0;
+  transition: transform 0.2s ease;
+}
+
+.more {
+  animation: pageRise 0.6s var(--ease-out-expo) 0.2s both;
+}
+
+.moreLabel {
+  font-size: 0.7rem;
+  font-weight: 600;
+  letter-spacing: 0.18em;
+  text-transform: uppercase;
+  color: var(--color-text-muted);
+  margin: 0 0 24px;
+}
+
+.grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(300px, 1fr));
+  gap: 20px;
+}
+
+.card {
+  gap: 10px;
+  border-radius: 14px;
+  padding: 28px 32px;
+}
+
+.card:hover {
+  transform: translateY(-2px);
+}
+
+.cardTitle {
+  font-family: 'Fraunces Variable', serif;
+  font-size: 1.2rem;
+  font-weight: 600;
+  color: var(--color-text);
+  line-height: 1.35;
+  margin: 0;
+}
+
+.readMore {
+  font-size: 0.85rem;
+  font-weight: 600;
+  color: var(--color-accent);
+  margin-top: 4px;
+}
+
+@media (max-width: 760px) {
+  .page {
+    padding: 72px 18px 112px;
+  }
+
+  .featured {
+    padding: 28px;
+  }
+
+  .title {
+    font-size: clamp(3rem, 14vw, 5rem);
+  }
+}

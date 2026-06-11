@@ -7,6 +7,7 @@ import styles from './ComparePage.module.css'
 interface CompareEntry {
   slug: string
   competitor: string
+  logo: string
   title: string
   description: string
   lastVerified: string
@@ -43,8 +44,15 @@ export default function ComparePage() {
   return (
     <div className={styles.page}>
       <div className={styles.container}>
-        <p className={styles.eyebrow}>Comparison</p>
-        <h1 className={styles.title}>{entry.title}</h1>
+        <div className={styles.heading}>
+          <div className={styles.logoWrap}>
+            <img className={styles.logo} src={entry.logo} alt={`${entry.competitor} logo`} />
+          </div>
+          <div>
+            <p className={styles.eyebrow}>Comparison</p>
+            <h1 className={styles.title}>{entry.title}</h1>
+          </div>
+        </div>
         <p className={styles.lastVerified}>
           Facts last verified: <time dateTime={entry.lastVerified}>{entry.lastVerified}</time>.
           Competitor pricing changes — check their site for current numbers.
