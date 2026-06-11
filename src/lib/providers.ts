@@ -21,6 +21,7 @@ export interface ProviderDef {
   syncModels?: boolean
   testable: boolean
   testNote?: string
+  corsProxied?: boolean
 }
 
 export const PROVIDERS: ProviderDef[] = [
@@ -180,6 +181,7 @@ export const PROVIDERS: ProviderDef[] = [
     apiFormat: 'openai',
     testable: false,
     testNote: 'NVIDIA NIM does not set CORS headers on /v1/models, so connection testing is not available from the browser.',
+    corsProxied: true,
   },
 ]
 

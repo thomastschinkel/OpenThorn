@@ -798,6 +798,11 @@ class LoopDetector {
 export async function runOpenThornAgent(input: AgentRunInput): Promise<AgentRunResult> {
   const sessionId = generateSessionId()
 
+  // Grab the Supabase access token once — used to authenticate proxy calls
+  // for providers that block browser CORS (e.g. NVIDIA NIM).
+  const { data: { session } } = await supabase.auth.getSession()
+  const accessToken = session?.access_token
+
   // ── Resolve provider with fallback ────────────────────────────
   let provider = await resolveProviderWithFallback(
     input.userId,
@@ -986,6 +991,7 @@ export async function runOpenThornAgent(input: AgentRunInput): Promise<AgentRunR
           input.onProgress?.({ type: 'text', text: chunk })
         },
         thinkingBudget,
+        accessToken,
       })
       circuitBreaker.recordSuccess(provider.key.provider_id)
     } catch (err) {
@@ -2097,19 +2103,16 @@ interface InvalidToolCall {
 }
 
 async function callModelWithTools({
-  providerId, baseUrl, apiKey, modelId, system, tools, messages, signal, onText, thinkingBudget,
+  providerId, baseUrl, apiKey, modelId, system, tools, messages, signal, onText, thinkingBudget, accessToken,
 }: {
   providerId: string; baseUrl: string; apiKey: string; modelId: string
   system: string; tools: ToolDefinition[]; messages: LlmMessage[]
   signal?: AbortSignal; onText: (chunk: string) => void
-  thinkingBudget?: number
+  thinkingBudget?: number; accessToken?: string
 }): Promise<ModelCallResult> {
   const providerDef = PROVIDER_DEFS[providerId]
   if (providerDef?.apiFormat === 'bedrock') {
     throw new Error('Amazon Bedrock requires a server-side Bedrock Converse adapter and is not available through the browser agent yet.')
-  }
-  if (providerId === 'nvidia') {
-    throw new Error('NVIDIA NIM does not set CORS headers on its API, so it cannot be called directly from the browser. Use a CORS proxy or a different provider.')
   }
   if (providerDef?.apiFormat === 'anthropic' || providerId === 'anthropic') {
     return callAnthropicWithTools({ baseUrl, apiKey, modelId, system, tools, messages, signal, onText, thinkingBudget })
@@ -2117,7 +2120,7 @@ async function callModelWithTools({
   if (providerDef?.apiFormat === 'gemini' || providerId === 'google') {
     return callGeminiWithTools({ baseUrl, apiKey, modelId, system, tools, messages, signal, onText, thinkingBudget })
   }
-  return callOpenAIWithTools({ providerId, baseUrl, apiKey, modelId, system, tools, messages, signal, onText, thinkingBudget })
+  return callOpenAIWithTools({ providerId, baseUrl, apiKey, modelId, system, tools, messages, signal, onText, thinkingBudget, accessToken })
 }
 
 // ─── OpenAI-compatible ──────────────────────────────────────────────────────
@@ -2131,15 +2134,24 @@ function toolsToAnthropicFormat(tools: ToolDefinition[]) {
 }
 
 async function callOpenAIWithTools({
-  providerId, baseUrl, apiKey, modelId, system, tools, messages, signal, onText, thinkingBudget,
+  providerId, baseUrl, apiKey, modelId, system, tools, messages, signal, onText, thinkingBudget, accessToken,
 }: {
   providerId?: string; baseUrl: string; apiKey: string; modelId: string; system: string
   tools: ToolDefinition[]; messages: LlmMessage[]
-  signal?: AbortSignal; onText: (chunk: string) => void; thinkingBudget?: number
+  signal?: AbortSignal; onText: (chunk: string) => void; thinkingBudget?: number; accessToken?: string
 }): Promise<ModelCallResult> {
-  const url = baseUrl.endsWith('/chat/completions') ? baseUrl : `${baseUrl}/chat/completions`
+  const targetUrl = baseUrl.endsWith('/chat/completions') ? baseUrl : `${baseUrl}/chat/completions`
+
+  // Providers that block browser CORS are routed through our server-side proxy.
+  // The proxy validates the Supabase JWT and forwards x-provider-key to the target.
+  const useProxy = PROVIDER_DEFS[providerId ?? '']?.corsProxied && accessToken
+  const url = useProxy ? '/api/proxy' : targetUrl
   const headers: Record<string, string> = { 'Content-Type': 'application/json' }
-  if (providerId === 'azure') {
+  if (useProxy) {
+    headers['Authorization'] = `Bearer ${accessToken}`
+    headers['x-proxy-url'] = targetUrl
+    headers['x-provider-key'] = apiKey
+  } else if (providerId === 'azure') {
     headers['api-key'] = apiKey
   } else {
     headers.Authorization = `Bearer ${apiKey}`

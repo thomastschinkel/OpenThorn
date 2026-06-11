@@ -68,6 +68,47 @@ export default defineConfig(({ mode }) => {
             }
           })
 
+          server.middlewares.use('/api/proxy', async (req, res) => {
+            const CORS_PROXIED_HOSTS = new Set(['integrate.api.nvidia.com'])
+            if (req.method !== 'POST') return sendJson(res, 405, { error: 'Method not allowed' })
+            try {
+              const user = await verifyUser(req.headers.authorization)
+              if (!user) return sendJson(res, 401, { error: 'Unauthorized' })
+              if (!(await rateLimit(`proxy:${user.id}`, 120, 60_000))) {
+                return sendJson(res, 429, { error: 'Too many proxy requests. Please wait a minute.' })
+              }
+              const targetUrl = req.headers['x-proxy-url'] as string | undefined
+              if (!targetUrl) return sendJson(res, 400, { error: 'Missing x-proxy-url header' })
+              let targetHost: string
+              try { targetHost = new URL(targetUrl).hostname } catch { return sendJson(res, 400, { error: 'Invalid x-proxy-url' }) }
+              if (!CORS_PROXIED_HOSTS.has(targetHost)) return sendJson(res, 403, { error: `Host "${targetHost}" is not in the CORS proxy allowlist` })
+              const chunks: Buffer[] = []
+              for await (const chunk of req) chunks.push(Buffer.isBuffer(chunk) ? chunk : Buffer.from(chunk))
+              const body = Buffer.concat(chunks)
+              const providerKey = req.headers['x-provider-key'] as string | undefined
+              const forwardHeaders: Record<string, string> = { 'Content-Type': 'application/json' }
+              if (providerKey) forwardHeaders['Authorization'] = `Bearer ${providerKey}`
+              const upstream = await fetch(targetUrl, { method: 'POST', headers: forwardHeaders, body })
+              res.statusCode = upstream.status
+              const ct = upstream.headers.get('content-type')
+              if (ct) res.setHeader('Content-Type', ct)
+              if (!upstream.body) { res.end(); return }
+              const reader = upstream.body.getReader()
+              try {
+                for (;;) {
+                  const { done, value } = await reader.read()
+                  if (done) break
+                  res.write(value)
+                }
+              } finally {
+                reader.releaseLock()
+                res.end()
+              }
+            } catch (err) {
+              sendJson(res, 502, { error: err instanceof Error ? err.message : 'Proxy error' })
+            }
+          })
+
           server.middlewares.use('/api/provider-keys', async (req, res) => {
             if (req.method !== 'POST') return sendJson(res, 405, { error: 'Method not allowed' })
             if (!hasEncryptionSecret()) return sendJson(res, 503, { error: 'Key encryption not configured' })
