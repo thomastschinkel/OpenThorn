@@ -21,7 +21,6 @@ export interface ProviderDef {
   syncModels?: boolean
   testable: boolean
   testNote?: string
-  corsProxied?: boolean
 }
 
 export const PROVIDERS: ProviderDef[] = [
@@ -171,17 +170,6 @@ export const PROVIDERS: ProviderDef[] = [
     apiFormat: 'bedrock',
     testable: false,
     testNote: 'Bedrock uses the AWS runtime/Converse API and cannot be tested through the generic browser model-list endpoint.',
-  },
-  {
-    id: 'nvidia',
-    name: 'NVIDIA NIM',
-    baseUrl: 'https://integrate.api.nvidia.com/v1',
-    color: '#76B900',
-    logo: '/assets/nvidia.png',
-    apiFormat: 'openai',
-    testable: false,
-    testNote: 'NVIDIA NIM does not set CORS headers on /v1/models, so connection testing is not available from the browser.',
-    corsProxied: true,
   },
 ]
 
