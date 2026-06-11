@@ -6,7 +6,7 @@ import remarkGfm from 'remark-gfm'
 import JSZip from 'jszip'
 import { useAuth } from '../lib/AuthContext'
 import { supabase } from '../lib/supabase'
-import { getErrorMessage, isAbortError, logError } from '../lib/errors'
+import { describeAgentError, getErrorMessage, isAbortError, logError, type AgentErrorInfo } from '../lib/errors'
 import { deployToNetlify } from '../lib/deploy'
 import { buildPreview, escapeHtml } from '../lib/preview-bundle'
 import { capturePreviewThumbnail } from '../lib/preview-screenshot'
@@ -547,6 +547,7 @@ interface ChatMessage {
   summary?: string
   files?: AgentCodeFile[]
   error?: boolean
+  errorInfo?: AgentErrorInfo
   timeline: TimelineEvent[]  // assistant messages
   turns?: number
   providerName?: string
@@ -1783,7 +1784,6 @@ export default function ProjectBuilderPage() {
       })
     } catch (err) {
       if (isAbortError(err)) return
-      const message = getErrorMessage(err, 'The generation failed. Please try again.')
       logError('ProjectAgentRun', err)
       setAgentStatus('')
       for (let i = timeline.length - 1; i >= 0; i--) {
@@ -1792,9 +1792,9 @@ export default function ProjectBuilderPage() {
         }
       }
       updateAssistantMessage(assistantId, {
-        title: 'Error',
+        title: 'Something went wrong',
         timeline: [...timeline],
-        summary: message,
+        errorInfo: describeAgentError(err),
         error: true,
       })
     } finally {
@@ -2252,7 +2252,7 @@ export default function ProjectBuilderPage() {
                 </article>
               ) : (
                 <article
-                  className={`${styles.assistantMessage} ${message.error ? styles.assistantMessageError : ''}`}
+                  className={`${styles.assistantMessage} ${message.error && !message.errorInfo ? styles.assistantMessageError : ''}`}
                   key={message.id}
                 >
                   <div className={styles.assistantTop}>
@@ -2329,6 +2329,25 @@ export default function ProjectBuilderPage() {
                       return null
                     })}
                   </div>
+
+                  {/* Error card with reason and tip */}
+                  {message.errorInfo && (
+                    <div className={styles.errorCard}>
+                      <div className={styles.errorCardHeader}>
+                        <span className={styles.errorCardIcon} aria-hidden="true">!</span>
+                        <span className={styles.errorCardTitle}>{message.errorInfo.title}</span>
+                      </div>
+                      {message.errorInfo.detail && (
+                        <p className={styles.errorCardDetail}>{message.errorInfo.detail}</p>
+                      )}
+                      {message.errorInfo.tip && (
+                        <p className={styles.errorCardTip}>
+                          <span className={styles.errorCardTipLabel}>Tip</span>
+                          {message.errorInfo.tip}
+                        </p>
+                      )}
+                    </div>
+                  )}
 
                   {/* Summary at completion */}
                   {message.summary && (
