@@ -1,4 +1,4 @@
-import { verifyUser, rateLimit, runNetlifyDeploy, getProjectForDeploy, persistProjectSiteId } from './_shared'
+import { verifyUser, rateLimit, runNetlifyDeploy, getProjectForDeploy, persistProjectSiteId } from './_shared.js'
 
 interface VercelReq {
   method?: string

@@ -1,4 +1,4 @@
-import { verifyUser, rateLimit, encryptForUser, decryptForUser, hasEncryptionSecret } from './_shared'
+import { verifyUser, rateLimit, encryptForUser, decryptForUser, hasEncryptionSecret } from './_shared.js'
 
 interface VercelReq {
   method?: string
