@@ -32,6 +32,8 @@ const BlogPage = lazy(() => import('./pages/BlogPage'))
 const BlogPostPage = lazy(() => import('./pages/BlogPostPage'))
 const FaqPage = lazy(() => import('./pages/FaqPage'))
 const ChangelogPage = lazy(() => import('./pages/ChangelogPage'))
+const ComparePage = lazy(() => import('./pages/ComparePage'))
+const GlossaryPage = lazy(() => import('./pages/GlossaryPage'))
 const ModerationPage = lazy(() => import('./pages/ModerationPage'))
 const ProfilePage = lazy(() => import('./pages/ProfilePage'))
 const SettingsPage = lazy(() => import('./pages/SettingsPage'))
@@ -131,6 +133,8 @@ export default function App() {
             <Route path="/blog/:slug" element={<Layout><BlogPostPage /></Layout>} />
             <Route path="/faq" element={<Layout><FaqPage /></Layout>} />
             <Route path="/changelog" element={<Layout><ChangelogPage /></Layout>} />
+            <Route path="/compare/:slug" element={<Layout><ComparePage /></Layout>} />
+            <Route path="/glossary" element={<Layout><GlossaryPage /></Layout>} />
             <Route path="/dashboard" element={<ProtectedRoute pageName="the Dashboard"><DashboardPage /></ProtectedRoute>} />
             <Route path="/projects/:projectId" element={<ProtectedRoute pageName="your project"><ProjectBuilderPage /></ProtectedRoute>} />
             <Route path="/templates" element={<ProtectedRoute pageName="Templates"><TemplatesPage /></ProtectedRoute>} />
