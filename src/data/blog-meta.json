@@ -45,5 +45,12 @@
         { "name": "Set a spend limit", "text": "Configure a monthly budget in the provider dashboard so usage can never surprise you." }
       ]
     }
+  },
+  {
+    "slug": "best-byok-ai-website-builders-2026",
+    "title": "The Best BYOK AI Website Builders in 2026",
+    "date": "2026-06-12",
+    "excerpt": "Most AI builders resell AI usage as credits. These tools let you bring your own API key instead — OpenThorn, bolt.diy, and Dyad compared, plus how they differ from Lovable, Bolt.new, and v0.",
+    "itemList": ["OpenThorn", "bolt.diy", "Dyad"]
   }
 ]

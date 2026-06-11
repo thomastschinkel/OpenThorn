@@ -3,6 +3,7 @@ import introducingOpenThornContent from '../content/blog/introducing-openthorn.m
 import whatIsByokContent from '../content/blog/what-is-a-byok-ai-website-builder.md?raw'
 import howToBuildContent from '../content/blog/how-to-build-a-website-with-ai-byok.md?raw'
 import howToKeyContent from '../content/blog/how-to-get-an-ai-api-key.md?raw'
+import bestByokContent from '../content/blog/best-byok-ai-website-builders-2026.md?raw'
 
 export interface BlogPost {
   slug: string
@@ -32,6 +33,7 @@ const contentBySlug: Record<string, string> = {
   'what-is-a-byok-ai-website-builder': whatIsByokContent,
   'how-to-build-a-website-with-ai-byok': howToBuildContent,
   'how-to-get-an-ai-api-key': howToKeyContent,
+  'best-byok-ai-website-builders-2026': bestByokContent,
 }
 
 export const blogPosts: BlogPost[] = blogMeta.map((meta) => ({
