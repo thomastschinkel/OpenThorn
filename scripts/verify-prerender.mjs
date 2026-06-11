@@ -30,6 +30,10 @@ const checks = [
   ['dist/sitemap.xml', '/glossary', 'sitemap: glossary'],
   ['dist/terms/index.html', 'BreadcrumbList', 'terms: BreadcrumbList JSON-LD'],
   ['dist/llms.txt', 'BYOK', 'llms.txt copied to dist'],
+  ['dist/llms.txt', 'llms-full.txt', 'llms.txt links llms-full'],
+  ['dist/llms-full.txt', 'Frequently Asked Questions', 'llms-full: FAQ section'],
+  ['dist/llms-full.txt', 'Best BYOK AI Website Builders', 'llms-full: blog content'],
+  ['dist/llms-full.txt', 'OpenThorn vs Lovable', 'llms-full: comparisons'],
   ['dist/robots.txt', 'GPTBot', 'robots.txt: AI crawlers'],
   ['dist/og-card.png', null, 'og-card.png copied to dist'],
 ]

@@ -18,6 +18,7 @@
 import { readFileSync, mkdirSync, writeFileSync } from 'fs'
 import { join, dirname } from 'path'
 import { fileURLToPath, pathToFileURL } from 'url'
+import { buildLlmsFull } from './llms-full.mjs'
 
 const __dirname = dirname(fileURLToPath(import.meta.url))
 const rootDir = join(__dirname, '..')
@@ -364,5 +365,12 @@ ${sitemapEntries}
 
 writeFileSync(join(distDir, 'sitemap.xml'), sitemap, 'utf8')
 console.log('✓ sitemap.xml')
+
+writeFileSync(
+  join(distDir, 'llms-full.txt'),
+  buildLlmsFull({ rootDir, blogMeta, faqData, compareMeta, glossary }),
+  'utf8'
+)
+console.log('✓ llms-full.txt')
 
 console.log(`\nPre-rendered ${routes.length} routes.`)

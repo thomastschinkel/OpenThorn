@@ -9,6 +9,7 @@ Key facts:
 - Generated code belongs to the user: it can be exported, pushed to GitHub, and deployed anywhere. No proprietary format, no export paywall.
 - API keys are encrypted server-side and never exposed raw; users keep control via provider-side spend limits and key rotation.
 - Built by BTA (Building Tech Alternatives). Source on GitHub: https://github.com/BuildingTechAlternatives/OpenThorn
+- Full machine-readable site content: https://www.openthorn.app/llms-full.txt
 
 ## Pages
 
