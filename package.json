@@ -7,6 +7,7 @@
     "dev": "vite",
     "build": "node scripts/generate-changelog.mjs && tsc -b && vite build && vite build --ssr src/entry-ssr.tsx --outDir dist-ssr && node scripts/prerender.mjs",
     "lint": "eslint .",
+    "indexnow": "node scripts/indexnow.mjs",
     "preview": "vite preview",
     "test": "vitest run"
   },
