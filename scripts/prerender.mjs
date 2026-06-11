@@ -17,7 +17,7 @@
 
 import { readFileSync, mkdirSync, writeFileSync } from 'fs'
 import { join, dirname } from 'path'
-import { fileURLToPath } from 'url'
+import { fileURLToPath, pathToFileURL } from 'url'
 
 const __dirname = dirname(fileURLToPath(import.meta.url))
 const rootDir = join(__dirname, '..')
@@ -30,56 +30,14 @@ const blogMeta = JSON.parse(readFileSync(join(rootDir, 'src', 'data', 'blog-meta
 const faqData = JSON.parse(readFileSync(join(rootDir, 'src', 'data', 'faq.json'), 'utf8'))
 const changelog = JSON.parse(readFileSync(join(rootDir, 'src', 'data', 'changelog.json'), 'utf8'))
 
+// Build-time SSR renderer (vite build --ssr src/entry-ssr.tsx --outDir dist-ssr)
+const { render } = await import(pathToFileURL(join(rootDir, 'dist-ssr', 'entry-ssr.js')).href)
+
 // ---------------------------------------------------------------------------
 // Helpers
 
-function escapeHtml(str) {
-  return str
-    .replace(/&/g, '&amp;')
-    .replace(/</g, '&lt;')
-    .replace(/>/g, '&gt;')
-    .replace(/"/g, '&quot;')
-}
-
 function escapeAttr(str) {
   return str.replace(/&/g, '&amp;').replace(/"/g, '&quot;')
-}
-
-// Minimal markdown → HTML for the static content snapshot. Handles the subset
-// used in blog posts (headings, lists, paragraphs, links, bold, inline code).
-// This is crawler-facing fallback content only — the real page is rendered by
-// react-markdown after hydration.
-function markdownToHtml(md) {
-  function inline(text) {
-    return escapeHtml(text)
-      .replace(/\*\*([^*]+)\*\*/g, '<strong>$1</strong>')
-      .replace(/`([^`]+)`/g, '<code>$1</code>')
-      .replace(/\[([^\]]+)\]\(([^)\s]+)\)/g, '<a href="$2">$1</a>')
-  }
-
-  const blocks = md.split(/\r?\n\r?\n/)
-  const out = []
-  for (const block of blocks) {
-    const lines = block.split(/\r?\n/).filter((l) => l.trim() !== '')
-    if (lines.length === 0) continue
-
-    const headingMatch = lines[0].match(/^(#{1,4})\s+(.*)$/)
-    if (headingMatch && lines.length === 1) {
-      const level = headingMatch[1].length + 1 // shift down: post h1 is the title
-      out.push(`<h${level}>${inline(headingMatch[2])}</h${level}>`)
-      continue
-    }
-    if (lines.every((l) => /^[-*]\s+/.test(l))) {
-      out.push(`<ul>${lines.map((l) => `<li>${inline(l.replace(/^[-*]\s+/, ''))}</li>`).join('')}</ul>`)
-      continue
-    }
-    if (lines.every((l) => /^\d+\.\s+/.test(l))) {
-      out.push(`<ol>${lines.map((l) => `<li>${inline(l.replace(/^\d+\.\s+/, ''))}</li>`).join('')}</ol>`)
-      continue
-    }
-    out.push(`<p>${inline(lines.join(' '))}</p>`)
-  }
-  return out.join('\n')
 }
 
 function blogPostingJsonLd(post) {
@@ -141,15 +99,6 @@ const routes = [
         },
       },
     ],
-    contentHtml: `
-      <h1>Build with OpenThorn — the BYOK AI website builder</h1>
-      <p>Just describe what you want and OpenThorn generates the code — ready to customize and deploy anywhere.</p>
-      <p>OpenThorn is free to use: you bring your own API key from any of 17 supported AI providers (OpenAI, Anthropic, Google Gemini, and more) and pay your provider directly. No platform markup, no subscription, no lock-in. Export real code to your own repo and infrastructure.</p>
-      <ul>
-        <li><a href="/pricing">Compare AI model pricing</a></li>
-        <li><a href="/faq">Frequently asked questions</a></li>
-        <li><a href="/blog/what-is-a-byok-ai-website-builder">What is a BYOK AI website builder?</a></li>
-      </ul>`,
   },
   {
     path: '/pricing',
@@ -159,10 +108,6 @@ const routes = [
     ogType: 'website',
     lastmod: '2026-06-11',
     jsonLd: [],
-    contentHtml: `
-      <h1>Model pricing, transparent</h1>
-      <p>BYOK means you pay providers directly — no markup, no subscription, no hidden fees. OpenThorn shows live per-token cost and quality data for flagship models across 17 supported AI providers so you can choose the best model for your budget.</p>
-      <p><a href="/faq">Read the FAQ</a> or learn <a href="/blog/what-is-a-byok-ai-website-builder">what a BYOK AI website builder is</a>.</p>`,
   },
   {
     path: '/blog',
@@ -172,12 +117,6 @@ const routes = [
     ogType: 'website',
     lastmod: blogMeta.map((p) => p.date).sort().at(-1),
     jsonLd: [],
-    contentHtml: `
-      <h1>OpenThorn Blog</h1>
-      <p>Product updates, guides, and stories on building and shipping websites with AI.</p>
-      <ul>${blogMeta
-        .map((p) => `<li><a href="/blog/${p.slug}">${escapeHtml(p.title)}</a> — ${escapeHtml(p.excerpt)}</li>`)
-        .join('')}</ul>`,
   },
   ...blogMeta.map((post) => ({
     path: `/blog/${post.slug}`,
@@ -187,12 +126,6 @@ const routes = [
     ogType: 'article',
     lastmod: post.date,
     jsonLd: [blogPostingJsonLd(post), breadcrumbJsonLd(post)],
-    contentHtml: `
-      <article>
-        <h1>${escapeHtml(post.title)}</h1>
-        <p><time datetime="${post.date}">${post.date}</time></p>
-        ${markdownToHtml(readFileSync(join(rootDir, 'src', 'content', 'blog', `${post.slug}.md`), 'utf8'))}
-      </article>`,
   })),
   {
     path: '/faq',
@@ -214,17 +147,6 @@ const routes = [
         ),
       },
     ],
-    contentHtml: `
-      <h1>Frequently asked questions about OpenThorn</h1>
-      ${faqData
-        .map(
-          (category) =>
-            `<h2>${escapeHtml(category.label)}</h2>` +
-            category.items
-              .map((item) => `<h3>${escapeHtml(item.question)}</h3><p>${escapeHtml(item.answer)}</p>`)
-              .join('')
-        )
-        .join('')}`,
   },
   {
     path: '/changelog',
@@ -234,19 +156,6 @@ const routes = [
     ogType: 'website',
     lastmod: changelog.days[0]?.date,
     jsonLd: [],
-    contentHtml: `
-      <h1>OpenThorn Changelog</h1>
-      <p>Every update, generated automatically from our GitHub commit history.</p>
-      ${changelog.days
-        .slice(0, 10)
-        .map(
-          (day) =>
-            `<h2><time datetime="${day.date}">${day.date}</time></h2>` +
-            `<ul>${day.entries
-              .map((e) => `<li>${escapeHtml(e.category)}: ${escapeHtml(e.message)}</li>`)
-              .join('')}</ul>`
-        )
-        .join('')}`,
   },
   {
     path: '/terms',
@@ -254,7 +163,6 @@ const routes = [
     description: 'Terms of service for OpenThorn.',
     ogType: 'website',
     jsonLd: [],
-    contentHtml: '<h1>Terms of Service</h1><p>Terms of service for OpenThorn, the BYOK AI website builder.</p>',
   },
   {
     path: '/privacy',
@@ -263,7 +171,6 @@ const routes = [
     ogType: 'website',
     lastmod: '2026-06-10',
     jsonLd: [],
-    contentHtml: '<h1>Privacy Policy</h1><p>Privacy policy for OpenThorn, the BYOK AI website builder.</p>',
   },
   {
     path: '/cookies',
@@ -272,7 +179,6 @@ const routes = [
     ogType: 'website',
     lastmod: '2026-06-10',
     jsonLd: [],
-    contentHtml: '<h1>Cookie Policy</h1><p>Cookie policy for OpenThorn, the BYOK AI website builder.</p>',
   },
   {
     path: '/imprint',
@@ -280,7 +186,6 @@ const routes = [
     description: 'Legal imprint for OpenThorn.',
     ogType: 'website',
     jsonLd: [],
-    contentHtml: '<h1>Imprint</h1><p>Legal imprint for OpenThorn.</p>',
   },
   {
     path: '/moderation',
@@ -288,14 +193,13 @@ const routes = [
     description: 'Moderation policy and DSA compliance information for OpenThorn.',
     ogType: 'website',
     jsonLd: [],
-    contentHtml: '<h1>Moderation and DSA</h1><p>Moderation policy and DSA compliance information for OpenThorn.</p>',
   },
 ]
 
 // ---------------------------------------------------------------------------
 // HTML generation
 
-function injectMeta(html, route) {
+function injectMeta(html, route, appHtml) {
   let out = html
   const ogImage = route.ogImage || DEFAULT_OG_IMAGE
 
@@ -339,14 +243,11 @@ function injectMeta(html, route) {
     out = out.replace('</head>', `  ${scriptTag}\n  </head>`)
   }
 
-  // Static content snapshot inside #root: real text for crawlers that don't run
-  // JS. React's createRoot wipes it when the app hydrates, so users only see it
-  // for a moment on slow connections.
-  if (route.contentHtml) {
-    out = out.replace(
-      '<div id="root"></div>',
-      `<div id="root"><div style="max-width:720px;margin:0 auto;padding:48px 24px;line-height:1.6">${route.contentHtml}\n</div></div>`
-    )
+  // Real SSR body: the actual React page rendered at build time, so non-JS
+  // crawlers (GPTBot, ClaudeBot, PerplexityBot) read the same content users see.
+  // src/main.tsx hydrates this markup with hydrateRoot.
+  if (appHtml) {
+    out = out.replace('<div id="root"></div>', `<div id="root">${appHtml}</div>`)
   }
 
   return out
@@ -355,7 +256,8 @@ function injectMeta(html, route) {
 const baseHtml = readFileSync(join(distDir, 'index.html'), 'utf8')
 
 for (const route of routes) {
-  const html = injectMeta(baseHtml, route)
+  const appHtml = await render(route.path)
+  const html = injectMeta(baseHtml, route, appHtml)
 
   let outPath
   if (route.path === '/') {
