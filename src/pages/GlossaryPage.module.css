@@ -1,0 +1,89 @@
+/* ===== Page shell (mirrors FaqPage) ===== */
+.page {
+  min-height: calc(100vh - var(--header-height));
+  padding: var(--space-3xl) var(--space-lg) var(--space-6xl);
+  position: relative;
+  overflow: hidden;
+}
+
+.page::before {
+  content: '';
+  position: absolute;
+  top: -160px;
+  left: 50%;
+  transform: translateX(-50%);
+  width: 720px;
+  height: 480px;
+  background: radial-gradient(ellipse at center, rgba(139, 92, 246, 0.1), transparent 70%);
+  pointer-events: none;
+}
+
+.container {
+  max-width: 760px;
+  margin: 0 auto;
+  position: relative;
+}
+
+.eyebrow {
+  display: inline-block;
+  font-size: 0.7rem;
+  font-weight: 600;
+  letter-spacing: 0.18em;
+  text-transform: uppercase;
+  color: var(--color-accent);
+  margin: 0 0 var(--space-md);
+  animation: pageRise 0.6s var(--ease-out-expo) both;
+}
+
+.title {
+  font-family: var(--font-display);
+  font-size: clamp(2.2rem, 5.5vw, 3.4rem);
+  font-weight: 700;
+  color: var(--color-text);
+  margin: 0 0 var(--space-md);
+  line-height: 1.1;
+  letter-spacing: -0.02em;
+  animation: pageRise 0.6s var(--ease-out-expo) 0.06s both;
+}
+
+.subtitle {
+  font-size: 1.0625rem;
+  color: var(--color-text-secondary);
+  margin: 0 0 var(--space-2xl);
+  max-width: 560px;
+  line-height: 1.7;
+  animation: pageRise 0.6s var(--ease-out-expo) 0.12s both;
+}
+
+.entry {
+  margin-bottom: var(--space-xl);
+  scroll-margin-top: calc(var(--header-height) + var(--space-lg));
+}
+
+.entry h2 {
+  font-family: var(--font-display);
+  font-size: 1.35rem;
+  font-weight: 700;
+  color: var(--color-text);
+  margin: 0 0 var(--space-xs);
+}
+
+.entry p {
+  margin: 0;
+  line-height: 1.7;
+  color: var(--color-text-secondary);
+}
+
+.links {
+  margin-top: var(--space-2xl);
+  line-height: 1.9;
+  color: var(--color-text-secondary);
+}
+
+.links a {
+  color: var(--color-accent);
+}
+
+.links a:hover {
+  text-decoration: underline;
+}
