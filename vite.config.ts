@@ -31,7 +31,7 @@ function sendJson(res: ServerResponse, status: number, body: unknown) {
   res.end(JSON.stringify(body))
 }
 
-export default defineConfig(({ mode }) => {
+export default defineConfig(({ mode, isSsrBuild }) => {
   // Mirror the Vercel function environment for the local dev shims so that
   // /api/* behaves the same in `vite dev` as it does in production.
   const env = loadEnv(mode, process.cwd(), '')
@@ -93,12 +93,17 @@ export default defineConfig(({ mode }) => {
     build: {
       rollupOptions: {
         output: {
-          manualChunks: {
-            'vendor-react': ['react', 'react-dom', 'react-router-dom'],
-            'vendor-motion': ['framer-motion'],
-            'vendor-esbuild': ['esbuild-wasm'],
-            'vendor-export': ['jszip', 'html2canvas'],
-          },
+          // Vendor chunks only apply to the client bundle: the SSR build
+          // (vite build --ssr, used by scripts/prerender.mjs) externalizes
+          // these packages, and Rollup rejects external ids in manualChunks.
+          manualChunks: isSsrBuild
+            ? undefined
+            : {
+                'vendor-react': ['react', 'react-dom', 'react-router-dom'],
+                'vendor-motion': ['framer-motion'],
+                'vendor-esbuild': ['esbuild-wasm'],
+                'vendor-export': ['jszip', 'html2canvas'],
+              },
         },
       },
       sourcemap: false,
