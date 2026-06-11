@@ -2108,6 +2108,9 @@ async function callModelWithTools({
   if (providerDef?.apiFormat === 'bedrock') {
     throw new Error('Amazon Bedrock requires a server-side Bedrock Converse adapter and is not available through the browser agent yet.')
   }
+  if (providerId === 'nvidia') {
+    throw new Error('NVIDIA NIM does not set CORS headers on its API, so it cannot be called directly from the browser. Use a CORS proxy or a different provider.')
+  }
   if (providerDef?.apiFormat === 'anthropic' || providerId === 'anthropic') {
     return callAnthropicWithTools({ baseUrl, apiKey, modelId, system, tools, messages, signal, onText, thinkingBudget })
   }
