@@ -10,6 +10,8 @@ import { supabase } from './supabase'
 //          endpoint is unavailable (e.g. local dev without KEY_ENCRYPTION_SECRET).
 
 const SALT = 'openthorn-v1-key-encryption'
+const serverKeyOps = new Map<string, Promise<string | null>>()
+const serverDecryptResults = new Map<string, string>()
 
 async function deriveKey(userId: string): Promise<CryptoKey> {
   const enc = new TextEncoder()
@@ -60,6 +62,27 @@ async function clientDecrypt(stored: string, userId: string): Promise<string> {
 
 /** Call the server key endpoint. Returns the result, or null if unavailable. */
 async function serverKeyOp(action: 'encrypt' | 'decrypt', value: string): Promise<string | null> {
+  if (action === 'decrypt') {
+    const cached = serverDecryptResults.get(value)
+    if (cached) return cached
+  }
+
+  const cacheKey = `${action}:${value}`
+  const existing = serverKeyOps.get(cacheKey)
+  if (existing) return existing
+
+  const op = runServerKeyOp(action, value)
+  serverKeyOps.set(cacheKey, op)
+  if (action === 'decrypt') {
+    op.then((result) => {
+      if (result) serverDecryptResults.set(value, result)
+    })
+  }
+  op.finally(() => serverKeyOps.delete(cacheKey))
+  return op
+}
+
+async function runServerKeyOp(action: 'encrypt' | 'decrypt', value: string): Promise<string | null> {
   let token: string | undefined
   try {
     const { data } = await supabase.auth.getSession()

@@ -16,7 +16,13 @@ import { usePageTitle } from '../lib/usePageTitle'
 import styles from './ProvidersPage.module.css'
 
 async function decryptKeys(data: ProviderKey[], userId: string): Promise<ProviderKey[]> {
-  return Promise.all(data.map(async (k) => ({ ...k, api_key: await decryptApiKey(k.api_key, userId) })))
+  return Promise.all(data.map(async (k) => {
+    try {
+      return { ...k, api_key: await decryptApiKey(k.api_key, userId), decrypt_error: false }
+    } catch {
+      return { ...k, api_key: '', enabled: false, decrypt_error: true }
+    }
+  }))
 }
 
 interface ProviderKey {
@@ -28,6 +34,7 @@ interface ProviderKey {
   models: string
   enabled: boolean
   is_custom: boolean
+  decrypt_error?: boolean
 }
 
 function extractModelList(payload: unknown, providerId: string): ProviderModel[] {
@@ -144,6 +151,7 @@ export default function ProvidersPage() {
   const openEditor = useCallback((providerId: string) => {
     const existing = savedKeys.find((k) => k.provider_id === providerId)
     const def = PROVIDER_DEFS[providerId]
+    let nextTestState: { status: 'idle' | 'testing' | 'success' | 'error'; message: string } = { status: 'idle', message: '' }
     if (existing) {
       setFormKey(existing.api_key)
       setFormUrl(existing.base_url)
@@ -151,6 +159,12 @@ export default function ProvidersPage() {
       setFormEnabled(existing.enabled)
       setFormName(existing.provider_name)
       setFormCustom(existing.is_custom)
+      if (existing.decrypt_error) {
+        nextTestState = {
+          status: 'error',
+          message: 'This saved key could not be decrypted. Paste a new key and save it again.',
+        }
+      }
     } else if (def) {
       setFormKey('')
       setFormUrl(def.baseUrl)
@@ -162,7 +176,7 @@ export default function ProvidersPage() {
     setEditingProvider(providerId)
     setPickerOpen(false)
     setShowKey(false)
-    setTestState({ status: 'idle', message: '' })
+    setTestState(nextTestState)
   }, [savedKeys])
 
   const saveKey = async () => {
@@ -525,7 +539,9 @@ export default function ProvidersPage() {
                         </div>
                         <div>
                           <span className={styles.enabledName}>{key.provider_name}</span>
-                          <span className={styles.enabledKey}>{key.api_key.slice(0, 6)}........{key.api_key.slice(-4)}</span>
+                          <span className={styles.enabledKey}>
+                            {key.decrypt_error ? 'Key needs to be re-saved' : `${key.api_key.slice(0, 6)}........${key.api_key.slice(-4)}`}
+                          </span>
                           {key.models && (
                             <span className={styles.enabledModels}>{key.models.split(',').length} model{key.models.split(',').length !== 1 ? 's' : ''} configured</span>
                           )}
@@ -533,7 +549,7 @@ export default function ProvidersPage() {
                       </div>
                       <div className={styles.enabledRight}>
                         <label className={styles.toggle}>
-                          <input type="checkbox" checked={key.enabled} disabled={def ? !def.testable : false} onChange={() => toggleEnabled(key)} />
+                          <input type="checkbox" checked={key.enabled} disabled={key.decrypt_error || (def ? !def.testable : false)} onChange={() => toggleEnabled(key)} />
                           <span className={styles.toggleSlider} />
                         </label>
                         <button className={styles.editBtn} onClick={() => openEditor(key.provider_id)} type="button">
