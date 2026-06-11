@@ -12,7 +12,7 @@ import {
   turnBudgetPrompt,
   type ToolDefinition,
 } from './agent-prompt'
-import { decryptApiKey } from './crypto'
+import { decryptApiKey, encryptApiKey } from './crypto'
 import {
   AGENT_THINKING_PROFILES,
   normalizeThinkingLevel,
@@ -1080,6 +1080,7 @@ export async function runOpenThornAgent(input: AgentRunInput): Promise<AgentRunR
     // ── Push tool results ───────────────────────────────────────
     let hasDone = false
     let doneResult: ToolResult | null = null
+    let doneCallId: string | null = null
     for (let i = 0; i < toolResults.length; i++) {
       const tc = toolCalls[i]
       const result = toolResults[i]
@@ -1091,6 +1092,7 @@ export async function runOpenThornAgent(input: AgentRunInput): Promise<AgentRunR
       if (tc.name === 'done' && !result.isError) {
         hasDone = true
         doneResult = result
+        doneCallId = tc.id
         continue
       }
       if (tc.name === 'done' && result.isError) {
@@ -1177,7 +1179,7 @@ export async function runOpenThornAgent(input: AgentRunInput): Promise<AgentRunR
         content: [
           {
             type: 'tool_result',
-            tool_use_id: toolCalls.find((tc) => tc.name === 'done')?.id ?? 'done',
+            tool_use_id: doneCallId ?? 'done',
             content: doneResult.content,
             is_error: false,
           },
@@ -1185,7 +1187,9 @@ export async function runOpenThornAgent(input: AgentRunInput): Promise<AgentRunR
       })
 
       // ── Write changelog entry ──────────────────────────────────
-      await saveSessionChangelog(input.userId, input.files, {
+      // Into currentFiles — input.files is the pre-run snapshot and is
+      // discarded by the caller, which persists the returned files.
+      await saveSessionChangelog(input.userId, currentFiles, {
         sessionId,
         prompt: input.prompt,
         filesCreated: sessionFilesCreated,
@@ -1207,7 +1211,7 @@ export async function runOpenThornAgent(input: AgentRunInput): Promise<AgentRunR
   }
 
   // ── Max turns reached — write changelog anyway ─────────────────
-  await saveSessionChangelog(input.userId, input.files, {
+  await saveSessionChangelog(input.userId, currentFiles, {
     sessionId,
     prompt: input.prompt,
     filesCreated: sessionFilesCreated,
@@ -1352,8 +1356,11 @@ async function executeToolsParallel(
 
   const reads: { index: number; call: ToolCall }[] = []
   const writes: { index: number; call: ToolCall }[] = []
-  let compileCall: { index: number; call: ToolCall } | null = null
-  let doneCall: { index: number; call: ToolCall } | null = null
+  // Arrays, not single slots: if the model issues duplicate compile/done calls
+  // in one turn, every call must still produce a result. Dropping one would
+  // misalign results with toolCalls and leave a tool_use without a tool_result.
+  const compileCalls: { index: number; call: ToolCall }[] = []
+  const doneCalls: { index: number; call: ToolCall }[] = []
 
   for (let i = 0; i < toolCalls.length; i++) {
     const tc = toolCalls[i]
@@ -1361,8 +1368,8 @@ async function executeToolsParallel(
     switch (category) {
       case 'read': reads.push({ index: i, call: tc }); break
       case 'write': writes.push({ index: i, call: tc }); break
-      case 'compile': compileCall = { index: i, call: tc }; break
-      case 'done': doneCall = { index: i, call: tc }; break
+      case 'compile': compileCalls.push({ index: i, call: tc }); break
+      case 'done': doneCalls.push({ index: i, call: tc }); break
     }
   }
 
@@ -1402,19 +1409,8 @@ async function executeToolsParallel(
     }
   }
 
-  // Phase 3: Compile
-  if (compileCall) {
-    const { index, call } = compileCall
-    onProgress?.({ type: 'tool_start', toolName: call.name, toolInput: call.input })
-    const result = await executeTool(call, currentFiles, signal, provider, onProgress, runCtx)
-    onProgress?.({ type: 'tool_result', toolName: call.name, toolResult: result.content, toolError: result.isError, files: result.files })
-    results[index] = result
-    if (result.files) currentFiles = result.files
-  }
-
-  // Phase 4: Done
-  if (doneCall) {
-    const { index, call } = doneCall
+  // Phase 3: Compile, Phase 4: Done — sequentially, in call order
+  for (const { index, call } of [...compileCalls, ...doneCalls]) {
     onProgress?.({ type: 'tool_start', toolName: call.name, toolInput: call.input })
     const result = await executeTool(call, currentFiles, signal, provider, onProgress, runCtx)
     onProgress?.({ type: 'tool_result', toolName: call.name, toolResult: result.content, toolError: result.isError, files: result.files })
@@ -2821,6 +2817,22 @@ async function resolveProviderWithFallback(
       api_key: await decryptApiKey(k.api_key, userId),
     }))
   )
+
+  // Lazily migrate enc: keys to senc: in the background
+  for (const k of allKeys as ProviderKeyRow[]) {
+    if (k.api_key.startsWith('enc:')) {
+      const plaintext = keys.find((d) => d.id === k.id)?.api_key
+      if (plaintext) {
+        encryptApiKey(plaintext, userId)
+          .then(async (sencKey) => {
+            if (sencKey.startsWith('senc:')) {
+              await supabase.from('provider_keys').update({ api_key: sencKey }).eq('id', k.id).eq('user_id', userId)
+            }
+          })
+          .catch(() => {})
+      }
+    }
+  }
 
   // Sort: preferred provider first, then by creation date
   const sortedKeys = [...keys]
