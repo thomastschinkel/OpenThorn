@@ -124,6 +124,31 @@ export function SupabaseAuthProvider({ children }: { children: ReactNode }) {
   )
 }
 
+/**
+ * Auth provider for build-time SSR (src/entry-ssr.tsx): renders children in the
+ * logged-out, non-loading state so public pages emit their full marketing
+ * content. All actions are no-ops — nothing interactive runs during prerender.
+ */
+export function StaticAuthProvider({ children }: { children: ReactNode }) {
+  return (
+    <AuthContext.Provider
+      value={{
+        user: null,
+        session: null,
+        loading: false,
+        signIn: async () => ({}),
+        signUp: async () => ({}),
+        signInWithGoogle: async () => {},
+        signInWithGitHub: async () => {},
+        resetPassword: async () => ({}),
+        signOut: async () => {},
+      }}
+    >
+      {children}
+    </AuthContext.Provider>
+  )
+}
+
 export function useAuth(): AuthContextValue {
   const ctx = useContext(AuthContext)
   if (!ctx) throw new Error('useAuth must be used within SupabaseAuthProvider')
