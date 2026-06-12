@@ -277,7 +277,7 @@ export default function DashboardSidebar({ projects = [], activeFilter = 'all', 
               <button
                 key={project.id}
                 className={`${styles.navItem} ${styles.recentItem} ${activeNav === project.id ? styles.navItemActive : ''}`}
-                onClick={() => handleNavClick(project.id)}
+                onClick={() => { onClose?.(); navigate(`/projects/${project.id}`) }}
                 type="button"
               >
                 <span className={styles.recentDot} />
