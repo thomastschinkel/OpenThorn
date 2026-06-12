@@ -19,6 +19,8 @@ interface CommunityPost {
   files_snapshot: AgentCodeFile[]
   likes_count: number
   published_at: string
+  hidden: boolean
+  featured: boolean
 }
 
 function formatRelativeTime(iso: string): string {
@@ -76,6 +78,7 @@ export default function CommunityPage() {
     supabase
       .from('community_posts')
       .select('*')
+      .order('featured', { ascending: false })
       .order('published_at', { ascending: false })
       .then(({ data }) => {
         setPosts((data ?? []) as CommunityPost[])
@@ -201,6 +204,9 @@ export default function CommunityPage() {
       p.author_name.toLowerCase().includes(searchQuery.toLowerCase())
     )
     .sort((a, b) => {
+      // Featured posts stay on top in both sort modes.
+      const byFeatured = Number(b.featured) - Number(a.featured)
+      if (byFeatured !== 0) return byFeatured
       if (sortBy === 'likes') return b.likes_count - a.likes_count
       return new Date(b.published_at).getTime() - new Date(a.published_at).getTime()
     })
@@ -342,7 +348,10 @@ export default function CommunityPage() {
                   </div>
                 </div>
                 <div className={styles.cardMeta}>
-                  <h3 className={styles.cardTitle}>{post.title}</h3>
+                  <h3 className={styles.cardTitle}>
+                    {post.title}
+                    {post.featured && <span className={styles.featuredBadge}>Featured</span>}
+                  </h3>
                   <div className={styles.cardFooter}>
                     <div className={styles.authorRow}>
                       <div className={styles.authorAvatar}>{post.author_name.charAt(0).toUpperCase()}</div>

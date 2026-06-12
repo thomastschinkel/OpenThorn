@@ -2,6 +2,7 @@ import { useState, useEffect, useRef } from 'react'
 import { useNavigate, useLocation } from 'react-router-dom'
 import type { ReactNode } from 'react'
 import { useAuth } from '../../lib/AuthContext'
+import { useIsAdmin } from '../../lib/useIsAdmin'
 import styles from './DashboardSidebar.module.css'
 
 interface Project {
@@ -142,6 +143,7 @@ export default function DashboardSidebar({ projects = [], activeFilter = 'all', 
   const [notificationsOpen, setNotificationsOpen] = useState(false)
   const [profileMenuOpen, setProfileMenuOpen] = useState(false)
   const profileMenuRef = useRef<HTMLDivElement>(null)
+  const { isAdmin } = useIsAdmin()
 
   useEffect(() => {
     if (location.pathname === '/providers') setActiveNav('Providers')
@@ -362,6 +364,14 @@ export default function DashboardSidebar({ projects = [], activeFilter = 'all', 
               </svg>
               Settings
             </button>
+            {isAdmin && (
+              <button className={styles.profileMenuItem} onClick={() => { navigate('/admin'); setProfileMenuOpen(false) }} type="button">
+                <svg width={16} height={16} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round">
+                  <path d="M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10z"/>
+                </svg>
+                Admin
+              </button>
+            )}
 
             <div className={styles.profileMenuDivider} />
 
