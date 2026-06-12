@@ -1011,9 +1011,10 @@ export async function runOpenThornAgent(input: AgentRunInput): Promise<AgentRunR
       provider = next
       providerName = next.key.provider_name || next.key.provider_id
       modelName = next.model.name || next.model.id
+      const errMsg = err instanceof Error ? err.message : String(err)
       input.onProgress?.({
         type: 'status',
-        message: `Provider failed mid-run — switched to ${providerName} / ${modelName}.`,
+        message: `Provider failed (${errMsg}) — switched to ${providerName} / ${modelName}.`,
       })
       turnCount-- // the failed call did not consume a turn
       continue
