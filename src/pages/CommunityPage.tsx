@@ -164,7 +164,7 @@ export default function CommunityPage() {
   }, [selected, user])
 
   const handleUseProject = useCallback(async () => {
-    if (!user || !selected || !selectedModel) return
+    if (!user || !selected) return
     setLaunching(true)
     const projectId = crypto.randomUUID()
 
@@ -542,7 +542,7 @@ export default function CommunityPage() {
 
               {!editMode && (
                 <div className={styles.modelSection}>
-                  <span className={styles.modelLabel}>Select model to use</span>
+                  <span className={styles.modelLabel}>Select model to use (optional)</span>
                   <ModelSelector
                     page="dashboard"
                     selectedModel={selectedModel}
@@ -560,7 +560,7 @@ export default function CommunityPage() {
                   className={styles.useBtn}
                   type="button"
                   onClick={handleUseProject}
-                  disabled={!selectedModel || launching}
+                  disabled={launching}
                   style={{ background: postAccentColor(selected.title) }}
                 >
                   {launching ? 'Starting…' : 'Use this project →'}

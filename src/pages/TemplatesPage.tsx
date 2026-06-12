@@ -55,7 +55,7 @@ export default function TemplatesPage() {
   }, [])
 
   const handleUseTemplate = useCallback(async () => {
-    if (!user || !selected || !selectedModel) return
+    if (!user || !selected) return
     setLaunching(true)
     const projectId = crypto.randomUUID()
     const { error } = await supabase.from('projects').upsert({
@@ -234,7 +234,7 @@ export default function TemplatesPage() {
                 </div>
 
                 <div className={styles.modelSection}>
-                  <span className={styles.modelLabel}>Select model to customize with</span>
+                  <span className={styles.modelLabel}>Select model to customize with (optional)</span>
                   <ModelSelector
                     page="dashboard"
                     selectedModel={selectedModel}
@@ -250,7 +250,7 @@ export default function TemplatesPage() {
                   className={styles.useBtn}
                   type="button"
                   onClick={handleUseTemplate}
-                  disabled={!selectedModel || launching}
+                  disabled={launching}
                   style={{ background: selected.accentColor }}
                 >
                   {launching ? 'Starting…' : 'Use this template →'}
