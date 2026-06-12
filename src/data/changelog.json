@@ -6,6 +6,69 @@
       "entries": [
         {
           "category": "Fix",
+          "message": "fix(agent): don't start building on conversational messages",
+          "sha": "455ad17e869a7d2772f4b807cecaddf84921bd45",
+          "shortSha": "455ad17",
+          "url": "https://github.com/BuildingTechAlternatives/OpenThorn/commit/455ad17e869a7d2772f4b807cecaddf84921bd45"
+        },
+        {
+          "category": "Improved",
+          "message": "feat(builder): show blinking dot in chat while agent is generating",
+          "sha": "4147c6cb03ec0dae74303d734b1a8af1676b0ba5",
+          "shortSha": "4147c6c",
+          "url": "https://github.com/BuildingTechAlternatives/OpenThorn/commit/4147c6cb03ec0dae74303d734b1a8af1676b0ba5"
+        },
+        {
+          "category": "Fix",
+          "message": "fix(gemini): send thoughtSignature at part level per REST API schema",
+          "sha": "2155a7644149038d1bd9f1cf24ebb294d6a6d0b6",
+          "shortSha": "2155a76",
+          "url": "https://github.com/BuildingTechAlternatives/OpenThorn/commit/2155a7644149038d1bd9f1cf24ebb294d6a6d0b6"
+        },
+        {
+          "category": "Fix",
+          "message": "fix(gemini): handle cumulative streaming and propagate thought_signature to parallel calls",
+          "sha": "8032f45285aea54f9162f42d848a3f2727ba4180",
+          "shortSha": "8032f45",
+          "url": "https://github.com/BuildingTechAlternatives/OpenThorn/commit/8032f45285aea54f9162f42d848a3f2727ba4180"
+        },
+        {
+          "category": "Fix",
+          "message": "fix: silence recoverable hydration errors in production console",
+          "sha": "642f2efb730ae2d899e32d520ba7f9973d4e605f",
+          "shortSha": "642f2ef",
+          "url": "https://github.com/BuildingTechAlternatives/OpenThorn/commit/642f2efb730ae2d899e32d520ba7f9973d4e605f"
+        },
+        {
+          "category": "Fix",
+          "message": "fix(gemini): preserve thought_signature on function calls for thinking models",
+          "sha": "37c5462f60f41a78b0b1af2aaff0a5e74c364d94",
+          "shortSha": "37c5462",
+          "url": "https://github.com/BuildingTechAlternatives/OpenThorn/commit/37c5462f60f41a78b0b1af2aaff0a5e74c364d94"
+        },
+        {
+          "category": "Fix",
+          "message": "fix: add missing Framer, Durable, Wix logos to public/assets",
+          "sha": "bf14df1a7514f7b1be4b8248f9ddda97aea61e2f",
+          "shortSha": "bf14df1",
+          "url": "https://github.com/BuildingTechAlternatives/OpenThorn/commit/bf14df1a7514f7b1be4b8248f9ddda97aea61e2f"
+        },
+        {
+          "category": "Improved",
+          "message": "feat: add competitor logos, blog cover, and Provider Guides to nav",
+          "sha": "e309c4e52f9422254966f43df1e408953b3e1a09",
+          "shortSha": "e309c4e",
+          "url": "https://github.com/BuildingTechAlternatives/OpenThorn/commit/e309c4e52f9422254966f43df1e408953b3e1a09"
+        },
+        {
+          "category": "Improved",
+          "message": "feat(seo): provider guide pages, new comparisons, RSS feed, AEO answer blocks",
+          "sha": "c7ad7057ac9cdfdebf9dce5e69c45fcb7370ff8f",
+          "shortSha": "c7ad705",
+          "url": "https://github.com/BuildingTechAlternatives/OpenThorn/commit/c7ad7057ac9cdfdebf9dce5e69c45fcb7370ff8f"
+        },
+        {
+          "category": "Fix",
           "message": "fix(seo): remove duplicate FAQPage JSON-LD from FaqPage runtime",
           "sha": "df38a6f05a470da621f1df6318bc351000e46e1d",
           "shortSha": "df38a6f",
@@ -1813,69 +1876,6 @@
           "sha": "0b6e9121a4a9292fe5bf8e6b2fa6826181b0cdb8",
           "shortSha": "0b6e912",
           "url": "https://github.com/BuildingTechAlternatives/OpenThorn/commit/0b6e9121a4a9292fe5bf8e6b2fa6826181b0cdb8"
-        },
-        {
-          "category": "Fix",
-          "message": "fix: flagship models only in pricing table, live SWE-bench data from HuggingFace, no deprecated/cheap models",
-          "sha": "9b987fe7df3834a9e7ce4f798e164b38bb22bccd",
-          "shortSha": "9b987fe",
-          "url": "https://github.com/BuildingTechAlternatives/OpenThorn/commit/9b987fe7df3834a9e7ce4f798e164b38bb22bccd"
-        },
-        {
-          "category": "Improved",
-          "message": "feat: live pricing data — fetches from GitHub JSON, auto-updates as new models launch",
-          "sha": "99622ee5c0b88f7b8fa8dd6d98025f3d49ce0608",
-          "shortSha": "99622ee",
-          "url": "https://github.com/BuildingTechAlternatives/OpenThorn/commit/99622ee5c0b88f7b8fa8dd6d98025f3d49ce0608"
-        },
-        {
-          "category": "Improved",
-          "message": "feat: mobile menu + pricing page with coding-vs-cost scatter chart, provider table, and BYOK insight",
-          "sha": "03b03fa4eb714c313644baaadb356aabcf04061a",
-          "shortSha": "03b03fa",
-          "url": "https://github.com/BuildingTechAlternatives/OpenThorn/commit/03b03fa4eb714c313644baaadb356aabcf04061a"
-        },
-        {
-          "category": "Fix",
-          "message": "fix: footer — replace Product with Solutions + Use Cases columns",
-          "sha": "5f1db81990522d7ea07865e935f39d824737490c",
-          "shortSha": "5f1db81",
-          "url": "https://github.com/BuildingTechAlternatives/OpenThorn/commit/5f1db81990522d7ea07865e935f39d824737490c"
-        },
-        {
-          "category": "Improved",
-          "message": "feat: premium footer — 4-column grid, email signup, Product/Resources/Legal, social icons with hover glow",
-          "sha": "5774cf3090c6700d3dc4d6ce6e182a9b1e4d0cf1",
-          "shortSha": "5774cf3",
-          "url": "https://github.com/BuildingTechAlternatives/OpenThorn/commit/5774cf3090c6700d3dc4d6ce6e182a9b1e4d0cf1"
-        },
-        {
-          "category": "Fix",
-          "message": "fix: dropdown items stacked — title above description, 2-column grid, no horizontal wrapping",
-          "sha": "ba5f005ea8f5c96e0df12935f8362ef0a787122c",
-          "shortSha": "ba5f005",
-          "url": "https://github.com/BuildingTechAlternatives/OpenThorn/commit/ba5f005ea8f5c96e0df12935f8362ef0a787122c"
-        },
-        {
-          "category": "Improved",
-          "message": "feat: production nav — underline hover indicator, horizontal dropdown rows, no line breaks, wider panels",
-          "sha": "c689cb09f40205faf69d073fcaa54ba772b0f93c",
-          "shortSha": "c689cb0",
-          "url": "https://github.com/BuildingTechAlternatives/OpenThorn/commit/c689cb09f40205faf69d073fcaa54ba772b0f93c"
-        },
-        {
-          "category": "Fix",
-          "message": "fix: Resources dropdown — Blog, Templates, Guides, Docs & FAQs",
-          "sha": "74c5c20ef75d08f61e3a55cff42d948943f144c5",
-          "shortSha": "74c5c20",
-          "url": "https://github.com/BuildingTechAlternatives/OpenThorn/commit/74c5c20ef75d08f61e3a55cff42d948943f144c5"
-        },
-        {
-          "category": "Fix",
-          "message": "fix: more gap between dropdown columns",
-          "sha": "50ab6bee215928ee28c2050e38b632b893af3128",
-          "shortSha": "50ab6be",
-          "url": "https://github.com/BuildingTechAlternatives/OpenThorn/commit/50ab6bee215928ee28c2050e38b632b893af3128"
         }
       ]
     }

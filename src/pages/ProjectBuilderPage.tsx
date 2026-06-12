@@ -1758,13 +1758,13 @@ export default function ProjectBuilderPage() {
           }
           if ((event.type === 'files' || event.type === 'done') && event.files) {
             setProjectFiles(event.files)
-            setFirstRunComplete(true)
+            if (event.type === 'files' || event.filesMutated) setFirstRunComplete(true)
           }
         },
       })
 
       setProjectFiles(result.files)
-      setFirstRunComplete(true)
+      if (result.filesMutated) setFirstRunComplete(true)
       setAgentStatus('')
 
       // Complete any remaining running tool calls
@@ -1775,9 +1775,9 @@ export default function ProjectBuilderPage() {
       }
 
       updateAssistantMessage(assistantId, {
-        title: 'Project ready',
+        title: result.filesMutated ? 'Project ready' : undefined,
         timeline: [...timeline],
-        files: result.files,
+        files: result.filesMutated ? result.files : undefined,
         turns: result.turns,
         providerName: result.providerName,
         modelName: result.modelName,

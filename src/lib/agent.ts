@@ -94,6 +94,7 @@ export interface AgentProgressEvent {
   toolResult?: string
   toolError?: boolean
   files?: AgentCodeFile[]
+  filesMutated?: boolean
   message?: string
   /** Cumulative token usage for the run (type 'usage'). */
   usage?: RunUsage
@@ -126,6 +127,7 @@ export interface AgentRunResult {
   providerName: string
   modelName: string
   usage: RunUsage
+  filesMutated: boolean
 }
 
 // ─── Internal Types ─────────────────────────────────────────────────────────
@@ -1067,8 +1069,8 @@ export async function runOpenThornAgent(input: AgentRunInput): Promise<AgentRunR
     if (toolCalls.length === 0 && (invalidCalls?.length ?? 0) === 0 && text) {
       if (!filesMutatedThisRun) {
         circuitBreaker.recordSuccess(provider.key.provider_id)
-        input.onProgress?.({ type: 'done', files: currentFiles })
-        return { files: currentFiles, turns: turnCount, providerName, modelName, usage: totalUsage }
+        input.onProgress?.({ type: 'done', files: currentFiles, filesMutated: false })
+        return { files: currentFiles, turns: turnCount, providerName, modelName, usage: totalUsage, filesMutated: false }
       }
       messages.push({
         role: 'user',
@@ -1236,8 +1238,8 @@ export async function runOpenThornAgent(input: AgentRunInput): Promise<AgentRunR
 
       // Record success on the circuit breaker
       circuitBreaker.recordSuccess(provider.key.provider_id)
-      input.onProgress?.({ type: 'done', files: currentFiles })
-      return { files: currentFiles, turns: turnCount, providerName, modelName, usage: totalUsage }
+      input.onProgress?.({ type: 'done', files: currentFiles, filesMutated: filesMutatedThisRun })
+      return { files: currentFiles, turns: turnCount, providerName, modelName, usage: totalUsage, filesMutated: filesMutatedThisRun }
     }
   }
 
@@ -1252,8 +1254,8 @@ export async function runOpenThornAgent(input: AgentRunInput): Promise<AgentRunR
   })
 
   circuitBreaker.recordSuccess(provider.key.provider_id)
-  input.onProgress?.({ type: 'done', files: currentFiles })
-  return { files: currentFiles, turns: turnCount, providerName, modelName, usage: totalUsage }
+  input.onProgress?.({ type: 'done', files: currentFiles, filesMutated: filesMutatedThisRun })
+  return { files: currentFiles, turns: turnCount, providerName, modelName, usage: totalUsage, filesMutated: filesMutatedThisRun }
 }
 
 // ─── Memory Management ──────────────────────────────────────────────────────
