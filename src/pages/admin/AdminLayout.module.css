@@ -1,0 +1,99 @@
+.shell {
+  display: flex;
+  min-height: 100vh;
+  background: var(--color-bg);
+  color: var(--color-text);
+}
+
+.sidebar {
+  display: flex;
+  flex-direction: column;
+  gap: 1.5rem;
+  width: 220px;
+  flex-shrink: 0;
+  padding: 1.5rem 1rem;
+  border-right: 1px solid color-mix(in srgb, var(--color-text) 12%, transparent);
+}
+
+.logo {
+  display: flex;
+  align-items: center;
+  gap: 0.6rem;
+  text-decoration: none;
+  color: var(--color-text);
+}
+
+.logoImg {
+  width: 28px;
+  height: 28px;
+}
+
+.logoText {
+  font-weight: 700;
+  letter-spacing: 0.02em;
+}
+
+.nav {
+  display: flex;
+  flex-direction: column;
+  gap: 0.25rem;
+}
+
+.navItem {
+  padding: 0.55rem 0.75rem;
+  border-radius: 8px;
+  text-decoration: none;
+  color: var(--color-text);
+  opacity: 0.75;
+  font-size: 0.95rem;
+}
+
+.navItem:hover {
+  opacity: 1;
+  background: color-mix(in srgb, var(--color-text) 6%, transparent);
+}
+
+.navItemActive {
+  opacity: 1;
+  background: color-mix(in srgb, var(--color-accent) 16%, transparent);
+  color: var(--color-accent);
+  font-weight: 600;
+}
+
+.backLink {
+  margin-top: auto;
+  font-size: 0.85rem;
+  color: var(--color-text);
+  opacity: 0.6;
+  text-decoration: none;
+}
+
+.backLink:hover {
+  opacity: 1;
+}
+
+.content {
+  flex: 1;
+  min-width: 0;
+  padding: 2rem;
+}
+
+@media (max-width: 720px) {
+  .shell {
+    flex-direction: column;
+  }
+  .sidebar {
+    width: auto;
+    flex-direction: row;
+    align-items: center;
+    border-right: none;
+    border-bottom: 1px solid color-mix(in srgb, var(--color-text) 12%, transparent);
+  }
+  .nav {
+    flex-direction: row;
+  }
+  .backLink {
+    margin-top: 0;
+    margin-left: auto;
+  }
+}

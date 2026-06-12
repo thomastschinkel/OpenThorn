@@ -14,6 +14,7 @@ import BottomCTA from './components/BottomCTA/BottomCTA'
 import Footer from './components/Footer/Footer'
 import AuthModal from './components/AuthModal/AuthModal'
 import ProtectedRoute from './components/ProtectedRoute/ProtectedRoute'
+import AdminGuard from './components/AdminGuard/AdminGuard'
 import styles from './App.module.css'
 
 // Route pages are code-split so the heavy builder/preview stack (esbuild-wasm,
@@ -41,6 +42,9 @@ const ModerationPage = lazy(() => import('./pages/ModerationPage'))
 const ProfilePage = lazy(() => import('./pages/ProfilePage'))
 const SettingsPage = lazy(() => import('./pages/SettingsPage'))
 const NotFoundPage = lazy(() => import('./pages/NotFoundPage'))
+const AdminLayout = lazy(() => import('./pages/admin/AdminLayout'))
+const AdminModerationPage = lazy(() => import('./pages/admin/AdminModerationPage'))
+const AdminUsersPage = lazy(() => import('./pages/admin/AdminUsersPage'))
 
 function HomePage() {
   usePageTitle()
@@ -159,6 +163,10 @@ export default function App() {
             <Route path="/providers" element={<ProtectedRoute pageName="Providers"><ProvidersPage /></ProtectedRoute>} />
             <Route path="/profile" element={<ProtectedRoute pageName="Profile"><ProfilePage /></ProtectedRoute>} />
             <Route path="/settings" element={<ProtectedRoute pageName="Settings"><SettingsPage /></ProtectedRoute>} />
+            <Route path="/admin" element={<AdminGuard><AdminLayout /></AdminGuard>}>
+              <Route index element={<AdminModerationPage />} />
+              <Route path="users" element={<AdminUsersPage />} />
+            </Route>
             <Route path="*" element={<NotFoundPage />} />
           </Routes>
         </Suspense>
