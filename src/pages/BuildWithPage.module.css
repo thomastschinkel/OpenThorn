@@ -1,4 +1,4 @@
-/* ===== Page shell (mirrors FaqPage) ===== */
+/* ===== Page shell (mirrors ComparePage) ===== */
 .page {
   min-height: calc(100vh - var(--header-height));
   padding: var(--space-3xl) var(--space-lg) var(--space-6xl);
@@ -63,7 +63,7 @@
 
 .title {
   font-family: var(--font-display);
-  font-size: clamp(2.2rem, 5.5vw, 3.4rem);
+  font-size: clamp(2rem, 5vw, 3rem);
   font-weight: 700;
   color: var(--color-text);
   margin: 0 0 var(--space-md);
@@ -78,14 +78,7 @@
   animation: pageRise 0.6s var(--ease-out-expo) 0.1s both;
 }
 
-.logoFallback {
-  font-family: var(--font-display);
-  font-size: 1.6rem;
-  font-weight: 700;
-  color: var(--color-accent);
-}
-
-/* Direct-answer block (AEO: quotable 40–60 word answer near the top) */
+/* ===== Direct-answer block (AEO: quotable 40–60 word answer) ===== */
 .answer {
   line-height: 1.7;
   color: var(--color-text);
@@ -93,50 +86,48 @@
   border-left: 3px solid var(--color-accent);
   background: rgba(255, 255, 255, 0.03);
   border-radius: 0 8px 8px 0;
-  margin: 0 0 var(--space-lg);
-  animation: pageRise 0.6s var(--ease-out-expo) 0.11s both;
-}
-
-.intro {
-  font-size: 1.0625rem;
-  color: var(--color-text-secondary);
   margin: 0 0 var(--space-2xl);
-  line-height: 1.7;
   animation: pageRise 0.6s var(--ease-out-expo) 0.12s both;
 }
 
-/* ===== Comparison table ===== */
-.tableWrap {
-  overflow-x: auto;
-  margin-bottom: var(--space-2xl);
+/* ===== Key facts ===== */
+.facts {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(220px, 1fr));
+  gap: var(--space-md);
+  margin: 0 0 var(--space-2xl);
   animation: pageRise 0.6s var(--ease-out-expo) 0.16s both;
 }
 
-.table {
-  width: 100%;
-  border-collapse: collapse;
-  font-size: 0.9375rem;
+.fact {
+  border: 1px solid rgba(255, 255, 255, 0.08);
+  border-radius: 12px;
+  padding: var(--space-md) var(--space-lg);
+  background: rgba(255, 255, 255, 0.02);
 }
 
-.table th,
-.table td {
-  text-align: left;
-  padding: var(--space-sm) var(--space-md);
-  border-bottom: 1px solid rgba(255, 255, 255, 0.08);
-  vertical-align: top;
-  line-height: 1.55;
+.factLabel {
+  font-size: 0.7rem;
+  font-weight: 600;
+  letter-spacing: 0.14em;
+  text-transform: uppercase;
+  color: var(--color-accent);
+  margin: 0 0 var(--space-xs);
+}
+
+.fact p {
+  margin: 0;
+  font-size: 0.9375rem;
+  line-height: 1.6;
   color: var(--color-text-secondary);
 }
 
-.table thead th {
+.fact a {
   color: var(--color-accent);
-  font-weight: 600;
 }
 
-.table tbody th {
-  color: var(--color-text);
-  font-weight: 500;
-  white-space: nowrap;
+.fact a:hover {
+  text-decoration: underline;
 }
 
 /* ===== Sections ===== */
@@ -146,6 +137,47 @@
   font-weight: 700;
   color: var(--color-text);
   margin: var(--space-2xl) 0 var(--space-md);
+}
+
+.models {
+  list-style: none;
+  margin: 0 0 var(--space-xl);
+  padding: 0;
+}
+
+.models li {
+  padding: var(--space-sm) 0;
+  border-bottom: 1px solid rgba(255, 255, 255, 0.08);
+  line-height: 1.6;
+  color: var(--color-text-secondary);
+}
+
+.models li strong {
+  color: var(--color-text);
+  font-weight: 600;
+}
+
+.steps {
+  margin: 0 0 var(--space-xl);
+  padding-left: 1.4rem;
+}
+
+.steps li {
+  margin-bottom: var(--space-md);
+  line-height: 1.7;
+  color: var(--color-text-secondary);
+}
+
+.steps li strong {
+  display: block;
+  color: var(--color-text);
+  font-weight: 600;
+}
+
+.costNote {
+  line-height: 1.7;
+  color: var(--color-text-secondary);
+  margin: 0 0 var(--space-xl);
 }
 
 .faqItem {
@@ -162,16 +194,6 @@
   margin: 0;
   line-height: 1.7;
   color: var(--color-text-secondary);
-}
-
-.verdict {
-  line-height: 1.7;
-  color: var(--color-text);
-  padding: var(--space-md) var(--space-lg);
-  border-left: 3px solid var(--color-accent);
-  background: rgba(255, 255, 255, 0.03);
-  border-radius: 0 8px 8px 0;
-  margin: 0 0 var(--space-2xl);
 }
 
 .links {

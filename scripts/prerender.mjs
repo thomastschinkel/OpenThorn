@@ -33,6 +33,7 @@ const faqData = JSON.parse(readFileSync(join(rootDir, 'src', 'data', 'faq.json')
 const changelog = JSON.parse(readFileSync(join(rootDir, 'src', 'data', 'changelog.json'), 'utf8'))
 const compareMeta = JSON.parse(readFileSync(join(rootDir, 'src', 'data', 'compare-meta.json'), 'utf8'))
 const glossary = JSON.parse(readFileSync(join(rootDir, 'src', 'data', 'glossary.json'), 'utf8'))
+const providersMeta = JSON.parse(readFileSync(join(rootDir, 'src', 'data', 'providers-meta.json'), 'utf8'))
 
 // Build-time SSR renderer (vite build --ssr src/entry-ssr.tsx --outDir dist-ssr)
 const { render } = await import(pathToFileURL(join(rootDir, 'dist-ssr', 'entry-ssr.js')).href)
@@ -224,6 +225,61 @@ const routes = [
     ],
   })),
   {
+    path: '/build-with',
+    title: 'Build with your API key — OpenThorn',
+    description:
+      'Step-by-step guides for building a website with your own API key from any of the 17 AI providers OpenThorn supports — OpenAI, Anthropic, Gemini, and more.',
+    ogType: 'website',
+    lastmod: providersMeta.map((g) => g.lastVerified).sort().at(-1),
+    jsonLd: [
+      {
+        '@context': 'https://schema.org',
+        '@type': 'ItemList',
+        name: 'Build a website with your own API key — provider guides',
+        itemListElement: providersMeta.map((guide, index) => ({
+          '@type': 'ListItem',
+          position: index + 1,
+          name: guide.title,
+          url: `${SITE_URL}/build-with/${guide.slug}`,
+        })),
+      },
+      pageBreadcrumbJsonLd('Build with your API key'),
+    ],
+  },
+  ...providersMeta.map((guide) => ({
+    path: `/build-with/${guide.slug}`,
+    title: `${guide.title} — OpenThorn`,
+    description: guide.description,
+    ogType: 'website',
+    lastmod: guide.lastVerified,
+    jsonLd: [
+      {
+        '@context': 'https://schema.org',
+        '@type': 'FAQPage',
+        mainEntity: guide.faqs.map((f) => ({
+          '@type': 'Question',
+          name: f.question,
+          acceptedAnswer: { '@type': 'Answer', text: f.answer },
+        })),
+      },
+      {
+        '@context': 'https://schema.org',
+        '@type': 'HowTo',
+        name: guide.title,
+        step: guide.steps.map((s, i) => ({ '@type': 'HowToStep', position: i + 1, name: s.name, text: s.text })),
+      },
+      {
+        '@context': 'https://schema.org',
+        '@type': 'BreadcrumbList',
+        itemListElement: [
+          { '@type': 'ListItem', position: 1, name: 'Home', item: `${SITE_URL}/` },
+          { '@type': 'ListItem', position: 2, name: 'Build with your API key', item: `${SITE_URL}/build-with` },
+          { '@type': 'ListItem', position: 3, name: guide.name },
+        ],
+      },
+    ],
+  })),
+  {
     path: '/glossary',
     title: 'AI Website Builder Glossary — OpenThorn',
     description:
@@ -365,6 +421,8 @@ function ogEyebrow(path) {
   if (path.startsWith('/blog/')) return 'Blog'
   if (path === '/compare') return 'Comparisons'
   if (path.startsWith('/compare/')) return 'Comparison'
+  if (path === '/build-with') return 'Provider Guides'
+  if (path.startsWith('/build-with/')) return 'Provider Guide'
   if (path === '/glossary') return 'Glossary'
   if (path === '/faq') return 'FAQ'
   return 'BYOK AI Website Builder'
@@ -416,9 +474,50 @@ console.log('✓ sitemap.xml')
 
 writeFileSync(
   join(distDir, 'llms-full.txt'),
-  buildLlmsFull({ rootDir, blogMeta, faqData, compareMeta, glossary }),
+  buildLlmsFull({ rootDir, blogMeta, faqData, compareMeta, glossary, providersMeta }),
   'utf8'
 )
 console.log('✓ llms-full.txt')
+
+// ---------------------------------------------------------------------------
+// RSS feed for the blog — referenced via <link rel="alternate"> in index.html.
+
+function escapeXml(str) {
+  return str
+    .replace(/&/g, '&amp;')
+    .replace(/</g, '&lt;')
+    .replace(/>/g, '&gt;')
+    .replace(/"/g, '&quot;')
+}
+
+const rssItems = [...blogMeta]
+  .sort((a, b) => (a.date < b.date ? 1 : -1))
+  .map((post) => {
+    const url = `${SITE_URL}/blog/${post.slug}`
+    return `    <item>
+      <title>${escapeXml(post.title)}</title>
+      <link>${url}</link>
+      <guid isPermaLink="true">${url}</guid>
+      <pubDate>${new Date(`${post.date}T12:00:00Z`).toUTCString()}</pubDate>
+      <description>${escapeXml(post.excerpt)}</description>
+    </item>`
+  })
+  .join('\n')
+
+const rss = `<?xml version="1.0" encoding="UTF-8"?>
+<rss version="2.0" xmlns:atom="http://www.w3.org/2005/Atom">
+  <channel>
+    <title>OpenThorn Blog</title>
+    <link>${SITE_URL}/blog</link>
+    <atom:link href="${SITE_URL}/rss.xml" rel="self" type="application/rss+xml" />
+    <description>Product updates, guides, and stories from the OpenThorn team on building and shipping websites with AI.</description>
+    <language>en</language>
+${rssItems}
+  </channel>
+</rss>
+`
+
+writeFileSync(join(distDir, 'rss.xml'), rss, 'utf8')
+console.log('✓ rss.xml')
 
 console.log(`\nPre-rendered ${routes.length} routes.`)

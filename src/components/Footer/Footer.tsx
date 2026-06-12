@@ -29,6 +29,7 @@ const resourcesLinks = [
 const resourcesRouteLinks = [
   { label: 'Docs & FAQs', to: '/faq' },
   { label: 'Comparisons', to: '/compare' },
+  { label: 'Provider Guides', to: '/build-with' },
   { label: 'Glossary', to: '/glossary' },
 ]
 

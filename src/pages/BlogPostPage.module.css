@@ -60,6 +60,31 @@
   border: none;
 }
 
+/* TL;DR direct-answer block (AEO: quotable summary near the top) */
+.tldr {
+  padding: 16px 20px;
+  border-left: 3px solid var(--color-accent);
+  background: rgba(255, 255, 255, 0.03);
+  border-radius: 0 8px 8px 0;
+  margin-bottom: 40px;
+}
+
+.tldrLabel {
+  display: block;
+  font-size: 0.7rem;
+  font-weight: 600;
+  letter-spacing: 0.18em;
+  text-transform: uppercase;
+  color: var(--color-accent);
+  margin-bottom: 6px;
+}
+
+.tldr p {
+  margin: 0;
+  color: var(--color-text);
+  line-height: 1.7;
+}
+
 /* Markdown article body */
 .article {
   color: var(--color-text-secondary);

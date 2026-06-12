@@ -54,7 +54,11 @@ export default function CompareIndexPage() {
           <Link to={`/compare/${featured.slug}`} className={styles.featured}>
             <div className={styles.featuredTop}>
               <div className={styles.logoWrap}>
-                <img className={styles.logo} src={featured.logo} alt={`${featured.competitor} logo`} />
+                {featured.logo ? (
+                  <img className={styles.logo} src={featured.logo} alt={`${featured.competitor} logo`} />
+                ) : (
+                  <span className={styles.logoFallback} aria-hidden="true">{featured.competitor[0]}</span>
+                )}
               </div>
               <div className={styles.featuredMeta}>
                 <span className={styles.tag}>Featured</span>
@@ -81,7 +85,11 @@ export default function CompareIndexPage() {
                 <Link key={entry.slug} to={`/compare/${entry.slug}`} className={styles.card}>
                   <div className={styles.cardTop}>
                     <div className={styles.logoWrap}>
-                      <img className={styles.logo} src={entry.logo} alt={`${entry.competitor} logo`} loading="lazy" />
+                      {entry.logo ? (
+                        <img className={styles.logo} src={entry.logo} alt={`${entry.competitor} logo`} loading="lazy" />
+                      ) : (
+                        <span className={styles.logoFallback} aria-hidden="true">{entry.competitor[0]}</span>
+                      )}
                     </div>
                     <span className={styles.date}>Verified {entry.lastVerified}</span>
                   </div>

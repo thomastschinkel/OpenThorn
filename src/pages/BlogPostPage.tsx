@@ -100,6 +100,12 @@ export default function BlogPostPage() {
           <h1 className={styles.title}>{post.title}</h1>
           <div className={styles.meta}>
             <time>{formatDate(post.date)}</time>
+            {post.dateModified && post.dateModified !== post.date && (
+              <>
+                <span className={styles.dot}>·</span>
+                <span>Updated <time dateTime={post.dateModified}>{formatDate(post.dateModified)}</time></span>
+              </>
+            )}
             <span className={styles.dot}>·</span>
             <span>{estimateReadTime(post.content)} min read</span>
           </div>
@@ -117,6 +123,13 @@ export default function BlogPostPage() {
 
         {!post.coverYoutube && post.coverImage && (
           <img className={styles.cover} src={post.coverImage} alt="" />
+        )}
+
+        {post.tldr && (
+          <aside className={styles.tldr}>
+            <span className={styles.tldrLabel}>TL;DR</span>
+            <p>{post.tldr}</p>
+          </aside>
         )}
 
         <article className={styles.article}>

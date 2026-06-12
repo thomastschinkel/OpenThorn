@@ -4,6 +4,7 @@ import whatIsByokContent from '../content/blog/what-is-a-byok-ai-website-builder
 import howToBuildContent from '../content/blog/how-to-build-a-website-with-ai-byok.md?raw'
 import howToKeyContent from '../content/blog/how-to-get-an-ai-api-key.md?raw'
 import bestByokContent from '../content/blog/best-byok-ai-website-builders-2026.md?raw'
+import lovableVsBoltVsV0Content from '../content/blog/lovable-vs-bolt-vs-v0-pricing.md?raw'
 
 export interface BlogPost {
   slug: string
@@ -17,6 +18,8 @@ export interface BlogPost {
   ogImage?: string
   /** ISO date of the last substantive edit; defaults to the publish date. */
   dateModified?: string
+  /** Quotable 40–60 word direct answer rendered as a TL;DR block (AEO). */
+  tldr?: string
   /** Optional HowTo structured data emitted as JSON-LD on the post page. */
   howTo?: { name: string; steps: { name: string; text: string }[] }
   /** Optional ItemList structured data (for listicle posts). */
@@ -34,6 +37,7 @@ const contentBySlug: Record<string, string> = {
   'how-to-build-a-website-with-ai-byok': howToBuildContent,
   'how-to-get-an-ai-api-key': howToKeyContent,
   'best-byok-ai-website-builders-2026': bestByokContent,
+  'lovable-vs-bolt-vs-v0-pricing': lovableVsBoltVsV0Content,
 }
 
 export const blogPosts: BlogPost[] = blogMeta.map((meta) => ({

@@ -11,6 +11,7 @@ interface CompareEntry {
   title: string
   description: string
   lastVerified: string
+  answer: string
   intro: string
   rows: { feature: string; openthorn: string; competitor: string }[]
   faqs: { question: string; answer: string }[]
@@ -46,7 +47,11 @@ export default function ComparePage() {
       <div className={styles.container}>
         <div className={styles.heading}>
           <div className={styles.logoWrap}>
-            <img className={styles.logo} src={entry.logo} alt={`${entry.competitor} logo`} />
+            {entry.logo ? (
+              <img className={styles.logo} src={entry.logo} alt={`${entry.competitor} logo`} />
+            ) : (
+              <span className={styles.logoFallback} aria-hidden="true">{entry.competitor[0]}</span>
+            )}
           </div>
           <div>
             <p className={styles.eyebrow}>Comparison</p>
@@ -57,6 +62,7 @@ export default function ComparePage() {
           Facts last verified: <time dateTime={entry.lastVerified}>{entry.lastVerified}</time>.
           Competitor pricing changes — check their site for current numbers.
         </p>
+        <p className={styles.answer}>{entry.answer}</p>
         <p className={styles.intro}>{entry.intro}</p>
 
         <div className={styles.tableWrap}>

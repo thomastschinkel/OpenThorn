@@ -1,9 +1,119 @@
 {
-  "generatedAt": "2026-06-11",
+  "generatedAt": "2026-06-12",
   "days": [
+    {
+      "date": "2026-06-12",
+      "entries": [
+        {
+          "category": "Fix",
+          "message": "fix(seo): remove duplicate FAQPage JSON-LD from FaqPage runtime",
+          "sha": "df38a6f05a470da621f1df6318bc351000e46e1d",
+          "shortSha": "df38a6f",
+          "url": "https://github.com/BuildingTechAlternatives/OpenThorn/commit/df38a6f05a470da621f1df6318bc351000e46e1d"
+        }
+      ]
+    },
     {
       "date": "2026-06-11",
       "entries": [
+        {
+          "category": "Improved",
+          "message": "feat: add comparison hub and resource assets",
+          "sha": "6986a5d968a307c788a471c6e61194cfb22fec37",
+          "shortSha": "6986a5d",
+          "url": "https://github.com/BuildingTechAlternatives/OpenThorn/commit/6986a5d968a307c788a471c6e61194cfb22fec37"
+        },
+        {
+          "category": "Improved",
+          "message": "Dedupe server key operations and surface decrypt failures on Providers page",
+          "sha": "f45436918021b70f3ef9b3f330060a4ccf897ed2",
+          "shortSha": "f454369",
+          "url": "https://github.com/BuildingTechAlternatives/OpenThorn/commit/f45436918021b70f3ef9b3f330060a4ccf897ed2"
+        },
+        {
+          "category": "Improved",
+          "message": "feat(seo): add IndexNow key and submission script",
+          "sha": "39a54ccbbe2f9b97e489577019b8a0c709e0f7ab",
+          "shortSha": "39a54cc",
+          "url": "https://github.com/BuildingTechAlternatives/OpenThorn/commit/39a54ccbbe2f9b97e489577019b8a0c709e0f7ab"
+        },
+        {
+          "category": "Improved",
+          "message": "feat(seo): generate per-page OG cards at build time with satori",
+          "sha": "ba1902cf37d8aa9616cfaf588ffcfc9566117a0e",
+          "shortSha": "ba1902c",
+          "url": "https://github.com/BuildingTechAlternatives/OpenThorn/commit/ba1902cf37d8aa9616cfaf588ffcfc9566117a0e"
+        },
+        {
+          "category": "Improved",
+          "message": "feat(aeo): generate llms-full.txt with complete public site content",
+          "sha": "ec1a679f04c49c078c15be60ace02c2af260b564",
+          "shortSha": "ec1a679",
+          "url": "https://github.com/BuildingTechAlternatives/OpenThorn/commit/ec1a679f04c49c078c15be60ace02c2af260b564"
+        },
+        {
+          "category": "Improved",
+          "message": "feat(aeo): prerender, sitemap, footer, and llms.txt wiring for compare + glossary pages",
+          "sha": "343f5c7a2e08d0bed44c51146f4abd12abc987bf",
+          "shortSha": "343f5c7",
+          "url": "https://github.com/BuildingTechAlternatives/OpenThorn/commit/343f5c7a2e08d0bed44c51146f4abd12abc987bf"
+        },
+        {
+          "category": "Improved",
+          "message": "feat(aeo): add /glossary page with DefinedTermSet JSON-LD",
+          "sha": "c7e7b9487fe188cc5eb73674ff7a54c2ac78b369",
+          "shortSha": "c7e7b94",
+          "url": "https://github.com/BuildingTechAlternatives/OpenThorn/commit/c7e7b9487fe188cc5eb73674ff7a54c2ac78b369"
+        },
+        {
+          "category": "Improved",
+          "message": "feat(aeo): add /compare pages for Lovable, Bolt.new, and v0",
+          "sha": "ea2ceafda5b581e2f9808d086799430749cb4e6b",
+          "shortSha": "ea2ceaf",
+          "url": "https://github.com/BuildingTechAlternatives/OpenThorn/commit/ea2ceafda5b581e2f9808d086799430749cb4e6b"
+        },
+        {
+          "category": "Improved",
+          "message": "feat(aeo): add best-BYOK-builders listicle with ItemList JSON-LD",
+          "sha": "b6ca9830669cbd3b64b33003ef4bbcc06a1c130b",
+          "shortSha": "b6ca983",
+          "url": "https://github.com/BuildingTechAlternatives/OpenThorn/commit/b6ca9830669cbd3b64b33003ef4bbcc06a1c130b"
+        },
+        {
+          "category": "Improved",
+          "message": "feat(aeo): add two how-to guides with HowTo JSON-LD and dateModified support",
+          "sha": "9288fe07d86ab852e2403f9fbf7fd9f3a18b29c8",
+          "shortSha": "9288fe0",
+          "url": "https://github.com/BuildingTechAlternatives/OpenThorn/commit/9288fe07d86ab852e2403f9fbf7fd9f3a18b29c8"
+        },
+        {
+          "category": "Improved",
+          "message": "feat(seo): hydrate prerendered SSR markup with hydrateRoot",
+          "sha": "f3171a49e790e23d49fafe127b9f1a512be522ae",
+          "shortSha": "f3171a4",
+          "url": "https://github.com/BuildingTechAlternatives/OpenThorn/commit/f3171a49e790e23d49fafe127b9f1a512be522ae"
+        },
+        {
+          "category": "Improved",
+          "message": "feat(seo): prerender real SSR page bodies instead of hand-written snapshots",
+          "sha": "0ed4c7d987cb11c079842a1938f658b97cb660ad",
+          "shortSha": "0ed4c7d",
+          "url": "https://github.com/BuildingTechAlternatives/OpenThorn/commit/0ed4c7d987cb11c079842a1938f658b97cb660ad"
+        },
+        {
+          "category": "Improved",
+          "message": "feat(seo): add Vite SSR build entry for build-time page rendering",
+          "sha": "3184594fb1f5a160c168a18712ad75f5b9c4fd9c",
+          "shortSha": "3184594",
+          "url": "https://github.com/BuildingTechAlternatives/OpenThorn/commit/3184594fb1f5a160c168a18712ad75f5b9c4fd9c"
+        },
+        {
+          "category": "Improved",
+          "message": "feat(seo): add StaticAuthProvider for build-time SSR",
+          "sha": "21644a96e2e6d9a9b4aeb4d85ce0973997b931ce",
+          "shortSha": "21644a9",
+          "url": "https://github.com/BuildingTechAlternatives/OpenThorn/commit/21644a96e2e6d9a9b4aeb4d85ce0973997b931ce"
+        },
         {
           "category": "Fix",
           "message": "Fix OpenRouter default models",
@@ -1766,146 +1876,6 @@
           "sha": "50ab6bee215928ee28c2050e38b632b893af3128",
           "shortSha": "50ab6be",
           "url": "https://github.com/BuildingTechAlternatives/OpenThorn/commit/50ab6bee215928ee28c2050e38b632b893af3128"
-        },
-        {
-          "category": "Improved",
-          "message": "feat: 2-column dropdowns — wider, shorter, items split across left and right columns",
-          "sha": "bb50b8dbfe63a1b67d84a0fc56b73bcb266f22ff",
-          "shortSha": "bb50b8d",
-          "url": "https://github.com/BuildingTechAlternatives/OpenThorn/commit/bb50b8dbfe63a1b67d84a0fc56b73bcb266f22ff"
-        },
-        {
-          "category": "Improved",
-          "message": "feat: update Use Cases — Productivity, E-Commerce, Marketing, Finance, HR, Education, Health",
-          "sha": "eb93830cd4672d8bea0db1833728ce5e257f1417",
-          "shortSha": "eb93830",
-          "url": "https://github.com/BuildingTechAlternatives/OpenThorn/commit/eb93830cd4672d8bea0db1833728ce5e257f1417"
-        },
-        {
-          "category": "Improved",
-          "message": "feat: new Solutions dropdown — Founders, Sales, PMs, Designers, Marketers, Ops, People",
-          "sha": "65d4c3f6ca571dcdbb816a06f2e624c53a4bf68d",
-          "shortSha": "65d4c3f",
-          "url": "https://github.com/BuildingTechAlternatives/OpenThorn/commit/65d4c3f6ca571dcdbb816a06f2e624c53a4bf68d"
-        },
-        {
-          "category": "Improved",
-          "message": "feat: smooth dropdown nav — divider lines, spring-animated floating panels, click-safe refs",
-          "sha": "ad68d2e9e6b62cdc260fdc2114f0966948f9e434",
-          "shortSha": "ad68d2e",
-          "url": "https://github.com/BuildingTechAlternatives/OpenThorn/commit/ad68d2e9e6b62cdc260fdc2114f0966948f9e434"
-        },
-        {
-          "category": "Fix",
-          "message": "fix: 'your control' now white, not purple",
-          "sha": "2f9cbc7a5478be21e5a5ecd5364570d81b9e3520",
-          "shortSha": "2f9cbc7",
-          "url": "https://github.com/BuildingTechAlternatives/OpenThorn/commit/2f9cbc7a5478be21e5a5ecd5364570d81b9e3520"
-        },
-        {
-          "category": "Improved",
-          "message": "feat: polished production nav — always-visible blur backdrop, centered nav, hover pills, dropdown dot indicators",
-          "sha": "0cd65bf407478ad9e317a32ce0877ab27e0eed23",
-          "shortSha": "0cd65bf",
-          "url": "https://github.com/BuildingTechAlternatives/OpenThorn/commit/0cd65bf407478ad9e317a32ce0877ab27e0eed23"
-        },
-        {
-          "category": "Improved",
-          "message": "feat: add Use Cases dropdown to header — Landing Pages, SaaS, Portfolios, E-Commerce, Blogs",
-          "sha": "ce1a15fb472a5736a49f082c3c034e974ba05f62",
-          "shortSha": "ce1a15f",
-          "url": "https://github.com/BuildingTechAlternatives/OpenThorn/commit/ce1a15fb472a5736a49f082c3c034e974ba05f62"
-        },
-        {
-          "category": "Improved",
-          "message": "feat: SlideInButton for Get Started (expanding fill + arrow), NeumorphButton for Login (subtle inset hover)",
-          "sha": "2db8cc96d17c7e782a4de11dc559ffdca8323923",
-          "shortSha": "2db8cc9",
-          "url": "https://github.com/BuildingTechAlternatives/OpenThorn/commit/2db8cc96d17c7e782a4de11dc559ffdca8323923"
-        },
-        {
-          "category": "Fix",
-          "message": "fix: remove footnote tagline from BYOK section",
-          "sha": "2ab58dac8d409cb1cf7cff1c06ad93a139274e3e",
-          "shortSha": "2ab58da",
-          "url": "https://github.com/BuildingTechAlternatives/OpenThorn/commit/2ab58dac8d409cb1cf7cff1c06ad93a139274e3e"
-        },
-        {
-          "category": "Fix",
-          "message": "fix: remove Supabase card and references from BYOK section",
-          "sha": "0a8ffd9601b433570e2ee14374ffc55593d08e43",
-          "shortSha": "0a8ffd9",
-          "url": "https://github.com/BuildingTechAlternatives/OpenThorn/commit/0a8ffd9601b433570e2ee14374ffc55593d08e43"
-        },
-        {
-          "category": "Improved",
-          "message": "feat: 3D carousel in BYOK section — 6 feature cards rotating in 3D ring, updated copy with Supabase",
-          "sha": "578ffbccf3cc23014466aa4f881d5bd6c8d1ac74",
-          "shortSha": "578ffbc",
-          "url": "https://github.com/BuildingTechAlternatives/OpenThorn/commit/578ffbccf3cc23014466aa4f881d5bd6c8d1ac74"
-        },
-        {
-          "category": "Fix",
-          "message": "fix: remove all focus outlines and borders — no box when clicking input",
-          "sha": "95c0f45a91c7aef81357df19d403c9faffcadba4",
-          "shortSha": "95c0f45",
-          "url": "https://github.com/BuildingTechAlternatives/OpenThorn/commit/95c0f45a91c7aef81357df19d403c9faffcadba4"
-        },
-        {
-          "category": "Fix",
-          "message": "fix: replace purple focus ring with subtle gray outline",
-          "sha": "236a26bfe2621b98a2817629500add4a9ae06bd7",
-          "shortSha": "236a26b",
-          "url": "https://github.com/BuildingTechAlternatives/OpenThorn/commit/236a26bfe2621b98a2817629500add4a9ae06bd7"
-        },
-        {
-          "category": "Fix",
-          "message": "fix: remove purple focus border on input, redesign trust items as clean integrated pills",
-          "sha": "6781c2c19d819586517b296554fe6865d0ca3bcf",
-          "shortSha": "6781c2c",
-          "url": "https://github.com/BuildingTechAlternatives/OpenThorn/commit/6781c2c19d819586517b296554fe6865d0ca3bcf"
-        },
-        {
-          "category": "Fix",
-          "message": "fix: typing animation — invert paused→active logic so cycles actually run",
-          "sha": "43fb5e4041a1747c7bfc83f4ecd4c6f97f32312f",
-          "shortSha": "43fb5e4",
-          "url": "https://github.com/BuildingTechAlternatives/OpenThorn/commit/43fb5e4041a1747c7bfc83f4ecd4c6f97f32312f"
-        },
-        {
-          "category": "Fix",
-          "message": "fix: remove focus glow box, fix typing animation cycle, remove 'Ask Bloom' prompt",
-          "sha": "71942be7e3ad6a8e06d36f53d098b72c4c7fdf5a",
-          "shortSha": "71942be",
-          "url": "https://github.com/BuildingTechAlternatives/OpenThorn/commit/71942be7e3ad6a8e06d36f53d098b72c4c7fdf5a"
-        },
-        {
-          "category": "Improved",
-          "message": "feat: typing animation in input, + button, animated Build button — cycling placeholder prompts",
-          "sha": "2d4915f2e74c4a72aeb712994aaa21683723e17f",
-          "shortSha": "2d4915f",
-          "url": "https://github.com/BuildingTechAlternatives/OpenThorn/commit/2d4915f2e74c4a72aeb712994aaa21683723e17f"
-        },
-        {
-          "category": "Improved",
-          "message": "feat: switch to Roboto — single-line white headline, smaller size, cleaner typography",
-          "sha": "08f3b48ccf0b45606ed36f0e16640d47f16b250d",
-          "shortSha": "08f3b48",
-          "url": "https://github.com/BuildingTechAlternatives/OpenThorn/commit/08f3b48ccf0b45606ed36f0e16640d47f16b250d"
-        },
-        {
-          "category": "Improved",
-          "message": "feat: add FloatingParticles canvas background to hero — particle system with mouse gravity, glow, and physics",
-          "sha": "667868323b552722464caf98f3be71c5900a0267",
-          "shortSha": "6678683",
-          "url": "https://github.com/BuildingTechAlternatives/OpenThorn/commit/667868323b552722464caf98f3be71c5900a0267"
-        },
-        {
-          "category": "Fix",
-          "message": "fix: center carousel text, update to premium Unsplash images",
-          "sha": "ef62648392732e8a79aae3f2c0d0d83a4e9415d1",
-          "shortSha": "ef62648",
-          "url": "https://github.com/BuildingTechAlternatives/OpenThorn/commit/ef62648392732e8a79aae3f2c0d0d83a4e9415d1"
         }
       ]
     }

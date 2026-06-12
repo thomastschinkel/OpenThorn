@@ -17,12 +17,17 @@ Key facts:
 - [Model Pricing](https://www.openthorn.app/pricing): Live per-token cost and quality comparison across supported AI models
 - [FAQ](https://www.openthorn.app/faq): Common questions about BYOK, providers, costs, security, and data
 - [Glossary](https://www.openthorn.app/glossary): Plain-English definitions of BYOK, AI agent, token, context window, and other key terms
+- [Build with your API key](https://www.openthorn.app/build-with): Step-by-step guides for all 17 supported providers — where to get the key, recommended models, real costs
 - [OpenThorn vs Lovable](https://www.openthorn.app/compare/lovable): Honest comparison — BYOK vs credit subscription
 - [OpenThorn vs Bolt.new](https://www.openthorn.app/compare/bolt): Honest comparison — BYOK vs token packs
 - [OpenThorn vs v0](https://www.openthorn.app/compare/v0): Honest comparison — BYOK vs metered credits
+- [OpenThorn vs Framer](https://www.openthorn.app/compare/framer): Honest comparison — owned code vs hosted design platform
+- [OpenThorn vs Durable](https://www.openthorn.app/compare/durable): Honest comparison — BYOK vs small-business site subscription
+- [OpenThorn vs Wix AI](https://www.openthorn.app/compare/wix): Honest comparison — BYOK vs the hosted incumbent
 - [Best BYOK AI website builders in 2026](https://www.openthorn.app/blog/best-byok-ai-website-builders-2026): The BYOK field compared
 - [How to build a website with AI (BYOK)](https://www.openthorn.app/blog/how-to-build-a-website-with-ai-byok): Six-step guide
 - [How to get an AI API key](https://www.openthorn.app/blog/how-to-get-an-ai-api-key): OpenAI, Anthropic, and Gemini key setup
+- [Lovable vs Bolt.new vs v0: pricing compared](https://www.openthorn.app/blog/lovable-vs-bolt-vs-v0-pricing): What the big three AI builders cost in 2026, and the BYOK alternative
 - [Blog](https://www.openthorn.app/blog): Product updates and guides
 - [Changelog](https://www.openthorn.app/changelog): Every update, generated automatically from the GitHub commit history
 - [What is a BYOK AI website builder?](https://www.openthorn.app/blog/what-is-a-byok-ai-website-builder): Definition and explanation of the BYOK model

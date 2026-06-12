@@ -34,6 +34,8 @@ const FaqPage = lazy(() => import('./pages/FaqPage'))
 const ChangelogPage = lazy(() => import('./pages/ChangelogPage'))
 const CompareIndexPage = lazy(() => import('./pages/CompareIndexPage'))
 const ComparePage = lazy(() => import('./pages/ComparePage'))
+const BuildWithIndexPage = lazy(() => import('./pages/BuildWithIndexPage'))
+const BuildWithPage = lazy(() => import('./pages/BuildWithPage'))
 const GlossaryPage = lazy(() => import('./pages/GlossaryPage'))
 const ModerationPage = lazy(() => import('./pages/ModerationPage'))
 const ProfilePage = lazy(() => import('./pages/ProfilePage'))
@@ -147,6 +149,8 @@ export default function App() {
             <Route path="/changelog" element={<Layout><ChangelogPage /></Layout>} />
             <Route path="/compare" element={<Layout><CompareIndexPage /></Layout>} />
             <Route path="/compare/:slug" element={<Layout><ComparePage /></Layout>} />
+            <Route path="/build-with" element={<Layout><BuildWithIndexPage /></Layout>} />
+            <Route path="/build-with/:slug" element={<Layout><BuildWithPage /></Layout>} />
             <Route path="/glossary" element={<Layout><GlossaryPage /></Layout>} />
             <Route path="/dashboard" element={<ProtectedRoute pageName="the Dashboard"><DashboardPage /></ProtectedRoute>} />
             <Route path="/projects/:projectId" element={<ProtectedRoute pageName="your project"><ProjectBuilderPage /></ProtectedRoute>} />

@@ -1,0 +1,127 @@
+.page {
+  min-height: calc(100vh - var(--header-height));
+  padding: var(--space-3xl) var(--space-lg) var(--space-6xl);
+  position: relative;
+  overflow: hidden;
+}
+
+.page::before {
+  content: '';
+  position: absolute;
+  top: -160px;
+  left: 50%;
+  transform: translateX(-50%);
+  width: 720px;
+  height: 480px;
+  background: radial-gradient(ellipse at center, rgba(139, 92, 246, 0.1), transparent 70%);
+  pointer-events: none;
+}
+
+.container {
+  max-width: 880px;
+  margin: 0 auto;
+  position: relative;
+}
+
+.header {
+  margin-bottom: var(--space-2xl);
+  animation: pageRise 0.6s var(--ease-out-expo) both;
+}
+
+.eyebrow {
+  display: inline-block;
+  font-size: 0.7rem;
+  font-weight: 600;
+  letter-spacing: 0.18em;
+  text-transform: uppercase;
+  color: var(--color-accent);
+  margin: 0 0 var(--space-md);
+}
+
+.title {
+  font-family: var(--font-display);
+  font-size: clamp(2.2rem, 5.5vw, 3.4rem);
+  font-weight: 700;
+  color: var(--color-text);
+  margin: 0 0 var(--space-md);
+  line-height: 1.1;
+  letter-spacing: -0.02em;
+}
+
+.subtitle {
+  font-size: 1.0625rem;
+  color: var(--color-text-secondary);
+  margin: 0;
+  line-height: 1.7;
+  max-width: 640px;
+}
+
+.grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(240px, 1fr));
+  gap: var(--space-md);
+  margin-bottom: var(--space-2xl);
+  animation: pageRise 0.6s var(--ease-out-expo) 0.12s both;
+}
+
+.card {
+  display: flex;
+  align-items: center;
+  gap: var(--space-md);
+  padding: var(--space-md) var(--space-lg);
+  border: 1px solid rgba(255, 255, 255, 0.08);
+  border-radius: 12px;
+  background: rgba(255, 255, 255, 0.02);
+  text-decoration: none;
+  transition: border-color 0.2s ease, background 0.2s ease;
+}
+
+.card:hover {
+  border-color: rgba(157, 137, 251, 0.4);
+  background: rgba(255, 255, 255, 0.04);
+}
+
+.logoWrap {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 44px;
+  height: 44px;
+  border: 1px solid rgba(157, 137, 251, 0.16);
+  border-radius: 10px;
+  background: rgba(255, 255, 255, 0.04);
+  flex: 0 0 auto;
+}
+
+.logo {
+  max-width: 28px;
+  max-height: 28px;
+  object-fit: contain;
+  display: block;
+}
+
+.cardTitle {
+  font-size: 1rem;
+  font-weight: 600;
+  color: var(--color-text);
+  margin: 0;
+}
+
+.cardNote {
+  font-size: 0.8rem;
+  color: var(--color-text-secondary);
+  margin: 2px 0 0;
+}
+
+.links {
+  line-height: 1.9;
+  color: var(--color-text-secondary);
+}
+
+.links a {
+  color: var(--color-accent);
+}
+
+.links a:hover {
+  text-decoration: underline;
+}
