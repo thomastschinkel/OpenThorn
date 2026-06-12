@@ -1,7 +1,6 @@
 import { useState } from 'react'
 import { Link } from 'react-router-dom'
 import { usePageTitle } from '../lib/usePageTitle'
-import { useJsonLd } from '../lib/useJsonLd'
 import faqData from '../data/faq.json'
 import styles from './FaqPage.module.css'
 
@@ -99,18 +98,6 @@ function AccordionItem({ question, answer }: FaqItem) {
 export default function FaqPage() {
   usePageTitle('FAQ', {
     description: 'Answers to common questions about OpenThorn — how bring-your-own-key works, supported AI providers, costs, and deploying your generated site.',
-  })
-
-  useJsonLd({
-    '@context': 'https://schema.org',
-    '@type': 'FAQPage',
-    mainEntity: faqData.flatMap((category) =>
-      category.items.map((item) => ({
-        '@type': 'Question',
-        name: item.question,
-        acceptedAnswer: { '@type': 'Answer', text: item.answer },
-      }))
-    ),
   })
 
   return (
