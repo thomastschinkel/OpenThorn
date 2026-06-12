@@ -1,48 +1,59 @@
 # OpenThorn
 
-**AI-powered website builder. Describe what you want â€” get a complete, deployable website.**
+**AI website builder — bring your own API key, pay your provider directly.**
 
-OpenThorn is a bring-your-own-key (BYOK) platform that generates full, production-ready websites from natural language prompts. Users connect their own LLM provider API keys, so there are no subscriptions and no lock-in.
+[![Live](https://img.shields.io/badge/live-openthorn.app-4f46e5?style=flat-square)](https://openthorn.app)
+[![License](https://img.shields.io/badge/license-proprietary-gray?style=flat-square)](#license)
 
 ---
+
+OpenThorn is a BYOK (bring-your-own-key) AI app builder. Describe what you want in plain language; the AI agent writes the code, previews it live in-browser, and deploys a working website to Netlify. **The platform is free** — you only pay your AI provider's raw per-token rates, with no subscription and no markup.
+
+## Why OpenThorn?
+
+Most AI builders charge $25–50/month for credits that resell API access at a markup. OpenThorn flips that model: you connect your own key from any of 17 providers and pay them directly. The platform itself is free.
+
+| | OpenThorn | Others |
+|---|---|---|
+| Platform cost | Free | $25–50+/month |
+| AI billing | Pay your provider directly | Pay the platform in credits |
+| Model choice | Any of 17 providers | Platform-selected |
+| Code export | Always, no paywall | Often paywalled |
+| API key ownership | Yours | Platform-managed |
 
 ## Features
 
-- **Natural-language generation** â€” describe a website in plain language; the agent writes, bundles, and previews it in-browser
-- **Multi-provider AI** â€” connect OpenAI, Anthropic, Google Gemini, DeepSeek, Mistral, Groq, Together AI, xAI, Cohere, Perplexity, OpenRouter, Ollama, Fireworks, Cerebras, Azure OpenAI, Amazon Bedrock, or Nvidia NIM
-- **Live preview** â€” instant in-browser preview powered by esbuild-wasm (no server round-trip)
-- **One-click deploy** â€” publish directly to Netlify via the integrated deployment API
-- **Real-time collaboration** â€” multiplayer editing with presence indicators (Supabase Realtime)
-- **Encrypted key storage** â€” API keys are encrypted at rest with AES-256-GCM and never exposed to the client
-- **Templates & community** â€” start from curated templates or browse community-published projects
+- **17 AI providers** — OpenAI, Anthropic, Google Gemini, DeepSeek, Mistral, Groq, Together AI, xAI, Cohere, Perplexity, OpenRouter, Ollama, Fireworks AI, Cerebras, Azure OpenAI, Amazon Bedrock, NVIDIA NIM
+- **In-browser preview** — generated code bundled with esbuild-wasm and rendered live; no server round-trip, no build wait
+- **One-click Netlify deploy** — from preview to public URL without leaving the app
+- **Full code export** — download the generated source at any point; no proprietary format, no paywall
+- **Multi-provider fallback** — if one provider hits a rate limit, the agent switches automatically and continues mid-run
+- **Real-time collaboration** — multiplayer presence via Supabase Realtime
+- **Encrypted key storage** — provider API keys are encrypted at rest with AES-256-GCM; raw keys never reach the client
+- **Templates & community** — start from curated templates or browse community-published projects
 
----
-
-## Tech Stack
+## Tech stack
 
 | Layer | Technology |
 |---|---|
-| Frontend | React 19, TypeScript, React Router v7, Vite 6 |
-| Styling | CSS Modules, Framer Motion |
-| Auth & Database | Supabase (PostgreSQL, Auth, Realtime, Storage) |
-| AI agent | Custom agent runtime (`src/lib/agent.ts`) |
-| In-browser bundler | esbuild-wasm |
+| Frontend | React 19, TypeScript, Vite 6, CSS Modules, Framer Motion |
+| Routing | React Router v7 |
+| Auth / Database | Supabase (Postgres + RLS, Realtime, Storage) |
 | Serverless API | Vercel Functions |
-| User site hosting | Netlify |
+| In-browser bundler | esbuild-wasm |
+| Deployment target | Netlify |
 | Rate limiting | Upstash Redis (optional) |
 
----
-
-## Getting Started
+## Getting started
 
 ### Prerequisites
 
 - Node.js 20+
 - A [Supabase](https://supabase.com) project
 - A [Netlify](https://app.netlify.com/user/applications) personal access token
-- At least one LLM provider API key (added in-app after sign-up)
+- A [Vercel](https://vercel.com) project for the API functions
 
-### Installation
+### 1. Clone and install
 
 ```bash
 git clone https://github.com/BuildingTechAlternatives/OpenThorn.git
@@ -50,9 +61,7 @@ cd OpenThorn
 npm install
 ```
 
-### Environment Variables
-
-Copy the example file and fill in your values:
+### 2. Configure environment variables
 
 ```bash
 cp .env.example .env
@@ -65,113 +74,79 @@ cp .env.example .env
 | `SUPABASE_URL` | Yes | Supabase project URL (server) |
 | `SUPABASE_ANON_KEY` | Yes | Supabase anon key (server) |
 | `NETLIFY_TOKEN` | Yes | Netlify personal access token |
-| `KEY_ENCRYPTION_SECRET` | Yes | 48-byte secret for API key encryption â€” generate with `openssl rand -base64 48` |
+| `KEY_ENCRYPTION_SECRET` | Yes | 48-byte secret — generate with `openssl rand -base64 48` |
 | `UPSTASH_REDIS_REST_URL` | No | Upstash Redis URL for production rate limiting |
 | `UPSTASH_REDIS_REST_TOKEN` | No | Upstash Redis token |
 
-### Database Setup
-
-Apply the Supabase migrations:
+### 3. Apply the database schema
 
 ```bash
 supabase db push
 ```
 
-Or apply the SQL files in `supabase/migrations/` manually through the Supabase dashboard, in order.
+Migrations live in `supabase/migrations/` and must be applied in order. All tables use Row Level Security.
 
-### Development
+### 4. Run
 
 ```bash
-npm run dev
+npm run dev       # http://localhost:5173
 ```
 
-Starts Vite on `http://localhost:5173` with local API shims for the serverless functions.
+The dev server includes shims for `/api/*` so the full stack works locally without deploying to Vercel.
 
----
+### Other commands
 
-## Available Scripts
-
-| Script | Description |
-|---|---|
-| `npm run dev` | Start development server with HMR |
-| `npm run build` | Type-check and build for production |
-| `npm run preview` | Preview the production build locally |
-| `npm run lint` | Run ESLint |
-| `npm run test` | Run Vitest unit tests |
-
----
-
-## Project Structure
-
-```
-â”œâ”€â”€ src/
-â”‚   â”œâ”€â”€ components/        # Reusable UI components
-â”‚   â”œâ”€â”€ pages/             # Route-level pages (code-split)
-â”‚   â”œâ”€â”€ lib/               # Core utilities
-â”‚   â”‚   â”œâ”€â”€ agent.ts       # AI agent orchestration
-â”‚   â”‚   â”œâ”€â”€ crypto.ts      # AES-256-GCM key encryption
-â”‚   â”‚   â”œâ”€â”€ deploy.ts      # Netlify deployment client
-â”‚   â”‚   â””â”€â”€ preview-bundle.ts  # In-browser esbuild bundler
-â”‚   â””â”€â”€ data/              # Static content (blog posts)
-â”œâ”€â”€ api/
-â”‚   â”œâ”€â”€ _shared.ts         # JWT verification, rate limiting, encryption
-â”‚   â”œâ”€â”€ deploy-netlify.ts  # Netlify deployment endpoint
-â”‚   â””â”€â”€ provider-keys.ts   # API key storage endpoint
-â”œâ”€â”€ supabase/
-â”‚   â””â”€â”€ migrations/        # Database schema migrations
-â”œâ”€â”€ public/                # Static assets and provider logos
-â”œâ”€â”€ docs/                  # Security documentation
-â”œâ”€â”€ vercel.json            # Vercel deployment config (SPA routing + security headers)
-â””â”€â”€ .env.example           # Environment variable template
+```bash
+npm run build     # type-check + Vite build + SSR prerender
+npm run test      # Vitest
+npm run lint      # ESLint
+npm run preview   # serve the production build locally
 ```
 
----
+## Project structure
+
+```
+api/
+  _shared.ts          JWT verification, rate limiting, AES-256-GCM encryption
+  deploy-netlify.ts   Netlify deployment endpoint
+  provider-keys.ts    API key storage endpoint
+src/
+  components/         UI components with co-located CSS Modules
+  pages/              Route-level page components (all lazy-loaded except landing)
+  lib/
+    agent.ts          AI agent loop (~2,400 lines) — the core of the product
+    agent-prompt.ts   System prompt, tool definitions, thinking params per provider
+    agent-plan.ts     Persistent plan/requirements checklist
+    agent-memory.ts   Cross-session lessons and changelog entries
+    preview-bundle.ts In-browser esbuild-wasm bundler
+    preview-runtime-check.ts  Smoke tests against the preview iframe
+  data/               Static JSON (FAQ, blog metadata, glossary, comparisons)
+supabase/
+  migrations/         Ordered SQL migrations
+scripts/              Build-time scripts (prerender, OG images, IndexNow, changelog)
+```
 
 ## Deployment
 
-The project deploys on **Vercel** with the configuration in `vercel.json`.
+The app deploys on **Vercel**. `vercel.json` includes SPA rewrites and a strict Content Security Policy.
 
-### Deploy to Vercel
+1. Import the repo in the [Vercel dashboard](https://vercel.com/new)
+2. Set all required environment variables under **Project > Settings > Environment Variables**
+3. Deploy — Vercel runs `npm run build` automatically
 
-1. Import the repository in the [Vercel dashboard](https://vercel.com/new)
-2. Set all required environment variables under **Project â†’ Settings â†’ Environment Variables**
-3. Deploy â€” Vercel will run `npm run build` automatically
-
-### Security Headers
-
-`vercel.json` configures production security headers on every response:
-
-- `Strict-Transport-Security` (HSTS, 1-year max-age)
-- `X-Frame-Options: DENY`
-- `X-Content-Type-Options: nosniff`
-- `Referrer-Policy: strict-origin-when-cross-origin`
-- `Content-Security-Policy` (strict allowlist â€” self, fonts, esm.sh, blob:, wss:)
-- `Permissions-Policy` (camera, microphone, geolocation disabled)
-
----
+User-generated sites deploy to Netlify via the `/api/deploy-netlify` endpoint using a shared platform token; end users do not need a Netlify account.
 
 ## Security
 
-- **Encrypted keys** â€” provider API keys are encrypted with AES-256-GCM before storage; the raw key never leaves the server
-- **Row-level security** â€” all Supabase tables are protected by PostgreSQL RLS policies
-- **Server-side JWT verification** â€” every API call validates the Supabase JWT before processing
-- **Rate limiting** â€” per-user, per-endpoint limits (in-memory in development; Upstash Redis in production)
-- **No source maps** â€” production builds omit source maps
-
-See `docs/security-csp.md` for Content Security Policy details.
-
----
-
-## Contributing
-
-1. Fork the repository
-2. Create a feature branch: `git checkout -b feature/your-feature`
-3. Commit your changes: `git commit -m "feat: add your feature"`
-4. Push to the branch: `git push origin feature/your-feature`
-5. Open a pull request
-
----
+- **Encrypted keys** — provider API keys encrypted with AES-256-GCM; the raw key is never stored or returned to the client
+- **Row-level security** — every Supabase table is protected by PostgreSQL RLS policies
+- **JWT verification** — every API call validates the Supabase JWT server-side before processing
+- **Rate limiting** — per-user, per-endpoint limits (in-memory in dev; Upstash Redis in production)
+- **Strict CSP** — allowlists only `self`, fonts, `esm.sh`, `blob:`, and `wss:`; no inline scripts
+- **No source maps** in production builds
 
 ## License
 
-This project is proprietary. All rights reserved.
+Copyright (c) 2026 Thomas Tschinkel. All rights reserved.
+
+This source code is made available for reference and educational purposes. You may not use it to operate a competing commercial service without written permission.
