@@ -335,3 +335,85 @@ export async function runNetlifyDeploy(input: DeployInput): Promise<{ url: strin
   const url = await deployToNetlifySite(token, siteId, input.html)
   return { url, siteId }
 }
+
+// ---------------------------------------------------------------------------
+// Admin operations (service role)
+//
+// Used by api/admin.ts and the matching vite dev shim. The service role key
+// must never reach the client; these helpers run only server-side. The
+// caller's admin status is always re-checked here via the database — the
+// client is never trusted.
+// ---------------------------------------------------------------------------
+
+const UUID_RE = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i
+
+export function isValidUserId(id: string): boolean {
+  return UUID_RE.test(id)
+}
+
+function serviceRoleKey(): string | null {
+  return process.env.SUPABASE_SERVICE_ROLE_KEY || null
+}
+
+export function hasServiceRoleKey(): boolean {
+  return Boolean(serviceRoleKey())
+}
+
+function serviceHeaders(key: string): Record<string, string> {
+  return { apikey: key, Authorization: `Bearer ${key}`, 'Content-Type': 'application/json' }
+}
+
+/** True only when the given user's profile row has is_admin = true. */
+export async function isAdminUser(userId: string): Promise<boolean> {
+  const env = supabaseEnv()
+  const key = serviceRoleKey()
+  if (!env || !key || !isValidUserId(userId)) return false
+  try {
+    const res = await fetch(
+      `${env.url}/rest/v1/profiles?id=eq.${userId}&select=is_admin&limit=1`,
+      { headers: { ...serviceHeaders(key), Accept: 'application/json' } },
+    )
+    if (!res.ok) return false
+    const rows = (await res.json()) as Array<{ is_admin?: boolean }>
+    return Boolean(rows?.[0]?.is_admin)
+  } catch {
+    return false
+  }
+}
+
+/** Ban or unban a user at the auth level and mirror the flag on profiles. */
+export async function adminSetUserSuspended(userId: string, suspended: boolean): Promise<void> {
+  const env = supabaseEnv()
+  const key = serviceRoleKey()
+  if (!env || !key) throw new Error('Service role not configured')
+  if (!isValidUserId(userId)) throw new Error('Invalid user id')
+
+  const res = await fetch(`${env.url}/auth/v1/admin/users/${userId}`, {
+    method: 'PUT',
+    headers: serviceHeaders(key),
+    // "none" lifts the ban; 876000h ≈ 100 years.
+    body: JSON.stringify({ ban_duration: suspended ? '876000h' : 'none' }),
+  })
+  if (!res.ok) throw new Error(`Auth admin error ${res.status}`)
+
+  const mirror = await fetch(`${env.url}/rest/v1/profiles?id=eq.${userId}`, {
+    method: 'PATCH',
+    headers: { ...serviceHeaders(key), Prefer: 'return=minimal' },
+    body: JSON.stringify({ suspended }),
+  })
+  if (!mirror.ok) throw new Error(`Profile update error ${mirror.status}`)
+}
+
+/** Permanently delete a user. The profiles row cascades via its FK. */
+export async function adminDeleteUser(userId: string): Promise<void> {
+  const env = supabaseEnv()
+  const key = serviceRoleKey()
+  if (!env || !key) throw new Error('Service role not configured')
+  if (!isValidUserId(userId)) throw new Error('Invalid user id')
+
+  const res = await fetch(`${env.url}/auth/v1/admin/users/${userId}`, {
+    method: 'DELETE',
+    headers: serviceHeaders(key),
+  })
+  if (!res.ok) throw new Error(`Auth admin error ${res.status}`)
+}
