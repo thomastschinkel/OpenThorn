@@ -2428,7 +2428,7 @@ export default function ProjectBuilderPage() {
                     void supabase.from('projects').update({ selected_model: model }).eq('id', projectId)
                   }
                 }}
-                onSubmit={(nextPrompt, selectedModel, thinkingLevel) => handleAgentRequest(nextPrompt, selectedModel, thinkingLevel)}
+                onSubmit={(nextPrompt, selectedModel, thinkingLevel) => { void handleAgentRequest(nextPrompt, selectedModel, thinkingLevel) }}
               />
             )}
           </div>
