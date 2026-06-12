@@ -10,6 +10,11 @@ import {
   encryptForUser,
   decryptForUser,
   hasEncryptionSecret,
+  isAdminUser,
+  isValidUserId,
+  hasServiceRoleKey,
+  adminSetUserSuspended,
+  adminDeleteUser,
 } from './api/_shared'
 
 async function readJsonBody<T>(req: IncomingMessage): Promise<T | Record<string, never>> {
@@ -39,6 +44,7 @@ export default defineConfig(({ mode, isSsrBuild }) => {
   process.env.SUPABASE_ANON_KEY ||= env.SUPABASE_ANON_KEY || env.VITE_SUPABASE_ANON_KEY
   process.env.NETLIFY_TOKEN ||= env.NETLIFY_TOKEN || env.VITE_NETLIFY_TOKEN
   if (env.KEY_ENCRYPTION_SECRET) process.env.KEY_ENCRYPTION_SECRET ||= env.KEY_ENCRYPTION_SECRET
+  if (env.SUPABASE_SERVICE_ROLE_KEY) process.env.SUPABASE_SERVICE_ROLE_KEY ||= env.SUPABASE_SERVICE_ROLE_KEY
 
   return {
     plugins: [
@@ -85,6 +91,33 @@ export default defineConfig(({ mode, isSsrBuild }) => {
               sendJson(res, 200, { result })
             } catch {
               sendJson(res, 500, { error: 'Key operation failed' })
+            }
+          })
+
+          server.middlewares.use('/api/admin', async (req, res) => {
+            if (req.method !== 'POST') return sendJson(res, 405, { error: 'Method not allowed' })
+            if (!hasServiceRoleKey()) return sendJson(res, 503, { error: 'Admin operations not configured' })
+            try {
+              const user = await verifyUser(req.headers.authorization)
+              if (!user) return sendJson(res, 401, { error: 'Unauthorized' })
+              if (!(await rateLimit(`admin:${user.id}`, 30, 60_000))) return sendJson(res, 429, { error: 'Too many requests' })
+              if (!(await isAdminUser(user.id))) return sendJson(res, 403, { error: 'Forbidden' })
+              const body = await readJsonBody<{ action?: string; userId?: string }>(req)
+              const action = body.action
+              const userId = body.userId
+              const allowed = action === 'suspend-user' || action === 'unsuspend-user' || action === 'delete-user'
+              if (!allowed || typeof userId !== 'string' || !isValidUserId(userId)) {
+                return sendJson(res, 400, { error: 'Invalid request' })
+              }
+              if (userId === user.id) {
+                return sendJson(res, 400, { error: 'You cannot perform this action on your own account' })
+              }
+              if (action === 'suspend-user') await adminSetUserSuspended(userId, true)
+              else if (action === 'unsuspend-user') await adminSetUserSuspended(userId, false)
+              else await adminDeleteUser(userId)
+              sendJson(res, 200, { ok: true })
+            } catch (err) {
+              sendJson(res, 500, { error: err instanceof Error ? err.message : 'Admin action failed' })
             }
           })
         },
