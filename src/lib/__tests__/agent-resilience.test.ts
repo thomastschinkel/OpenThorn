@@ -4,8 +4,15 @@ import {
   parseRetryAfter,
   emptyUsage,
   addUsage,
+  isContinuationRequest,
+  isLikelyBuildRequest,
+  mergePromptRequirementsIntoPlan,
+  shouldRunVisualReviewForRun,
+  shouldRejectWholeFileRewrite,
+  supportsVisualReview,
   type RunUsage,
 } from '../agent'
+import { applyPlanUpdate, createPlan, unmetRequirements } from '../agent-plan'
 
 describe('isRetryableStatus', () => {
   it('retries timeouts, rate limits, and server errors', () => {
@@ -81,5 +88,89 @@ describe('usage accounting', () => {
   it('addUsage with undefined delta returns the total unchanged', () => {
     const a = emptyUsage()
     expect(addUsage(a, undefined)).toEqual(a)
+  })
+})
+
+describe('agent request planning helpers', () => {
+  it('recognizes continuation prompts narrowly', () => {
+    expect(isContinuationRequest('continue')).toBe(true)
+    expect(isContinuationRequest('Keep going!')).toBe(true)
+    expect(isContinuationRequest('continue the dark mode implementation')).toBe(false)
+  })
+
+  it('distinguishes build requests from questions about building', () => {
+    expect(isLikelyBuildRequest('Can you add a double-jump power-up?')).toBe(true)
+    expect(isLikelyBuildRequest('what can you build?')).toBe(false)
+    expect(isLikelyBuildRequest('how does the build process work?')).toBe(false)
+  })
+
+  it('adds current refine requirements to an existing completed plan', () => {
+    const oldPlan = applyPlanUpdate(createPlan('Build a game with score'), {
+      check: [1, 2],
+    })
+    const next = mergePromptRequirementsIntoPlan(
+      oldPlan,
+      'Add a sound effect toggle for jumps and collisions',
+      'refine',
+    )
+
+    expect(next.items.length).toBeGreaterThan(oldPlan.items.length)
+    expect(unmetRequirements(next).map((item) => item.text).join(' ').toLowerCase()).toContain(
+      'sound effect toggle',
+    )
+  })
+
+  it('does not invent requirements for a plain continuation', () => {
+    const plan = createPlan('Add crouching')
+    const next = mergePromptRequirementsIntoPlan(plan, 'continue', 'refine')
+    expect(next.items).toEqual(plan.items)
+  })
+
+  it('runs visual review only when the provider and task support it', () => {
+    expect(supportsVisualReview('deepseek', 'deepseek-chat')).toBe(false)
+    expect(supportsVisualReview('anthropic', 'claude-sonnet-4-5')).toBe(true)
+    expect(supportsVisualReview('openai', 'gpt-4o')).toBe(true)
+
+    expect(shouldRunVisualReviewForRun({
+      goal: 'Add screen shake on collision',
+      mode: 'refine',
+      mutatedPaths: ['src/components/Game.tsx'],
+      providerId: 'deepseek',
+      modelId: 'deepseek-chat',
+    })).toBe(false)
+    expect(shouldRunVisualReviewForRun({
+      goal: 'Improve the mobile layout',
+      mode: 'refine',
+      mutatedPaths: ['src/styles/theme.css'],
+      providerId: 'anthropic',
+      modelId: 'claude-sonnet-4-5',
+    })).toBe(true)
+  })
+
+  it('guards long whole-file rewrites on small refine requests', () => {
+    const existingCode = Array.from({ length: 220 }, (_, i) => `const a${i} = ${i}`).join('\n')
+    const newCode = Array.from({ length: 230 }, (_, i) => `const b${i} = ${i}`).join('\n')
+
+    expect(shouldRejectWholeFileRewrite({
+      mode: 'refine',
+      prompt: 'Add a double-jump power-up',
+      existingCode,
+      newCode,
+      alreadyRejected: false,
+    })).toBe(true)
+    expect(shouldRejectWholeFileRewrite({
+      mode: 'refine',
+      prompt: 'Add a double-jump power-up',
+      existingCode,
+      newCode,
+      alreadyRejected: true,
+    })).toBe(false)
+    expect(shouldRejectWholeFileRewrite({
+      mode: 'create',
+      prompt: 'Build a dino game',
+      existingCode,
+      newCode,
+      alreadyRejected: false,
+    })).toBe(false)
   })
 })

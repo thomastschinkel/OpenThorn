@@ -592,7 +592,7 @@ function normalizeAgentSuggestions(items: string[]): string[] {
 function formatToolLabel(name: string, input?: Record<string, unknown>): string {
   switch (name) {
     case 'think':
-      return 'Planning approach'
+      return 'Thinking'
     case 'list_files':
       return 'Checking project files'
     case 'read_file':
@@ -621,7 +621,7 @@ function formatToolLabel(name: string, input?: Record<string, unknown>): string 
 function formatToolDetail(name: string, input?: Record<string, unknown>): string {
   switch (name) {
     case 'think':
-      return String(input?.thought ?? '').slice(0, 100)
+      return ''
     case 'write_file':
       return `${input?.language || 'tsx'} - ${formatCharCount(String(input?.code ?? '').length)}`
     case 'edit_file':
@@ -709,6 +709,7 @@ const INTERNAL_AGENT_FILES = new Set([
   'src/lib/CHANGELOG.md',
   'src/lib/lessons.md',
 ])
+const CHAT_SAVE_INTERVAL_MS = 750
 
 function visibleProjectFiles(files: AgentCodeFile[]): AgentCodeFile[] {
   return files.filter((f) => !INTERNAL_AGENT_FILES.has(f.path))
@@ -833,7 +834,12 @@ export default function ProjectBuilderPage() {
   const isTemplateProjectRef = useRef(Boolean(state.isTemplate))
   const templateNameRef = useRef(state.templateName ?? '')
   const resumePromptRef = useRef<string | null>(null)
+  const resumeModeRef = useRef<'create' | 'refine'>('refine')
   const previewFrameRef = useRef<HTMLIFrameElement>(null)
+  // Throttle + ordering state for persisting chat/files snapshots to Supabase.
+  const lastChatSaveRef = useRef(0)
+  const chatSaveChainRef = useRef<Promise<void>>(Promise.resolve())
+  const filesSaveChainRef = useRef<Promise<void>>(Promise.resolve())
 
   const activeCodeFile = projectFiles.find((file) => file.path === activeFile) ?? projectFiles[0] ?? EMPTY_CODE_FILE
   const userInitial = user?.user_metadata?.full_name?.charAt(0).toUpperCase() ?? user?.email?.charAt(0).toUpperCase() ?? 'U'
@@ -983,6 +989,12 @@ export default function ProjectBuilderPage() {
             : savedChat
           setMessages(cleaned)
           resumePromptRef.current = lastUserMsg.content as string
+          // Interrupted initial build (no files landed yet) restarts in create
+          // mode; once partial files exist the re-run continues as a refine.
+          resumeModeRef.current =
+            (Array.isArray(existing?.files) && (existing.files as AgentCodeFile[]).length > 0)
+              ? 'refine'
+              : 'create'
           isResumingRef.current = true
           setReconnecting(true)
           initialAgentStartedRef.current = true // block auto-start from racing with resume
@@ -990,10 +1002,13 @@ export default function ProjectBuilderPage() {
           // Nothing to resume from — at least clear the stuck spinners so nothing spins forever.
           setMessages(sanitizeChatTimelines(savedChat))
         }
-        // Clear the flag so a second reload doesn't attempt resume again
-        void supabase.from('projects').update({ generating: false, generating_by: null }).eq('id', projectId)
       } else if (savedChat) {
         setMessages(sanitizeChatTimelines(savedChat))
+      }
+      // Clear the interruption flag even when there was no chat to resume from,
+      // so a stale `generating` never survives into the next session.
+      if (wasInterrupted) {
+        void supabase.from('projects').update({ generating: false, generating_by: null }).eq('id', projectId)
       }
       setChatHistoryLoaded(true)
 
@@ -1144,8 +1159,11 @@ export default function ProjectBuilderPage() {
     }
   }, [previewStatus, previewHtml])
 
-  // Build live preview whenever the agent updates files
+  // Build live preview when files change, but only between agent iterations
+  // (not on every mid-run 'files' event — the final setAgentRunning(false) re-triggers this)
   useEffect(() => {
+    if (agentRunning) return
+
     let cancelled = false
 
     const build = async () => {
@@ -1179,29 +1197,29 @@ export default function ProjectBuilderPage() {
     build()
 
     return () => { cancelled = true }
-  }, [projectFiles])
+  }, [projectFiles, agentRunning])
 
   // Persist files to Supabase when they change (after agent has started)
   useEffect(() => {
     if (!user || !projectId || !firstRunComplete || isViewOnly) return
 
-    const saveFiles = async () => {
-      try {
+    filesSaveChainRef.current = filesSaveChainRef.current
+      .then(async () => {
         const { error } = await supabase
           .from('projects')
           .update({ files: projectFiles as unknown as Record<string, unknown>[] })
           .eq('id', projectId)
 
         if (error) throw error
-      } catch (error) {
-        logError('ProjectSaveFiles', error)
-      }
-    }
-
-    saveFiles()
+      })
+      .catch((error) => logError('ProjectSaveFiles', error))
   }, [projectFiles, user, projectId, firstRunComplete, isViewOnly])
 
-  // Persist chat history to Supabase when messages change
+  // Persist chat history to Supabase when messages change. During a run the
+  // messages update on every streamed token, so the writes are throttled
+  // (trailing, latest-wins) and serialized through a promise chain — parallel
+  // HTTP updates can complete out of order and persist a stale chat, which a
+  // later page reload would then restore.
   useEffect(() => {
     if (!user || !projectId || !chatHistoryLoaded || isViewOnly) return
 
@@ -1209,20 +1227,21 @@ export default function ProjectBuilderPage() {
     const hasAssistantMessages = messages.some((m) => m.role === 'assistant')
     if (!hasAssistantMessages) return
 
-    const saveChat = async () => {
-      try {
-        const { error } = await supabase
-          .from('projects')
-          .update({ chat_history: messages as unknown as Record<string, unknown>[] })
-          .eq('id', projectId)
+    const wait = Math.max(0, CHAT_SAVE_INTERVAL_MS - (Date.now() - lastChatSaveRef.current))
+    const timer = setTimeout(() => {
+      lastChatSaveRef.current = Date.now()
+      chatSaveChainRef.current = chatSaveChainRef.current
+        .then(async () => {
+          const { error } = await supabase
+            .from('projects')
+            .update({ chat_history: messages as unknown as Record<string, unknown>[] })
+            .eq('id', projectId)
+          if (error) throw error
+        })
+        .catch((error) => logError('ProjectSaveChat', error))
+    }, wait)
 
-        if (error) throw error
-      } catch (error) {
-        logError('ProjectSaveChat', error)
-      }
-    }
-
-    saveChat()
+    return () => clearTimeout(timer)
   }, [messages, user, projectId, chatHistoryLoaded, isViewOnly])
 
   // Save preview HTML to Supabase Storage when preview is ready
@@ -1630,15 +1649,31 @@ export default function ProjectBuilderPage() {
       pushTimeline({ type: 'status', text: trimmed, statusTone: tone })
     }
 
-    // Find and update the last tool call event by label
+    // Find and update the last matching tool call event by label.
     const updateLastToolCall = (label: string, patch: Partial<TimelineEvent>) => {
       for (let i = timeline.length - 1; i >= 0; i--) {
         if (timeline[i].type === 'tool_call' && timeline[i].toolLabel === label) {
           timeline[i] = { ...timeline[i], ...patch }
           updateAssistantMessage(assistantId, { timeline: [...timeline] })
-          return
+          return true
         }
       }
+      return false
+    }
+
+    const replaceLastToolCall = (label: string, replacement: Omit<TimelineEvent, 'id' | 'timestamp'>) => {
+      for (let i = timeline.length - 1; i >= 0; i--) {
+        if (timeline[i].type === 'tool_call' && timeline[i].toolLabel === label) {
+          timeline[i] = {
+            ...replacement,
+            id: timeline[i].id,
+            timestamp: timeline[i].timestamp,
+          }
+          updateAssistantMessage(assistantId, { timeline: [...timeline] })
+          return true
+        }
+      }
+      return false
     }
 
     const controller = new AbortController()
@@ -1692,17 +1727,23 @@ export default function ProjectBuilderPage() {
             }
           }
 
+          // Model is generating — update the status label live so it shows the
+          // step currently being produced instead of the previous (finished) one.
+          if (event.type === 'generating') {
+            setAgentStatus(event.toolName ? formatToolLabel(event.toolName, event.toolInput) : 'Thinking...')
+          }
+
           // Tool call started
           if (event.type === 'tool_start' && event.toolName) {
             const label = formatToolLabel(event.toolName, event.toolInput)
-            // Complete any running tool calls
-            for (let i = timeline.length - 1; i >= 0; i--) {
-              if (timeline[i].type === 'tool_call' && timeline[i].toolStatus === 'running') {
-                timeline[i] = { ...timeline[i], toolStatus: 'done' }
-              }
-            }
             if (event.toolName === 'think') {
-              // Don't show as tool call — will show as thinking when result arrives
+              pushTimeline({
+                type: 'tool_call',
+                toolLabel: label,
+                toolStatus: 'running',
+                toolDetail: formatToolDetail(event.toolName, event.toolInput),
+              })
+              // Replaced with the collapsed thinking block when the result arrives.
             } else {
               pushTimeline({
                 type: 'tool_call',
@@ -1717,12 +1758,28 @@ export default function ProjectBuilderPage() {
           // Tool result
           if (event.type === 'tool_result' && event.toolName) {
             if (event.toolName === 'think') {
-              // Show as thinking block in the timeline
-              pushTimeline({
-                type: 'thinking',
-                thought: event.toolResult || '',
-                thinkingCollapsed: true,
-              })
+              const label = formatToolLabel(event.toolName, event.toolInput)
+              if (event.toolError) {
+                updateLastToolCall(label, {
+                  toolStatus: 'error',
+                  toolDetail: formatToolResultDetail(event.toolName, event.toolResult, event.toolError),
+                })
+              } else if (event.toolResult?.trim()) {
+                const replaced = replaceLastToolCall(label, {
+                  type: 'thinking',
+                  thought: event.toolResult,
+                  thinkingCollapsed: true,
+                })
+                if (!replaced) {
+                  pushTimeline({
+                    type: 'thinking',
+                    thought: event.toolResult,
+                    thinkingCollapsed: true,
+                  })
+                }
+              } else {
+                updateLastToolCall(label, { toolStatus: 'done' })
+              }
             } else {
               const label = formatToolLabel(event.toolName, event.toolInput)
               updateLastToolCall(label, {
@@ -1832,7 +1889,10 @@ export default function ProjectBuilderPage() {
     // Keep `reconnecting` true until handleAgentRequest flips agentRunning on, so the UI
     // shows "Reconnecting…" continuously instead of flickering back to the idle prompt.
     const timer = setTimeout(() => {
-      void handleAgentRequestRef.current?.(pending, activeModel, activeThinkingLevel, { reuseInitialUser: true })
+      void handleAgentRequestRef.current?.(pending, activeModel, activeThinkingLevel, {
+        reuseInitialUser: true,
+        mode: resumeModeRef.current,
+      })
     }, 100)
     return () => clearTimeout(timer)
     // eslint-disable-next-line react-hooks/exhaustive-deps
@@ -1886,6 +1946,11 @@ export default function ProjectBuilderPage() {
       return next
     })
   }, [])
+
+  // Files now stream in turn by turn while the agent works, so half-built
+  // projects routinely fail to compile mid-run. Present those failures as
+  // "still building" — only a compile error that survives the run is real.
+  const effectivePreviewStatus = previewStatus === 'error' && agentRunning ? 'building' : previewStatus
 
   if (loading) return null
 
@@ -2502,7 +2567,7 @@ export default function ProjectBuilderPage() {
                       <span />
                     </div>
                     <span className={styles.previewState}>
-                      {!firstRunComplete ? (reconnecting ? 'Reconnecting…' : agentRunning ? 'Agent working' : 'Waiting for build') : previewStatus === 'building' ? 'Building...' : previewStatus === 'error' ? 'Build failed' : previewStatus === 'ready' ? 'Live preview' : 'Waiting for build'}
+                      {!firstRunComplete ? (reconnecting ? 'Reconnecting…' : agentRunning ? 'Agent working' : 'Waiting for build') : effectivePreviewStatus === 'building' ? 'Building...' : effectivePreviewStatus === 'error' ? 'Build failed' : effectivePreviewStatus === 'ready' ? 'Live preview' : 'Waiting for build'}
                     </span>
                   </div>
 
@@ -2522,7 +2587,7 @@ export default function ProjectBuilderPage() {
                     </div>
                   )}
 
-                  {firstRunComplete && previewStatus === 'building' && !lastReadyHtml && (
+                  {firstRunComplete && effectivePreviewStatus === 'building' && !lastReadyHtml && (
                     <div className={styles.previewEmpty}>
                       <div className={styles.previewMark}>
                         <img src="/assets/logo.png" alt="" />
@@ -2536,7 +2601,7 @@ export default function ProjectBuilderPage() {
                     </div>
                   )}
 
-                  {firstRunComplete && previewStatus === 'error' && (
+                  {firstRunComplete && effectivePreviewStatus === 'error' && (
                     <div className={styles.previewEmpty}>
                       <div className={styles.previewMark}>
                         <img src="/assets/logo.png" alt="" />
@@ -2566,7 +2631,7 @@ export default function ProjectBuilderPage() {
                     </div>
                   )}
 
-                  {firstRunComplete && (previewStatus === 'ready' || (previewStatus === 'building' && lastReadyHtml)) && (
+                  {firstRunComplete && (effectivePreviewStatus === 'ready' || (effectivePreviewStatus === 'building' && lastReadyHtml)) && (
                     <div
                       className={styles.previewRebuild}
                       onPointerDown={(e) => {
@@ -2592,7 +2657,7 @@ export default function ProjectBuilderPage() {
                         previewFrameRef.current?.contentWindow?.focus()
                       }}
                     >
-                      {previewStatus === 'building' && <div className={styles.rebuildOverlay} />}
+                      {effectivePreviewStatus === 'building' && <div className={styles.rebuildOverlay} />}
                       <iframe
                         ref={previewFrameRef}
                         className={styles.previewFrame}

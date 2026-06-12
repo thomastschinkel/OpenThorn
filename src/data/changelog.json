@@ -6,6 +6,34 @@
       "entries": [
         {
           "category": "Fix",
+          "message": "fix(agent): show error reason when switching providers mid-run",
+          "sha": "a396f7f0e2370e2459b1b193e31995da6675baed",
+          "shortSha": "a396f7f",
+          "url": "https://github.com/BuildingTechAlternatives/OpenThorn/commit/a396f7f0e2370e2459b1b193e31995da6675baed"
+        },
+        {
+          "category": "Fix",
+          "message": "fix(builder): clear prompt input immediately on submit instead of after agent run",
+          "sha": "376a33d5a3f973a762095cfbc1388b6986b14caa",
+          "shortSha": "376a33d",
+          "url": "https://github.com/BuildingTechAlternatives/OpenThorn/commit/376a33d5a3f973a762095cfbc1388b6986b14caa"
+        },
+        {
+          "category": "Fix",
+          "message": "fix(agent): capture and replay DeepSeek reasoning_content across turns",
+          "sha": "116df6a4c7de3977c81e0576435e6eba56ab05c0",
+          "shortSha": "116df6a",
+          "url": "https://github.com/BuildingTechAlternatives/OpenThorn/commit/116df6a4c7de3977c81e0576435e6eba56ab05c0"
+        },
+        {
+          "category": "Fix",
+          "message": "fix(builder): don't show files or preview after a conversational agent reply",
+          "sha": "8fce8289a6b31d64e44acfa4a962c0f1dba9100c",
+          "shortSha": "8fce828",
+          "url": "https://github.com/BuildingTechAlternatives/OpenThorn/commit/8fce8289a6b31d64e44acfa4a962c0f1dba9100c"
+        },
+        {
+          "category": "Fix",
           "message": "fix(agent): don't start building on conversational messages",
           "sha": "455ad17e869a7d2772f4b807cecaddf84921bd45",
           "shortSha": "455ad17",
@@ -1848,34 +1876,6 @@
           "sha": "fe2fa68c8af806cef10342f8e0479885d8b709d4",
           "shortSha": "fe2fa68",
           "url": "https://github.com/BuildingTechAlternatives/OpenThorn/commit/fe2fa68c8af806cef10342f8e0479885d8b709d4"
-        },
-        {
-          "category": "Improved",
-          "message": "feat: switch to OpenRouter live API for model pricing, quality index replaces SWE-bench, richer table",
-          "sha": "35818edb71108ff1baf55ac5782a36da6f8e31ec",
-          "shortSha": "35818ed",
-          "url": "https://github.com/BuildingTechAlternatives/OpenThorn/commit/35818edb71108ff1baf55ac5782a36da6f8e31ec"
-        },
-        {
-          "category": "Fix",
-          "message": "fix: scatter chart — axis labels outside chart, permanent model names under dots, anti-overlap logic",
-          "sha": "b8dbb88a0d27c56480520d5fc8624d7e33091205",
-          "shortSha": "b8dbb88",
-          "url": "https://github.com/BuildingTechAlternatives/OpenThorn/commit/b8dbb88a0d27c56480520d5fc8624d7e33091205"
-        },
-        {
-          "category": "Improved",
-          "message": "feat: polished pricing page — proper scatter chart axes, ticks, hover tooltips, clean table, removed fetched-live text and insight box",
-          "sha": "489fd4db2685592516e4f5e331b9626779a483ac",
-          "shortSha": "489fd4d",
-          "url": "https://github.com/BuildingTechAlternatives/OpenThorn/commit/489fd4db2685592516e4f5e331b9626779a483ac"
-        },
-        {
-          "category": "Fix",
-          "message": "fix: scatter chart with curated benchmark data — Claude, GPT, Gemini, DeepSeek, Mistral, Qwen, Kimi",
-          "sha": "0b6e9121a4a9292fe5bf8e6b2fa6826181b0cdb8",
-          "shortSha": "0b6e912",
-          "url": "https://github.com/BuildingTechAlternatives/OpenThorn/commit/0b6e9121a4a9292fe5bf8e6b2fa6826181b0cdb8"
         }
       ]
     }

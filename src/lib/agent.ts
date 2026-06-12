@@ -19,14 +19,23 @@ import {
   type AgentThinkingLevel,
 } from './agent-thinking'
 import { buildPreview } from './preview-bundle'
+import { captureResponsiveViews } from './preview-screenshot'
 import {
   runtimeSmokeTest,
   interactiveSmokeTest,
   formatRuntimeReport,
 } from './preview-runtime-check'
 import {
+  VISUAL_REVIEW_SYSTEM,
+  buildVisualReviewPrompt,
+  formatVisualFeedback,
+  parseVisualReview,
+  viewsToVisionImages,
+} from './agent-vision'
+import {
   PLAN_PATH,
   createPlan,
+  extractRequirements,
   parsePlan,
   formatPlan,
   applyPlanUpdate,
@@ -88,6 +97,7 @@ export interface AgentProgressEvent {
     | 'compaction'
     | 'title'
     | 'usage'
+    | 'generating'
   text?: string
   toolName?: string
   toolInput?: Record<string, unknown>
@@ -633,6 +643,93 @@ function formatStructuredError(err: StructuredError): string {
   return parts.join('\n')
 }
 
+const BUILD_VERB_RE =
+  /\b(add|build|change|create|delete|design|develop|fix|implement|improve|make|move|remove|replace|redesign|refactor|rename|update)\b/i
+
+const CONTINUATION_RE =
+  /^(continue|keep going|go on|resume|carry on|proceed|finish|finish it|finish this|keep working)$/
+
+export function isContinuationRequest(prompt: string): boolean {
+  return CONTINUATION_RE.test(
+    prompt
+      .toLowerCase()
+      .replace(/[.!?]+/g, '')
+      .replace(/\s+/g, ' ')
+      .trim(),
+  )
+}
+
+export function isLikelyBuildRequest(prompt: string): boolean {
+  const cleaned = prompt.trim()
+  if (!cleaned) return false
+  if (isContinuationRequest(cleaned)) return true
+  const lower = cleaned.toLowerCase()
+  if (/^(what|who|where|when|why|how)\b/.test(lower)) return false
+  if (/^(can|could|would)\s+you\s+(explain|tell|show|describe)\b/.test(lower)) return false
+  return BUILD_VERB_RE.test(cleaned)
+}
+
+function normalizeRequirementForCompare(text: string): string {
+  return text
+    .toLowerCase()
+    .replace(/[^a-z0-9]+/g, ' ')
+    .replace(/\b(a|an|the|please|can|could|you|to|do|does|with|and)\b/g, ' ')
+    .replace(/\s+/g, ' ')
+    .trim()
+}
+
+function requirementExists(plan: AgentPlan, requirement: string): boolean {
+  const target = normalizeRequirementForCompare(requirement)
+  if (!target) return true
+  return plan.items.some((item) => {
+    const existing = normalizeRequirementForCompare(item.text)
+    return existing === target || existing.includes(target) || target.includes(existing)
+  })
+}
+
+export function mergePromptRequirementsIntoPlan(
+  plan: AgentPlan,
+  prompt: string,
+  mode: 'create' | 'refine',
+): AgentPlan {
+  if (mode !== 'refine' || !isLikelyBuildRequest(prompt) || isContinuationRequest(prompt)) {
+    return plan
+  }
+
+  const additions = extractRequirements(prompt).filter(
+    (requirement) => !requirementExists(plan, requirement),
+  )
+  if (additions.length === 0) return plan
+
+  return applyPlanUpdate(plan, { addRequirements: additions })
+}
+
+export function isSmallRefineRequest(prompt: string): boolean {
+  const lower = prompt.toLowerCase().replace(/\s+/g, ' ').trim()
+  if (!lower || lower.length > 220) return false
+  if (/\b(rebuild|redesign|rewrite|replace everything|from scratch|entire app|whole file)\b/.test(lower)) {
+    return false
+  }
+  return /\b(add|change|fix|improve|move|remove|replace|update)\b/.test(lower)
+}
+
+export function shouldRejectWholeFileRewrite(params: {
+  mode: 'create' | 'refine'
+  prompt: string
+  existingCode: string
+  newCode: string
+  alreadyRejected: boolean
+}): boolean {
+  if (params.mode !== 'refine' || params.alreadyRejected) return false
+  if (!isSmallRefineRequest(params.prompt)) return false
+
+  const existingLines = params.existingCode.split('\n').length
+  const newLines = params.newCode.split('\n').length
+  if (existingLines < 160 || newLines < 120) return false
+
+  return newLines >= existingLines * 0.65
+}
+
 // ─── Context Compaction ─────────────────────────────────────────────────────
 
 function compactMessages(
@@ -854,6 +951,7 @@ export async function runOpenThornAgent(input: AgentRunInput): Promise<AgentRunR
   const isNewProject =
     input.files.length === 0 || input.files[0].path === 'No files yet'
   const mode = input.mode ?? 'create'
+  const buildIntent = isLikelyBuildRequest(input.prompt)
   const thinkingLevel = normalizeThinkingLevel(input.thinkingLevel)
   const thinkingProfile = AGENT_THINKING_PROFILES[thinkingLevel]
 
@@ -897,19 +995,20 @@ export async function runOpenThornAgent(input: AgentRunInput): Promise<AgentRunR
   // the done gate can verify requirement coverage. PLAN.md is the source of
   // truth; the update_plan tool mutates it.
   const existingPlanFile = currentFiles.find((f) => f.path === PLAN_PATH)
-  const initialPlan: AgentPlan = existingPlanFile
+  const parsedPlan: AgentPlan = existingPlanFile
     ? parsePlan(existingPlanFile.code)
     : createPlan(input.prompt)
-  if (!existingPlanFile || initialPlan.items.length === 0) {
+  const basePlan = parsedPlan.items.length > 0 ? parsedPlan : createPlan(input.prompt)
+  const initialPlan = mergePromptRequirementsIntoPlan(basePlan, input.prompt, mode)
+  const initialPlanCode = formatPlan(initialPlan)
+  if (!existingPlanFile || existingPlanFile.code !== initialPlanCode) {
     currentFiles = upsertFile(currentFiles, {
       path: PLAN_PATH,
       language: 'md',
-      code: formatPlan(initialPlan.items.length > 0 ? initialPlan : createPlan(input.prompt)),
+      code: initialPlanCode,
     })
   }
-  const planReminder = planToSystemReminder(
-    initialPlan.items.length > 0 ? initialPlan : createPlan(input.prompt),
-  )
+  const planReminder = planToSystemReminder(initialPlan)
   if (planReminder) {
     messages.push({ role: 'user', content: planReminder })
   }
@@ -940,14 +1039,16 @@ export async function runOpenThornAgent(input: AgentRunInput): Promise<AgentRunR
   // re-reads of unchanged files) and the mode (to ignore set_title on refine).
   const runCtx: RunContext = {
     mode,
+    goal: input.prompt,
     turn: 0,
     reads: new Map(),
+    mutatedPaths: new Set(),
+    rewriteGuardedPaths: new Set(),
     // done requires at least one passing compile per run, even on refine runs
     // where the agent makes no file changes — verification before completion.
     dirtySinceCompile: true,
     lastCompileOk: false,
     doneRejections: 0,
-    planGateFired: false,
   }
 
   // Track session details for changelog
@@ -981,6 +1082,10 @@ export async function runOpenThornAgent(input: AgentRunInput): Promise<AgentRunR
     // still fails, switch to the next healthy one instead of killing the run.
     let modelResult: ModelCallResult
     try {
+      // The model is now generating — without this the UI would keep showing
+      // the previous (long-finished) tool as the current step for the entire
+      // stream, e.g. "Reading X" while a large write_file is being generated.
+      input.onProgress?.({ type: 'generating' })
       modelResult = await callModelWithTools({
         providerId: provider.key.provider_id,
         baseUrl: provider.baseUrl,
@@ -993,6 +1098,7 @@ export async function runOpenThornAgent(input: AgentRunInput): Promise<AgentRunR
         onText: (chunk) => {
           input.onProgress?.({ type: 'text', text: chunk })
         },
+        onToolStream: createToolStreamProgressEmitter(input.onProgress),
         thinkingBudget,
       })
       circuitBreaker.recordSuccess(provider.key.provider_id)
@@ -1072,15 +1178,16 @@ export async function runOpenThornAgent(input: AgentRunInput): Promise<AgentRunR
     // calls ends the run. But if files were already modified this run, the
     // agent must still land a verified done, so nudge it onward instead.
     if (toolCalls.length === 0 && (invalidCalls?.length ?? 0) === 0 && text) {
-      if (!filesMutatedThisRun) {
+      if (!filesMutatedThisRun && !buildIntent) {
         circuitBreaker.recordSuccess(provider.key.provider_id)
         input.onProgress?.({ type: 'done', files: currentFiles, filesMutated: false })
         return { files: currentFiles, turns: turnCount, providerName, modelName, usage: totalUsage, filesMutated: false }
       }
       messages.push({
         role: 'user',
-        content:
-          'You modified files this run but ended your response without any tool call. Continue: compile to verify the current files, finish any remaining plan items, then call done.',
+        content: filesMutatedThisRun
+          ? 'You modified files this run but ended your response without any tool call. Continue: compile to verify the current files, finish any remaining plan items, then call done.'
+          : 'This is a build/refine request, but you stopped after reading or planning. Continue with the next concrete tool action now: use edit_file or multi_edit for the requested change, then compile and call done.',
       })
       continue
     }
@@ -1097,6 +1204,7 @@ export async function runOpenThornAgent(input: AgentRunInput): Promise<AgentRunR
     )
 
     // Track file operations for changelog
+    let filesMutatedThisTurn = false
     for (let i = 0; i < toolCalls.length; i++) {
       const tc = toolCalls[i]
       if (tc.name === 'write_file' && tc.input?.path) {
@@ -1112,6 +1220,7 @@ export async function runOpenThornAgent(input: AgentRunInput): Promise<AgentRunR
         !toolResults[i]?.isError
       ) {
         filesMutatedThisRun = true
+        filesMutatedThisTurn = true
       }
     }
 
@@ -1151,6 +1260,14 @@ export async function runOpenThornAgent(input: AgentRunInput): Promise<AgentRunR
           },
         ],
       })
+    }
+
+    // Surface mutated files to the UI every turn — not only at done — so
+    // partial progress is persisted and a page reload can resume from it
+    // instead of restarting the build from the pre-run snapshot. Skipped when
+    // this turn lands done: the 'done' event below carries the same files.
+    if (filesMutatedThisTurn && !hasDone) {
+      input.onProgress?.({ type: 'files', files: currentFiles, filesMutated: true })
     }
 
     // Malformed tool calls get an explicit error result so the model re-issues
@@ -1368,18 +1485,24 @@ export function recordLesson(
 /** Per-run state shared with executeTool across the whole agent run. */
 interface RunContext {
   mode: 'create' | 'refine'
+  /** Original user request for this run; used by verification/review gates. */
+  goal: string
   /** The current turn number (updated each loop iteration). */
   turn: number
   /** path|offset|limit → snapshot + turn it was last served, to skip re-reads. */
   reads: Map<string, { snap: string; turn: number }>
+  /** Project files changed during this run, excluding PLAN.md bookkeeping. */
+  mutatedPaths: Set<string>
+  /** Long existing files where write_file was already rejected once this run. */
+  rewriteGuardedPaths: Set<string>
   /** True when project files changed since the last passing compile. */
   dirtySinceCompile: boolean
   /** Whether any compile this run passed build + runtime. */
   lastCompileOk: boolean
   /** How many times the done verification gate has rejected done this run. */
   doneRejections: number
-  /** The PLAN.md gate fires at most once per run (heuristic checklists can be noisy). */
-  planGateFired: boolean
+  /** File fingerprint for the latest passing visual review. */
+  visualReviewHash?: string
 }
 
 async function executeToolsParallel(
@@ -1420,7 +1543,7 @@ async function executeToolsParallel(
       parallelTasks.map(({ index, call }) => {
         onProgress?.({ type: 'tool_start', toolName: call.name, toolInput: call.input })
         return executeTool(call, currentFiles, signal, provider, onProgress, runCtx).then((result) => {
-          onProgress?.({ type: 'tool_result', toolName: call.name, toolResult: result.content, toolError: result.isError, files: result.files })
+          onProgress?.({ type: 'tool_result', toolName: call.name, toolInput: call.input, toolResult: result.content, toolError: result.isError, files: result.files })
           return { index, result }
         })
       }),
@@ -1435,7 +1558,7 @@ async function executeToolsParallel(
   for (const { index, call } of writes) {
     onProgress?.({ type: 'tool_start', toolName: call.name, toolInput: call.input })
     const result = await executeTool(call, currentFiles, signal, provider, onProgress, runCtx)
-    onProgress?.({ type: 'tool_result', toolName: call.name, toolResult: result.content, toolError: result.isError, files: result.files })
+    onProgress?.({ type: 'tool_result', toolName: call.name, toolInput: call.input, toolResult: result.content, toolError: result.isError, files: result.files })
     results[index] = result
     if (result.files) {
       currentFiles = result.files
@@ -1443,6 +1566,7 @@ async function executeToolsParallel(
       // PLAN.md updates don't affect the build, so they don't dirty it.
       if (!result.isError && call.name !== 'update_plan') {
         runCtx.dirtySinceCompile = true
+        if (call.input?.path) runCtx.mutatedPaths.add(normalizePath(String(call.input.path)))
       }
     }
   }
@@ -1451,7 +1575,7 @@ async function executeToolsParallel(
   for (const { index, call } of [...compileCalls, ...doneCalls]) {
     onProgress?.({ type: 'tool_start', toolName: call.name, toolInput: call.input })
     const result = await executeTool(call, currentFiles, signal, provider, onProgress, runCtx)
-    onProgress?.({ type: 'tool_result', toolName: call.name, toolResult: result.content, toolError: result.isError, files: result.files })
+    onProgress?.({ type: 'tool_result', toolName: call.name, toolInput: call.input, toolResult: result.content, toolError: result.isError, files: result.files })
     results[index] = result
     if (result.files) currentFiles = result.files
   }
@@ -1465,7 +1589,7 @@ async function executeTool(
   toolCall: ToolCall,
   currentFiles: AgentCodeFile[],
   signal: AbortSignal | undefined,
-  _provider: ResolvedProvider,
+  provider: ResolvedProvider,
   onProgress?: (event: AgentProgressEvent) => void,
   runCtx?: RunContext,
 ): Promise<ToolResult> {
@@ -1777,7 +1901,32 @@ async function executeTool(
         }
       }
 
-      const isNew = !currentFiles.some((f) => f.path === path)
+      const existingFile = currentFiles.find((f) => f.path === path)
+      if (
+        runCtx &&
+        existingFile &&
+        shouldRejectWholeFileRewrite({
+          mode: runCtx.mode,
+          prompt: runCtx.goal,
+          existingCode: existingFile.code,
+          newCode: code,
+          alreadyRejected: runCtx.rewriteGuardedPaths.has(path),
+        })
+      ) {
+        runCtx.rewriteGuardedPaths.add(path)
+        return {
+          content: formatStructuredError({
+            code: 'WHOLE_FILE_REWRITE_REJECTED',
+            message: `write_file would overwrite the long existing file ${path} for a small refine request.`,
+            suggestion:
+              'Use edit_file or multi_edit to patch only the specific imports, state, handlers, draw/update logic, and reset paths needed. If targeted edits fail after reading the relevant section, you may try write_file again.',
+            retryable: true,
+          }),
+          isError: true,
+        }
+      }
+
+      const isNew = !existingFile
       const newFiles = upsertFile(currentFiles, { path, language, code })
       return {
         content: `${isNew ? 'Created' : 'Overwrote'} ${path} (${code.split('\n').length} lines, ${code.length} chars).`,
@@ -2006,7 +2155,13 @@ async function executeTool(
       // actually clicks buttons and types into inputs. Capped at 3 rejections
       // so a flaky check can never deadlock a run.
       if (runCtx && runCtx.doneRejections < 3) {
-        const rejection = await runDoneVerificationGate(runCtx, currentFiles)
+        const rejection = await runDoneVerificationGate(
+          runCtx,
+          currentFiles,
+          provider,
+          signal,
+          onProgress,
+        )
         if (rejection) {
           runCtx.doneRejections++
           return { content: rejection, isError: true }
@@ -2057,6 +2212,9 @@ async function executeTool(
 async function runDoneVerificationGate(
   runCtx: RunContext,
   currentFiles: AgentCodeFile[],
+  provider: ResolvedProvider,
+  signal: AbortSignal | undefined,
+  onProgress: ((event: AgentProgressEvent) => void) | undefined,
 ): Promise<string | null> {
   // 1. Stale-compile gate
   if (runCtx.dirtySinceCompile || !runCtx.lastCompileOk) {
@@ -2070,23 +2228,21 @@ async function runDoneVerificationGate(
     })
   }
 
-  // 2. Plan-coverage gate (create mode only, once per run)
-  if (runCtx.mode === 'create' && !runCtx.planGateFired) {
-    const planFile = currentFiles.find((f) => f.path === PLAN_PATH)
-    if (planFile) {
-      const unmet = unmetRequirements(parsePlan(planFile.code))
-      if (unmet.length > 0) {
-        runCtx.planGateFired = true
-        return formatStructuredError({
-          code: 'DONE_REJECTED',
-          message: `PLAN.md still has ${unmet.length} unchecked requirement(s): ${unmet
-            .map((i) => `${i.id}. ${i.text}`)
-            .join('; ')}`,
-          suggestion:
+  // 2. Plan-coverage gate. The run-level rejection cap prevents deadlocks if a
+  // heuristic checklist is noisy, but the model must first see the concrete gap.
+  const planFile = currentFiles.find((f) => f.path === PLAN_PATH)
+  if (planFile) {
+    const unmet = unmetRequirements(parsePlan(planFile.code))
+    if (unmet.length > 0) {
+      return formatStructuredError({
+        code: 'DONE_REJECTED',
+        message: `PLAN.md still has ${unmet.length} unchecked requirement(s): ${unmet
+          .map((i) => `${i.id}. ${i.text}`)
+          .join('; ')}`,
+        suggestion:
             'Either finish these requirements, or — if one is already done or no longer applies — update the checklist with update_plan (check it off or rewrite the list), then call done again.',
-          retryable: true,
-        })
-      }
+        retryable: true,
+      })
     }
   }
 
@@ -2107,6 +2263,16 @@ async function runDoneVerificationGate(
           retryable: true,
         })
       }
+
+      const visualRejection = await runVisualReviewGate({
+        runCtx,
+        currentFiles,
+        html: preview.html,
+        provider,
+        signal,
+        onProgress,
+      })
+      if (visualRejection) return visualRejection
     }
   } catch {
     // Inconclusive (no DOM / bundler hiccup) — never block done on a flaky check.
@@ -2116,6 +2282,143 @@ async function runDoneVerificationGate(
 }
 
 // ─── Model Calling ──────────────────────────────────────────────────────────
+
+function hashString(value: string): string {
+  let hash = 2166136261
+  for (let i = 0; i < value.length; i++) {
+    hash ^= value.charCodeAt(i)
+    hash = Math.imul(hash, 16777619)
+  }
+  return (hash >>> 0).toString(36)
+}
+
+function projectFingerprint(files: AgentCodeFile[]): string {
+  return files
+    .map((f) => `${f.path}:${f.code.length}:${hashString(f.code)}`)
+    .sort()
+    .join('|')
+}
+
+const VISUAL_REVIEW_PROMPT_RE =
+  /\b(visual|design|layout|style|css|theme|dark|light|button|icon|canvas|game|animation|sprite|particle|shake|responsive|mobile|overlap|clip|contrast|color|polish|ui)\b/i
+
+export function supportsVisualReview(providerId: string, modelId: string): boolean {
+  const provider = providerId.toLowerCase()
+  const model = modelId.toLowerCase()
+
+  if (provider === 'anthropic' || provider === 'google') return true
+  if (provider === 'openai' || provider === 'azure') {
+    return /\b(gpt-4o|gpt-4\.1|gpt-5|o3|o4|vision)\b/.test(model)
+  }
+  if (provider === 'openrouter') {
+    return /(claude|gemini|gpt-4o|gpt-4\.1|gpt-5|o3|o4|pixtral|qwen.*vl|llava|vision)/.test(model)
+  }
+  if (provider === 'mistral') return /pixtral|vision/.test(model)
+
+  return false
+}
+
+export function shouldRunVisualReviewForRun(params: {
+  goal: string
+  mode: 'create' | 'refine'
+  mutatedPaths: string[]
+  providerId: string
+  modelId: string
+}): boolean {
+  if (!supportsVisualReview(params.providerId, params.modelId)) return false
+  if (params.mode === 'create') return true
+  if (VISUAL_REVIEW_PROMPT_RE.test(params.goal)) return true
+  return params.mutatedPaths.some((path) => path.endsWith('.css'))
+}
+
+async function runVisualReviewGate({
+  runCtx,
+  currentFiles,
+  html,
+  provider,
+  signal,
+  onProgress,
+}: {
+  runCtx: RunContext
+  currentFiles: AgentCodeFile[]
+  html: string
+  provider: ResolvedProvider
+  signal: AbortSignal | undefined
+  onProgress: ((event: AgentProgressEvent) => void) | undefined
+}): Promise<string | null> {
+  const fingerprint = projectFingerprint(currentFiles)
+  if (runCtx.visualReviewHash === fingerprint) return null
+
+  if (!shouldRunVisualReviewForRun({
+    goal: runCtx.goal,
+    mode: runCtx.mode,
+    mutatedPaths: [...runCtx.mutatedPaths],
+    providerId: provider.key.provider_id,
+    modelId: provider.model.id,
+  })) {
+    return null
+  }
+
+  const views = await captureResponsiveViews(html)
+  if (views.length === 0) return null
+
+  onProgress?.({
+    type: 'status',
+    message: `Running visual review (${views.map((v) => v.label).join(', ')}).`,
+  })
+
+  try {
+    const prompt = buildVisualReviewPrompt(runCtx.goal, views)
+    const images = viewsToVisionImages(views)
+    let streamedText = ''
+    const result = await callModelWithTools({
+      providerId: provider.key.provider_id,
+      baseUrl: provider.baseUrl,
+      apiKey: provider.key.api_key,
+      modelId: provider.model.id,
+      system: VISUAL_REVIEW_SYSTEM,
+      tools: [],
+      messages: [
+        {
+          role: 'user',
+          content: [
+            { type: 'text', text: prompt },
+            ...images.map((image) => ({
+              type: 'image' as const,
+              image: { base64: image.base64, mediaType: image.mediaType },
+            })),
+          ],
+        },
+      ],
+      signal,
+      onText: (chunk) => {
+        streamedText += chunk
+      },
+      thinkingBudget: 0,
+    })
+
+    const verdict = parseVisualReview(result.text || streamedText)
+    if (verdict.verdict === 'revise' && verdict.issues.length > 0) {
+      return formatStructuredError({
+        code: 'DONE_REJECTED',
+        message: formatVisualFeedback(verdict),
+        suggestion:
+          'Fix the visible issues from the screenshot review, compile, then call done again.',
+        retryable: true,
+      })
+    }
+
+    runCtx.visualReviewHash = fingerprint
+  } catch (err) {
+    const message = err instanceof Error ? err.message : String(err)
+    onProgress?.({
+      type: 'status',
+      message: `Visual review skipped (${message.slice(0, 160)}).`,
+    })
+  }
+
+  return null
+}
 
 interface ModelCallResult {
   text: string
@@ -2136,12 +2439,45 @@ interface InvalidToolCall {
   raw: string
 }
 
+/**
+ * Builds an onToolStream callback that surfaces the tool call currently being
+ * generated by the model as 'generating' progress events. Without this the UI
+ * keeps showing the previous (already finished) step for the whole time the
+ * model streams a large tool call, e.g. a write_file with a full file body.
+ * Emits once when the tool name appears and once more when the `path` arg can
+ * be sniffed from the partial JSON; the path sits at the front of the args, so
+ * sniffing stops after a match (or a 4 KB cap) to avoid rescanning huge bodies.
+ */
+export function createToolStreamProgressEmitter(
+  onProgress: ((event: AgentProgressEvent) => void) | undefined,
+): (toolName: string, argsFragment: string) => void {
+  let currentTool: string | null = null
+  let args = ''
+  let pathFound = false
+  return (toolName, argsFragment) => {
+    if (toolName !== currentTool) {
+      currentTool = toolName
+      args = ''
+      pathFound = false
+      onProgress?.({ type: 'generating', toolName })
+    }
+    if (pathFound || args.length > 4096) return
+    args += argsFragment
+    const match = args.match(/"path"\s*:\s*"((?:[^"\\]|\\.)*)"/)
+    if (match) {
+      pathFound = true
+      onProgress?.({ type: 'generating', toolName, toolInput: { path: match[1] } })
+    }
+  }
+}
+
 async function callModelWithTools({
-  providerId, baseUrl, apiKey, modelId, system, tools, messages, signal, onText, thinkingBudget,
+  providerId, baseUrl, apiKey, modelId, system, tools, messages, signal, onText, onToolStream, thinkingBudget,
 }: {
   providerId: string; baseUrl: string; apiKey: string; modelId: string
   system: string; tools: ToolDefinition[]; messages: LlmMessage[]
   signal?: AbortSignal; onText: (chunk: string) => void
+  onToolStream?: (toolName: string, argsFragment: string) => void
   thinkingBudget?: number
 }): Promise<ModelCallResult> {
   const providerDef = PROVIDER_DEFS[providerId]
@@ -2149,12 +2485,12 @@ async function callModelWithTools({
     throw new Error('Amazon Bedrock requires a server-side Bedrock Converse adapter and is not available through the browser agent yet.')
   }
   if (providerDef?.apiFormat === 'anthropic' || providerId === 'anthropic') {
-    return callAnthropicWithTools({ baseUrl, apiKey, modelId, system, tools, messages, signal, onText, thinkingBudget })
+    return callAnthropicWithTools({ baseUrl, apiKey, modelId, system, tools, messages, signal, onText, onToolStream, thinkingBudget })
   }
   if (providerDef?.apiFormat === 'gemini' || providerId === 'google') {
-    return callGeminiWithTools({ baseUrl, apiKey, modelId, system, tools, messages, signal, onText, thinkingBudget })
+    return callGeminiWithTools({ baseUrl, apiKey, modelId, system, tools, messages, signal, onText, onToolStream, thinkingBudget })
   }
-  return callOpenAIWithTools({ providerId, baseUrl, apiKey, modelId, system, tools, messages, signal, onText, thinkingBudget })
+  return callOpenAIWithTools({ providerId, baseUrl, apiKey, modelId, system, tools, messages, signal, onText, onToolStream, thinkingBudget })
 }
 
 // ─── OpenAI-compatible ──────────────────────────────────────────────────────
@@ -2168,11 +2504,13 @@ function toolsToAnthropicFormat(tools: ToolDefinition[]) {
 }
 
 async function callOpenAIWithTools({
-  providerId, baseUrl, apiKey, modelId, system, tools, messages, signal, onText, thinkingBudget,
+  providerId, baseUrl, apiKey, modelId, system, tools, messages, signal, onText, onToolStream, thinkingBudget,
 }: {
   providerId?: string; baseUrl: string; apiKey: string; modelId: string; system: string
   tools: ToolDefinition[]; messages: LlmMessage[]
-  signal?: AbortSignal; onText: (chunk: string) => void; thinkingBudget?: number
+  signal?: AbortSignal; onText: (chunk: string) => void
+  onToolStream?: (toolName: string, argsFragment: string) => void
+  thinkingBudget?: number
 }): Promise<ModelCallResult> {
   const url = baseUrl.endsWith('/chat/completions') ? baseUrl : `${baseUrl}/chat/completions`
   const headers: Record<string, string> = { 'Content-Type': 'application/json' }
@@ -2249,7 +2587,7 @@ async function callOpenAIWithTools({
         }
 
         const result = attempt.stream === true
-          ? await parseOpenAIToolStream(response, onText)
+          ? await parseOpenAIToolStream(response, onText, onToolStream)
           : await parseOpenAINonStream(response, onText)
         if (result) return result
         continue outer // unparseable response — try the next shape
@@ -2337,7 +2675,11 @@ function parseOpenAIUsage(u: unknown): RunUsage | undefined {
   }
 }
 
-async function parseOpenAIToolStream(response: Response, onText: (chunk: string) => void): Promise<ModelCallResult | null> {
+async function parseOpenAIToolStream(
+  response: Response,
+  onText: (chunk: string) => void,
+  onToolStream?: (toolName: string, argsFragment: string) => void,
+): Promise<ModelCallResult | null> {
   const reader = response.body?.getReader()
   if (!reader) return null
   const decoder = new TextDecoder()
@@ -2372,6 +2714,7 @@ async function parseOpenAIToolStream(response: Response, onText: (chunk: string)
               if (tc.id) existing.id = tc.id
               if (tc.function?.name) existing.name = tc.function.name
               if (tc.function?.arguments) existing.arguments += tc.function.arguments
+              if (existing.name) onToolStream?.(existing.name, tc.function?.arguments ?? '')
             }
           }
         } catch { /* skip */ }
@@ -2394,11 +2737,12 @@ async function parseOpenAIToolStream(response: Response, onText: (chunk: string)
 // ─── Anthropic (with caching + thinking) ────────────────────────────────────
 
 async function callAnthropicWithTools({
-  baseUrl, apiKey, modelId, system, tools, messages, signal, onText, thinkingBudget,
+  baseUrl, apiKey, modelId, system, tools, messages, signal, onText, onToolStream, thinkingBudget,
 }: {
   baseUrl: string; apiKey: string; modelId: string; system: string
   tools: ToolDefinition[]; messages: LlmMessage[]
   signal?: AbortSignal; onText: (chunk: string) => void
+  onToolStream?: (toolName: string, argsFragment: string) => void
   thinkingBudget?: number
 }): Promise<ModelCallResult> {
   const anthropicMessages = messages.map(convertToAnthropicMessage)
@@ -2486,11 +2830,15 @@ async function callAnthropicWithTools({
       throw new Error(message)
     }
 
-    return parseAnthropicToolStream(response, onText)
+    return parseAnthropicToolStream(response, onText, onToolStream)
   }
 }
 
-async function parseAnthropicToolStream(response: Response, onText: (chunk: string) => void): Promise<ModelCallResult> {
+async function parseAnthropicToolStream(
+  response: Response,
+  onText: (chunk: string) => void,
+  onToolStream?: (toolName: string, argsFragment: string) => void,
+): Promise<ModelCallResult> {
   const reader = response.body?.getReader()
   if (!reader) throw new Error('Response body not readable')
   const decoder = new TextDecoder()
@@ -2544,10 +2892,14 @@ async function parseAnthropicToolStream(response: Response, onText: (chunk: stri
           }
           if (parsed.type === 'content_block_start' && parsed.content_block?.type === 'tool_use') {
             toolCalls.set(parsed.index, { id: parsed.content_block.id, name: parsed.content_block.name, input: '' })
+            onToolStream?.(parsed.content_block.name, '')
           }
           if (parsed.type === 'content_block_delta' && parsed.delta?.type === 'input_json_delta') {
             const existing = toolCalls.get(parsed.index)
-            if (existing) existing.input += parsed.delta.partial_json
+            if (existing) {
+              existing.input += parsed.delta.partial_json
+              onToolStream?.(existing.name, parsed.delta.partial_json ?? '')
+            }
           }
         } catch { /* skip */ }
       }
@@ -2604,11 +2956,13 @@ export function convertToGeminiContents(messages: LlmMessage[]): Array<{ role: s
 }
 
 async function callGeminiWithTools({
-  baseUrl, apiKey, modelId, system, tools, messages, signal, onText, thinkingBudget,
+  baseUrl, apiKey, modelId, system, tools, messages, signal, onText, onToolStream, thinkingBudget,
 }: {
   baseUrl: string; apiKey: string; modelId: string; system: string
   tools: ToolDefinition[]; messages: LlmMessage[]
-  signal?: AbortSignal; onText: (chunk: string) => void; thinkingBudget?: number
+  signal?: AbortSignal; onText: (chunk: string) => void
+  onToolStream?: (toolName: string, argsFragment: string) => void
+  thinkingBudget?: number
 }): Promise<ModelCallResult> {
   const cleanModel = modelId.replace(/^models\//, '')
   const url = `${baseUrl}/models/${encodeURIComponent(cleanModel)}:streamGenerateContent?alt=sse`
@@ -2666,11 +3020,15 @@ async function callGeminiWithTools({
       throw new Error(`Gemini ${response.status}: ${errorText.slice(0, 400)}`)
     }
 
-    return parseGeminiToolStream(response, onText)
+    return parseGeminiToolStream(response, onText, onToolStream)
   }
 }
 
-export async function parseGeminiToolStream(response: Response, onText: (chunk: string) => void): Promise<ModelCallResult> {
+export async function parseGeminiToolStream(
+  response: Response,
+  onText: (chunk: string) => void,
+  onToolStream?: (toolName: string, argsFragment: string) => void,
+): Promise<ModelCallResult> {
   const reader = response.body?.getReader()
   if (!reader) throw new Error('Response body not readable')
   const decoder = new TextDecoder()
@@ -2717,6 +3075,7 @@ export async function parseGeminiToolStream(response: Response, onText: (chunk: 
                   const existing = toolCalls[chunkFcIdx]
                   existing.input = part.functionCall.args ?? existing.input
                   if (signature) existing.thoughtSignature = signature
+                  onToolStream?.(existing.name, JSON.stringify(existing.input ?? {}))
                 } else {
                   toolIdCounter++
                   toolCalls.push({
@@ -2725,6 +3084,7 @@ export async function parseGeminiToolStream(response: Response, onText: (chunk: 
                     input: part.functionCall.args ?? {},
                     thoughtSignature: signature,
                   })
+                  onToolStream?.(part.functionCall.name, JSON.stringify(part.functionCall.args ?? {}))
                 }
                 chunkFcIdx++
               }
@@ -2844,15 +3204,24 @@ function buildUserPrompt(
     .filter((f) => f.path !== 'No files yet')
     .map((f) => `- ${f.path}`)
     .join('\n')
+  const planFile = files.find((f) => f.path === PLAN_PATH)
+  const plan = planFile ? parsePlan(planFile.code) : null
+  const uncheckedPlanItems = plan ? unmetRequirements(plan) : []
+  const continuationContext =
+    isContinuationRequest(prompt) && uncheckedPlanItems.length > 0
+      ? `\n\nThe user is asking you to continue the unfinished work. Continue with the unchecked PLAN.md requirement(s):\n${uncheckedPlanItems
+          .map((item) => `- ${item.id}. ${item.text}`)
+          .join('\n')}\nDo not just summarize the project; take the next concrete tool action toward those items.`
+      : ''
 
   if (isNew || mode === 'create') {
     let p = `The user's message: ${prompt}\n\nProject title: ${title}\n\nIf this is a request to build something, create a web app for it: think about the design and file plan first, then create files in order: theme.css → App.tsx → pages → components. Write complete files and compile after every few to catch build AND runtime errors early.\n\nIf it is NOT a build request (a greeting, casual remark, or question), do not build anything — reply in plain text with no tool calls.`
     if (leftoverFiles) {
       p += `\n\nNOTE: the workspace still contains files from a previous, unrelated project:\n${leftoverFiles}\nThese do not belong to what the user asked for. Overwrite the ones you reuse (App.tsx, theme.css) and delete_file the rest so the project only contains files for THIS app.`
     }
-    return p
+    return p + continuationContext
   }
-  return `The user's message about the existing project: ${prompt}\n\nProject title: ${title}\n\nCurrent files:\n${leftoverFiles || '(none)'}\n\nIf this requests a change, update the project: read files before editing them, use search_files to find patterns, multi_edit for several changes to one file, and delete_file to remove anything this change makes obsolete. Make focused changes and compile (build + runtime) after edits to verify.\n\nIf it is a question or remark rather than a change request, answer it in plain text (use read-only tools to look things up if needed) and do not modify any files or call done.`
+  return `The user's message about the existing project: ${prompt}\n\nProject title: ${title}\n\nCurrent files:\n${leftoverFiles || '(none)'}${continuationContext}\n\nIf this requests a change, update the project: read files before editing them, use search_files to find patterns, multi_edit for several changes to one file, and delete_file to remove anything this change makes obsolete. Make focused changes and compile (build + runtime) after edits to verify.\n\nIf it is a question or remark rather than a change request, answer it in plain text (use read-only tools to look things up if needed) and do not modify any files or call done.`
 }
 
 // ─── Provider Resolution with Fallback ──────────────────────────────────────
