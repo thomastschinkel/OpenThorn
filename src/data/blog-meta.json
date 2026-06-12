@@ -69,6 +69,8 @@
     "title": "Lovable vs Bolt.new vs v0: AI Website Builder Pricing Compared (2026)",
     "date": "2026-06-12",
     "excerpt": "Lovable, Bolt.new, and v0 all resell AI usage as credits or token packs from $20–25/month. We compare what each actually costs, where each shines, and what the BYOK alternative looks like.",
+    "coverImage": "/assets/lovable.png",
+    "ogImage": "https://www.openthorn.app/assets/lovable.png",
     "tldr": "Lovable Pro costs $25/month (~100 credits), Bolt.new Pro $25/month (~10M tokens), and v0 Premium $20/month. All three resell AI usage with markup and reset monthly. The BYOK alternative — your own API key in a free tool like OpenThorn — prices a typical website at cents to a few dollars, total.",
     "itemList": ["Lovable", "Bolt.new", "v0", "OpenThorn (BYOK alternative)"]
   }

@@ -74,7 +74,7 @@
   {
     "slug": "framer",
     "competitor": "Framer",
-    "logo": "",
+    "logo": "/assets/framer.png",
     "title": "OpenThorn vs Framer",
     "description": "Framer is a design-first website platform with AI generation, from free to $100/month; OpenThorn is a free BYOK code generator. Pricing, ownership, and which fits when.",
     "lastVerified": "2026-06-12",
@@ -98,7 +98,7 @@
   {
     "slug": "durable",
     "competitor": "Durable",
-    "logo": "",
+    "logo": "/assets/durable.png",
     "title": "OpenThorn vs Durable",
     "description": "Durable generates small-business sites in seconds on plans from about $12/month; OpenThorn is a free BYOK builder that generates code you own. An honest comparison.",
     "lastVerified": "2026-06-12",
@@ -122,7 +122,7 @@
   {
     "slug": "wix",
     "competitor": "Wix",
-    "logo": "",
+    "logo": "/assets/wix.png",
     "title": "OpenThorn vs Wix AI",
     "description": "Wix includes AI site generation in plans from free to $159/month; OpenThorn is a free BYOK builder that generates React code you own. Pricing and ownership compared.",
     "lastVerified": "2026-06-12",

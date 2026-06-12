@@ -30,6 +30,7 @@ const useCasesSub: SubItem[] = [
 const resourcesSub: SubItem[] = [
   { label: 'Blog', href: '/blog' },
   { label: 'Comparisons', href: '/compare' },
+  { label: 'Provider Guides', href: '/build-with' },
   { label: 'Glossary', href: '/glossary' },
   { label: 'Changelog', href: '/changelog' },
   { label: 'Templates', href: '/templates' },
