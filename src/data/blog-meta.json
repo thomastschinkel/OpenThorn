@@ -1,38 +1,39 @@
 [
   {
-    "slug": "introducing-openthorn",
-    "title": "Introducing OpenThorn — Build Full-Stack Apps from a Single Prompt",
-    "date": "2026-06-06",
-    "excerpt": "Most web apps still take weeks to build. We built OpenThorn to close that gap — describe your app in plain language and ship the same day.",
-    "coverYoutube": "9RJrDvaWHiE"
-  },
-  {
-    "slug": "what-is-a-byok-ai-website-builder",
-    "title": "What Is a BYOK AI Website Builder?",
-    "date": "2026-06-11",
-    "dateModified": "2026-06-12",
-    "tldr": "A BYOK (bring-your-own-key) AI website builder generates websites with AI while you connect your own API key from a provider like OpenAI or Anthropic. You pay the provider's raw per-token rates — typically cents to a few dollars per site — instead of a $20–50/month platform subscription with marked-up credits.",
-    "excerpt": "A BYOK (bring-your-own-key) AI website builder is a tool that generates websites with AI while you connect your own API key from a provider like OpenAI or Anthropic — so you pay the provider directly, with no platform markup or subscription.",
-    "coverImage": "/assets/blog_2.jpg",
-    "ogImage": "https://www.openthorn.app/assets/blog_2.jpg"
-  },
-  {
     "slug": "how-to-build-a-website-with-ai-byok",
     "title": "How to Build a Website with AI Using Your Own API Key",
     "date": "2026-06-12",
-    "tldr": "Get an API key from any of 17 supported providers, connect it to OpenThorn (free, encrypted server-side), describe your website in plain language, and the AI agent generates, previews, and deploys it. Total cost: your provider's token rates — typically cents to a few dollars per complete site.",
     "excerpt": "Build and deploy a complete website with AI for cents, not subscriptions: get an API key, connect it to OpenThorn, describe what you want, and ship — in six steps.",
     "coverImage": "/assets/blog_3.png",
     "ogImage": "https://www.openthorn.app/assets/blog_3.png",
+    "tldr": "Get an API key from any of 17 supported providers, connect it to OpenThorn (free, encrypted server-side), describe your website in plain language, and the AI agent generates, previews, and deploys it. Total cost: your provider's token rates — typically cents to a few dollars per complete site.",
     "howTo": {
       "name": "Build a website with AI using your own API key",
       "steps": [
-        { "name": "Choose an AI provider and get an API key", "text": "Pick any of the 17 supported providers (OpenAI, Anthropic, Google Gemini, and more) and generate an API key in its developer console." },
-        { "name": "Create a free OpenThorn account", "text": "Sign up at openthorn.app — free, no credit card, no subscription." },
-        { "name": "Connect your API key", "text": "Paste the key on the Providers page; it is encrypted server-side with AES-256-GCM." },
-        { "name": "Describe the website you want", "text": "Create a project and describe the site in plain language; the agent generates real React code." },
-        { "name": "Preview and iterate", "text": "Use the in-browser live preview and ask for changes conversationally until it is right." },
-        { "name": "Deploy or export", "text": "Deploy to Netlify in one click, or export the full source code and host it anywhere." }
+        {
+          "name": "Choose an AI provider and get an API key",
+          "text": "Pick any of the 17 supported providers (OpenAI, Anthropic, Google Gemini, and more) and generate an API key in its developer console."
+        },
+        {
+          "name": "Create a free OpenThorn account",
+          "text": "Sign up at openthorn.app — free, no credit card, no subscription."
+        },
+        {
+          "name": "Connect your API key",
+          "text": "Paste the key on the Providers page; it is encrypted server-side with AES-256-GCM."
+        },
+        {
+          "name": "Describe the website you want",
+          "text": "Create a project and describe the site in plain language; the agent generates real React code."
+        },
+        {
+          "name": "Preview and iterate",
+          "text": "Use the in-browser live preview and ask for changes conversationally until it is right."
+        },
+        {
+          "name": "Deploy or export",
+          "text": "Deploy to Netlify in one click, or export the full source code and host it anywhere."
+        }
       ]
     }
   },
@@ -40,17 +41,29 @@
     "slug": "how-to-get-an-ai-api-key",
     "title": "How to Get an AI API Key (OpenAI, Anthropic, Google Gemini)",
     "date": "2026-06-12",
-    "tldr": "Sign up at platform.openai.com, console.anthropic.com, or aistudio.google.com; add billing (Gemini has a free tier without it); generate a secret key; and set a monthly spend limit. The whole process takes about five minutes, and prepaid credit or budget caps keep costs predictable.",
     "excerpt": "A five-minute guide to creating an API key with OpenAI, Anthropic, or Google Gemini — including billing setup and the spend limits that keep costs predictable.",
     "coverImage": "/assets/blog_4.png",
     "ogImage": "https://www.openthorn.app/assets/blog_4.png",
+    "tldr": "Sign up at platform.openai.com, console.anthropic.com, or aistudio.google.com; add billing (Gemini has a free tier without it); generate a secret key; and set a monthly spend limit. The whole process takes about five minutes, and prepaid credit or budget caps keep costs predictable.",
     "howTo": {
       "name": "Get an AI API key",
       "steps": [
-        { "name": "Create a provider account", "text": "Sign up at platform.openai.com, console.anthropic.com, or aistudio.google.com." },
-        { "name": "Add billing", "text": "Add a payment method or prepaid credit (Gemini offers a free tier without billing)." },
-        { "name": "Generate the key", "text": "Create a new secret key in the provider's API keys section and copy it — it is shown only once." },
-        { "name": "Set a spend limit", "text": "Configure a monthly budget in the provider dashboard so usage can never surprise you." }
+        {
+          "name": "Create a provider account",
+          "text": "Sign up at platform.openai.com, console.anthropic.com, or aistudio.google.com."
+        },
+        {
+          "name": "Add billing",
+          "text": "Add a payment method or prepaid credit (Gemini offers a free tier without billing)."
+        },
+        {
+          "name": "Generate the key",
+          "text": "Create a new secret key in the provider's API keys section and copy it — it is shown only once."
+        },
+        {
+          "name": "Set a spend limit",
+          "text": "Configure a monthly budget in the provider dashboard so usage can never surprise you."
+        }
       ]
     }
   },
@@ -62,7 +75,11 @@
     "coverImage": "/assets/blog_5.png",
     "ogImage": "https://www.openthorn.app/assets/blog_5.png",
     "tldr": "Three tools let you bring your own API key instead of buying platform credits: OpenThorn (free, hosted, 17 providers), bolt.diy (open source, self-hosted), and Dyad (local desktop app). All three eliminate the $20–50/month subscriptions charged by Lovable, Bolt.new, and v0 — you pay raw token rates instead.",
-    "itemList": ["OpenThorn", "bolt.diy", "Dyad"]
+    "itemList": [
+      "OpenThorn",
+      "bolt.diy",
+      "Dyad"
+    ]
   },
   {
     "slug": "lovable-vs-bolt-vs-v0-pricing",
@@ -72,6 +89,28 @@
     "coverImage": "/assets/lovable.png",
     "ogImage": "https://www.openthorn.app/assets/lovable.png",
     "tldr": "Lovable Pro costs $25/month (~100 credits), Bolt.new Pro $25/month (~10M tokens), and v0 Premium $20/month. All three resell AI usage with markup and reset monthly. The BYOK alternative — your own API key in a free tool like OpenThorn — prices a typical website at cents to a few dollars, total.",
-    "itemList": ["Lovable", "Bolt.new", "v0", "OpenThorn (BYOK alternative)"]
+    "itemList": [
+      "Lovable",
+      "Bolt.new",
+      "v0",
+      "OpenThorn (BYOK alternative)"
+    ]
+  },
+  {
+    "slug": "what-is-a-byok-ai-website-builder",
+    "title": "What Is a BYOK AI Website Builder?",
+    "date": "2026-06-11",
+    "excerpt": "A BYOK (bring-your-own-key) AI website builder is a tool that generates websites with AI while you connect your own API key from a provider like OpenAI or Anthropic — so you pay the provider directly, with no platform markup or subscription.",
+    "dateModified": "2026-06-12",
+    "coverImage": "/assets/blog_2.jpg",
+    "ogImage": "https://www.openthorn.app/assets/blog_2.jpg",
+    "tldr": "A BYOK (bring-your-own-key) AI website builder generates websites with AI while you connect your own API key from a provider like OpenAI or Anthropic. You pay the provider's raw per-token rates — typically cents to a few dollars per site — instead of a $20–50/month platform subscription with marked-up credits."
+  },
+  {
+    "slug": "introducing-openthorn",
+    "title": "Introducing OpenThorn — Build Full-Stack Apps from a Single Prompt",
+    "date": "2026-06-06",
+    "excerpt": "Most web apps still take weeks to build. We built OpenThorn to close that gap — describe your app in plain language and ship the same day.",
+    "coverYoutube": "9RJrDvaWHiE"
   }
 ]
