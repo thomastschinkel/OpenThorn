@@ -1,7 +1,9 @@
+import { useState, useEffect } from 'react'
 import { useParams, Link, Navigate } from 'react-router-dom'
 import ReactMarkdown from 'react-markdown'
 import remarkGfm from 'remark-gfm'
-import { getPostBySlug } from '../data/blogPosts'
+import { getPostBySlug, type BlogPost } from '../data/blogPosts'
+import { fetchPublishedPosts } from '../lib/blog'
 import { usePageTitle } from '../lib/usePageTitle'
 import { useJsonLd } from '../lib/useJsonLd'
 import styles from './BlogPostPage.module.css'
@@ -21,7 +23,24 @@ function estimateReadTime(content: string) {
 
 export default function BlogPostPage() {
   const { slug } = useParams<{ slug: string }>()
-  const post = slug ? getPostBySlug(slug) : undefined
+  // Start from the bundled post (matches prerendered SSR for hydration), then
+  // refetch from Supabase so edits and newly published posts appear without a
+  // rebuild. A post published since the last build isn't bundled, so we hold
+  // off the not-found redirect until the fetch resolves.
+  const [post, setPost] = useState<BlogPost | undefined>(slug ? getPostBySlug(slug) : undefined)
+  const [resolving, setResolving] = useState(!post)
+
+  useEffect(() => {
+    let cancelled = false
+    if (!slug) return
+    fetchPublishedPosts().then((all) => {
+      if (cancelled || !all) { setResolving(false); return }
+      const fresh = all.find((p) => p.slug === slug)
+      if (fresh) setPost(fresh)
+      setResolving(false)
+    })
+    return () => { cancelled = true }
+  }, [slug])
 
   usePageTitle(post?.title, post ? { description: post.excerpt, image: post.ogImage } : undefined)
 
@@ -89,7 +108,10 @@ export default function BlogPostPage() {
         : {}
   )
 
-  if (!post) return <Navigate to="/blog" replace />
+  if (!post) {
+    if (resolving) return <div className={styles.page} />
+    return <Navigate to="/blog" replace />
+  }
 
   return (
     <div className={styles.page}>

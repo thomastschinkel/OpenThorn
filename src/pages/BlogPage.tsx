@@ -1,5 +1,7 @@
+import { useState, useEffect } from 'react'
 import { Link } from 'react-router-dom'
 import { blogPosts } from '../data/blogPosts'
+import { fetchPublishedPosts } from '../lib/blog'
 import { usePageTitle } from '../lib/usePageTitle'
 import styles from './BlogPage.module.css'
 
@@ -15,7 +17,14 @@ export default function BlogPage() {
   usePageTitle('Blog', {
     description: 'Product updates, guides, and stories from the OpenThorn team on building and shipping websites with AI.',
   })
-  const [featured, ...rest] = blogPosts
+  // Render bundled posts first (matches the prerendered SSR markup, so hydration
+  // is stable), then refetch from Supabase to surface posts published since the
+  // last build.
+  const [posts, setPosts] = useState(blogPosts)
+  useEffect(() => {
+    fetchPublishedPosts().then((p) => { if (p && p.length) setPosts(p) })
+  }, [])
+  const [featured, ...rest] = posts
 
   return (
     <div className={styles.page}>
