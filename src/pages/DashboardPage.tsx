@@ -23,6 +23,13 @@ interface Project {
   isShared?: boolean
 }
 
+interface NotificationRow {
+  id: string
+  text: string
+  time_label: string
+  created_at: string
+}
+
 function formatRelativeTime(iso: string): string {
   const diff = Date.now() - new Date(iso).getTime()
   const minutes = Math.floor(diff / 60_000)
@@ -278,14 +285,25 @@ export default function DashboardPage() {
     }
   }, [user])
 
-  // Fetch global notifications from Supabase (controlled in production via dashboard)
+  // Fetch and subscribe to global notifications for the dashboard bell.
   useEffect(() => {
     if (!user) return
-    supabase
-      .from('notifications')
-      .select('id, text, time_label, created_at')
-      .order('created_at', { ascending: false })
-      .then(({ data, error }) => {
+
+    const seenKey = `seen_notifications_${user.id}`
+    const toSidebarNotification = (n: NotificationRow, seenIds: Set<string>): SidebarNotification => ({
+      id: n.id,
+      text: n.text,
+      time: n.time_label,
+      unread: !seenIds.has(n.id),
+    })
+
+    const fetchNotifications = async () => {
+      const seenIds = new Set(parseStoredJson<string[]>(localStorage.getItem(seenKey), []))
+      const { data, error } = await supabase
+        .from('notifications')
+        .select('id, text, time_label, created_at')
+        .order('created_at', { ascending: false })
+
         if (error) {
           logError('DashboardNotifications', error)
           return
@@ -294,11 +312,33 @@ export default function DashboardPage() {
         setSidebarNotifications((prev) => {
           const existingIds = new Set(prev.map((n) => n.id))
           const incoming = data
-            .map((n) => ({ id: n.id as string, text: n.text as string, time: n.time_label as string }))
+            .map((n) => toSidebarNotification(n as NotificationRow, seenIds))
             .filter((n) => !existingIds.has(n.id))
           return incoming.length > 0 ? [...prev, ...incoming] : prev
         })
-      }, (error: unknown) => logError('DashboardNotifications', error))
+    }
+
+    void fetchNotifications()
+
+    const channel = supabase
+      .channel(`dashboard_notifications_${user.id}`)
+      .on('postgres_changes', {
+        event: 'INSERT',
+        schema: 'public',
+        table: 'notifications',
+      }, (payload) => {
+        const row = payload.new as NotificationRow
+        if (!row?.id) return
+        setSidebarNotifications((prev) => {
+          if (prev.some((n) => n.id === row.id)) return prev
+          return [toSidebarNotification(row, new Set(parseStoredJson<string[]>(localStorage.getItem(seenKey), []))), ...prev]
+        })
+      })
+      .subscribe()
+
+    return () => {
+      supabase.removeChannel(channel)
+    }
   }, [user])
 
   const handlePromptSubmit = useCallback(async (
@@ -543,7 +583,13 @@ export default function DashboardPage() {
         onProjectFilterChange={setActiveFilter}
         notifications={sidebarNotifications}
         onNotificationsRead={() => {
-          setSidebarNotifications((prev) => prev.map((n) => ({ ...n, unread: false })))
+          const globalSeenKey = `seen_notifications_${user?.id}`
+          setSidebarNotifications((prev) => {
+            const existingGlobalSeen = parseStoredJson<string[]>(localStorage.getItem(globalSeenKey), [])
+            const globalIds = prev.filter((n) => !n.id.startsWith('share-')).map((n) => n.id)
+            localStorage.setItem(globalSeenKey, JSON.stringify([...new Set([...existingGlobalSeen, ...globalIds])]))
+            return prev.map((n) => ({ ...n, unread: false }))
+          })
           const seenKey = `seen_shared_projects_${user?.id}`
           const sharedIds = projects.filter((p) => p.isShared).map((p) => p.id)
           const existing = parseStoredJson<string[]>(localStorage.getItem(seenKey), [])

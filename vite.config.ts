@@ -15,6 +15,7 @@ import {
   hasServiceRoleKey,
   adminSetUserSuspended,
   adminDeleteUser,
+  adminCreateNotification,
   triggerDeploy,
 } from './api/_shared'
 
@@ -103,9 +104,14 @@ export default defineConfig(({ mode, isSsrBuild }) => {
               if (!user) return sendJson(res, 401, { error: 'Unauthorized' })
               if (!(await rateLimit(`admin:${user.id}`, 30, 60_000))) return sendJson(res, 429, { error: 'Too many requests' })
               if (!(await isAdminUser(user.id))) return sendJson(res, 403, { error: 'Forbidden' })
-              const body = await readJsonBody<{ action?: string; userId?: string }>(req)
+              const body = await readJsonBody<{ action?: string; userId?: string; text?: string; timeLabel?: string }>(req)
               if (body.action === 'trigger-deploy') {
                 await triggerDeploy()
+                return sendJson(res, 200, { ok: true })
+              }
+              if (body.action === 'send-notification') {
+                if (typeof body.text !== 'string') return sendJson(res, 400, { error: 'Message is required' })
+                await adminCreateNotification(body.text, typeof body.timeLabel === 'string' ? body.timeLabel : 'New')
                 return sendJson(res, 200, { ok: true })
               }
               const action = body.action

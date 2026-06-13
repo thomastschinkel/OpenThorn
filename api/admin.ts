@@ -6,6 +6,7 @@ import {
   hasServiceRoleKey,
   adminSetUserSuspended,
   adminDeleteUser,
+  adminCreateNotification,
   triggerDeploy,
 } from './_shared.js'
 
@@ -27,7 +28,7 @@ function header(req: VercelReq, name: string): string | undefined {
 const ACTIONS = ['suspend-user', 'unsuspend-user', 'delete-user'] as const
 type AdminAction = (typeof ACTIONS)[number]
 
-function parseBody(body: unknown): { action?: string; userId?: string } {
+function parseBody(body: unknown): { action?: string; userId?: string; text?: string; timeLabel?: string } {
   if (!body) return {}
   if (typeof body === 'string') {
     try { return JSON.parse(body) } catch { return {} }
@@ -72,6 +73,20 @@ export default async function handler(req: VercelReq, res: VercelRes): Promise<v
       res.status(200).json({ ok: true })
     } catch (err) {
       res.status(500).json({ error: err instanceof Error ? err.message : 'Deploy failed' })
+    }
+    return
+  }
+
+  if (body.action === 'send-notification') {
+    try {
+      if (typeof body.text !== 'string') {
+        res.status(400).json({ error: 'Message is required' })
+        return
+      }
+      await adminCreateNotification(body.text, typeof body.timeLabel === 'string' ? body.timeLabel : 'New')
+      res.status(200).json({ ok: true })
+    } catch (err) {
+      res.status(500).json({ error: err instanceof Error ? err.message : 'Notification failed' })
     }
     return
   }

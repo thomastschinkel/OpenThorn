@@ -91,6 +91,7 @@
   }
   .nav {
     flex-direction: row;
+    flex-wrap: wrap;
   }
   .backLink {
     margin-top: 0;
