@@ -27,10 +27,17 @@ export async function adminSendNotification(draft: NotificationDraft): Promise<v
   const timeLabel = draft.time_label.trim() || 'New'
   if (!text) throw new Error('Message is required')
 
-  const { error } = await supabase
-    .from('notifications')
-    .insert({ text, time_label: timeLabel, is_active: true })
-  if (error) throw new Error(error.message)
+  const { data: { session } } = await supabase.auth.getSession()
+  if (!session) throw new Error('Not signed in')
+  const res = await fetch('/api/admin', {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${session.access_token}` },
+    body: JSON.stringify({ action: 'send-notification', text, timeLabel }),
+  })
+  if (!res.ok) {
+    const body = (await res.json().catch(() => ({}))) as { error?: string }
+    throw new Error(body.error || 'Notification failed')
+  }
 }
 
 export async function adminSetNotificationActive(id: string, isActive: boolean): Promise<void> {

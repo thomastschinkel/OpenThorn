@@ -417,6 +417,23 @@ export async function triggerDeploy(): Promise<void> {
   if (!res.ok) throw new Error(`Deploy hook error ${res.status}`)
 }
 
+/** Insert a dashboard bell notification for all signed-in users. */
+export async function adminCreateNotification(text: string, timeLabel = 'New'): Promise<void> {
+  const env = supabaseEnv()
+  const key = serviceRoleKey()
+  const cleanText = text.trim()
+  const cleanTimeLabel = timeLabel.trim() || 'New'
+  if (!env || !key) throw new Error('Service role not configured')
+  if (!cleanText) throw new Error('Message is required')
+
+  const res = await fetch(`${env.url}/rest/v1/notifications`, {
+    method: 'POST',
+    headers: { ...serviceHeaders(key), Prefer: 'return=minimal' },
+    body: JSON.stringify({ text: cleanText, time_label: cleanTimeLabel, is_active: true }),
+  })
+  if (!res.ok) throw new Error(`Notification insert error ${res.status}`)
+}
+
 /** Permanently delete a user. The profiles row cascades via its FK. */
 export async function adminDeleteUser(userId: string): Promise<void> {
   const env = supabaseEnv()

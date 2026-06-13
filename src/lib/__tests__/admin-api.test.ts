@@ -38,6 +38,7 @@ function stubFetch({ callerIsAdmin }: { callerIsAdmin: boolean }) {
     if (u.includes('/auth/v1/user')) return jsonResponse({ id: ADMIN_ID, email: 'admin@test.dev' })
     if (u.includes(`/rest/v1/profiles?id=eq.${ADMIN_ID}`)) return jsonResponse([{ is_admin: callerIsAdmin }])
     if (u.includes('/auth/v1/admin/users/')) return jsonResponse({})
+    if (u.includes('/rest/v1/notifications')) return jsonResponse({})
     if (u.includes('/rest/v1/profiles?id=eq.')) return jsonResponse([])
     return jsonResponse({ error: 'unexpected' }, false, 404)
   })
@@ -153,6 +154,31 @@ describe('api/admin handler', () => {
     const { default: handler } = await import('../../../api/admin')
     const res = makeRes()
     await handler(makeReq({ action: 'trigger-deploy' }), res)
+    expect(res.statusCode).toBe(403)
+  })
+
+  it('send-notification inserts through the service-role REST API', async () => {
+    stubFetch({ callerIsAdmin: true })
+    const { default: handler } = await import('../../../api/admin')
+    const res = makeRes()
+    await handler(makeReq({ action: 'send-notification', text: 'Hello users', timeLabel: 'Now' }), res)
+    expect(res.statusCode).toBe(200)
+    expect(res.body).toEqual({ ok: true })
+    const notificationCall = fetchMock.mock.calls.find(([u]) => String(u).includes('/rest/v1/notifications'))
+    expect(notificationCall).toBeDefined()
+    expect(notificationCall![1].method).toBe('POST')
+    expect(JSON.parse(String(notificationCall![1].body))).toMatchObject({
+      text: 'Hello users',
+      time_label: 'Now',
+      is_active: true,
+    })
+  })
+
+  it('send-notification is rejected for non-admins', async () => {
+    stubFetch({ callerIsAdmin: false })
+    const { default: handler } = await import('../../../api/admin')
+    const res = makeRes()
+    await handler(makeReq({ action: 'send-notification', text: 'Nope' }), res)
     expect(res.statusCode).toBe(403)
   })
 })
