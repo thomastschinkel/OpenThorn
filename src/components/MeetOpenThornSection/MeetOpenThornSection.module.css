@@ -41,6 +41,47 @@
   box-shadow: 0 24px 70px rgba(0, 0, 0, 0.28);
 }
 
+.tryArea {
+  max-width: var(--max-width);
+  margin: var(--space-2xl) auto 0;
+}
+
+.tryTitle {
+  font-family: var(--font-body);
+  font-size: 13px;
+  font-weight: 600;
+  text-transform: uppercase;
+  letter-spacing: 0.1em;
+  color: var(--color-text-muted);
+  margin-bottom: var(--space-lg);
+}
+
+.tryButtons {
+  display: flex;
+  flex-wrap: wrap;
+  justify-content: center;
+  gap: 10px;
+}
+
+.tryButton {
+  padding: 10px 20px;
+  border-radius: var(--radius-full);
+  font-family: var(--font-body);
+  font-size: 14px;
+  font-weight: 500;
+  color: var(--color-text);
+  background: rgba(255, 255, 255, 0.03);
+  border: 1px solid var(--color-border-visible);
+  cursor: pointer;
+  transition: background 0.18s ease, border-color 0.18s ease, transform 0.18s ease;
+}
+.tryButton:hover {
+  background: rgba(255, 255, 255, 0.06);
+  border-color: var(--color-accent);
+  transform: translateY(-1px);
+}
+.tryButton:active { transform: translateY(0); }
+
 @media (max-width: 640px) {
   .section { padding: var(--space-3xl) var(--space-md); }
   .title { font-size: 36px; }

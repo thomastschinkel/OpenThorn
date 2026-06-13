@@ -21,6 +21,12 @@ export interface ProviderDef {
   syncModels?: boolean
   testable: boolean
   testNote?: string
+  /** Provider offers a usable free tier — surfaced as a badge in the UI. */
+  freeTier?: boolean
+  /** Direct link to the provider's "create API key" page. */
+  getKeyUrl?: string
+  /** Short, ordered steps shown in the key editor to guide first-time setup. */
+  setupSteps?: string[]
 }
 
 export const PROVIDERS: ProviderDef[] = [
@@ -50,6 +56,13 @@ export const PROVIDERS: ProviderDef[] = [
     logo: '/assets/google.png',
     apiFormat: 'gemini',
     testable: true,
+    freeTier: true,
+    getKeyUrl: 'https://aistudio.google.com/apikey',
+    setupSteps: [
+      'Click “Open Google AI Studio” below and sign in with your Google account.',
+      'Press “Create API key” — Gemini has a free tier, so no credit card is needed to start.',
+      'Copy the key, paste it into the field below, and hit “Save provider”.',
+    ],
   },
   {
     id: 'deepseek',

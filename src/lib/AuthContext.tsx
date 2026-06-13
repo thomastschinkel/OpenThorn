@@ -66,7 +66,10 @@ export function SupabaseAuthProvider({ children }: { children: ReactNode }) {
       const { data, error } = await supabase.auth.signUp({
         email,
         password,
-        options: { data: { full_name: name } },
+        options: {
+          data: { full_name: name },
+          emailRedirectTo: `${window.location.origin}/dashboard`,
+        },
       })
       if (error) return { error: error.message }
       // If no session returned, email confirmation is required
@@ -94,7 +97,7 @@ export function SupabaseAuthProvider({ children }: { children: ReactNode }) {
   const signInWithGoogle = async () => {
     const { error } = await supabase.auth.signInWithOAuth({
       provider: 'google',
-      options: { redirectTo: window.location.origin },
+      options: { redirectTo: `${window.location.origin}/dashboard` },
     })
     if (error) throw error
   }
@@ -102,7 +105,7 @@ export function SupabaseAuthProvider({ children }: { children: ReactNode }) {
   const signInWithGitHub = async () => {
     const { error } = await supabase.auth.signInWithOAuth({
       provider: 'github',
-      options: { redirectTo: window.location.origin },
+      options: { redirectTo: `${window.location.origin}/dashboard` },
     })
     if (error) throw error
   }

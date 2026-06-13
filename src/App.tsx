@@ -98,7 +98,11 @@ function Layout({ children }: { children: React.ReactNode }) {
   const openSignUp = () => { setAuthModalMode('signup'); setAuthModalOpen(true) }
 
   useEffect(() => {
-    const handleRequireAuth = () => openSignIn()
+    const handleRequireAuth = (e: Event) => {
+      const mode = (e as CustomEvent<{ mode?: 'signin' | 'signup' }>).detail?.mode
+      if (mode === 'signup') openSignUp()
+      else openSignIn()
+    }
     window.addEventListener('openthorn:require-auth', handleRequireAuth)
     return () => window.removeEventListener('openthorn:require-auth', handleRequireAuth)
   }, [])

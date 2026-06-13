@@ -14,6 +14,29 @@
 .emptyTitle { font-family: var(--font-display); font-size: 24px; font-weight: 700; color: var(--color-text); margin-bottom: 10px; letter-spacing: 0; }
 .emptyText { font-size: 14px; color: var(--color-text-muted); line-height: 1.5; max-width: 380px; margin: 0 auto var(--space-xl); }
 
+.recommendedBtn {
+  display: flex; align-items: center; gap: 14px;
+  width: 100%; max-width: 420px; margin: 0 auto;
+  padding: 14px 18px; border-radius: var(--radius-lg);
+  text-align: left; cursor: pointer;
+  background: rgba(52, 211, 153, 0.06);
+  border: 1px solid rgba(52, 211, 153, 0.3);
+  transition: border-color 0.18s, background 0.18s, transform 0.18s;
+}
+.recommendedBtn:hover { background: rgba(52, 211, 153, 0.1); border-color: rgba(52, 211, 153, 0.5); transform: translateY(-1px); }
+.recommendedLogo { width: 36px; height: 36px; border-radius: 8px; flex-shrink: 0; object-fit: contain; }
+.recommendedText { display: flex; flex-direction: column; gap: 2px; flex: 1; }
+.recommendedTitle { font-size: 15px; font-weight: 600; color: var(--color-text); }
+.recommendedSub { font-size: 12.5px; color: var(--color-text-muted); }
+.configureSecondary {
+  display: block; margin: 16px auto 0;
+  font-family: var(--font-body); font-size: 13px; font-weight: 500;
+  color: var(--color-text-muted); background: none; border: none; cursor: pointer;
+  text-decoration: underline; text-underline-offset: 3px;
+  transition: color 0.15s;
+}
+.configureSecondary:hover { color: var(--color-text); }
+
 .configureBtn {
   display: inline-flex; align-items: center; gap: 8px;
   padding: 12px 28px; border-radius: var(--radius-full);
@@ -223,6 +246,29 @@
 .pickerCardCustom { border-style: dashed; }
 .pickerCardCustom .pickerCardInner { cursor: pointer; }
 .configuredBadge { font-size: 10px; font-weight: 600; color: #34D399; text-transform: uppercase; letter-spacing: 0.04em; }
+.freeBadgeSm { font-size: 10px; font-weight: 700; color: #34D399; text-transform: uppercase; letter-spacing: 0.04em; padding: 2px 7px; border-radius: var(--radius-full); background: rgba(52,211,153,0.12); border: 1px solid rgba(52,211,153,0.3); }
+
+/* ===== Setup guide (first-time key onboarding) ===== */
+.setupGuide {
+  margin: 4px 0 22px; padding: 18px 20px;
+  border-radius: var(--radius-lg);
+  background: rgba(52,211,153,0.05);
+  border: 1px solid rgba(52,211,153,0.22);
+}
+.setupGuideHeader { display: flex; align-items: center; justify-content: space-between; gap: 12px; margin-bottom: 14px; }
+.setupGuideTitle { font-size: 13px; font-weight: 700; color: var(--color-text); }
+.freeBadge { font-size: 11px; font-weight: 700; color: #34D399; text-transform: uppercase; letter-spacing: 0.04em; padding: 3px 10px; border-radius: var(--radius-full); background: rgba(52,211,153,0.14); border: 1px solid rgba(52,211,153,0.35); white-space: nowrap; }
+.setupSteps { list-style: none; margin: 0; padding: 0; display: flex; flex-direction: column; gap: 12px; }
+.setupStep { display: flex; align-items: flex-start; gap: 12px; font-size: 13.5px; line-height: 1.5; color: var(--color-text); }
+.setupStepNum { flex-shrink: 0; display: flex; align-items: center; justify-content: center; width: 22px; height: 22px; border-radius: 50%; font-size: 12px; font-weight: 700; color: #34D399; background: rgba(52,211,153,0.12); border: 1px solid rgba(52,211,153,0.3); }
+.setupGuideLink {
+  display: inline-flex; align-items: center; gap: 8px; margin-top: 16px;
+  padding: 9px 16px; border-radius: var(--radius-full);
+  font-size: 13px; font-weight: 600; color: #fff; text-decoration: none;
+  background: var(--color-accent); transition: filter 0.15s, transform 0.15s;
+}
+.setupGuideLink:hover { filter: brightness(1.08); }
+.setupGuideLink:active { transform: scale(0.98); }
 
 .trademarkNote { text-align: center; font-size: 11px; color: var(--color-text-muted); opacity: 0.5; margin-top: var(--space-2xl); }
 

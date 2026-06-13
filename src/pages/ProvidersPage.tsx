@@ -371,9 +371,16 @@ export default function ProvidersPage() {
                 Connect your LLM providers to start building with OpenThorn.
                 Your API keys are stored securely in your account.
               </p>
-              <button className={styles.configureBtn} onClick={() => setPickerOpen(true)} type="button">
-                <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round"><line x1="12" y1="5" x2="12" y2="19"/><line x1="5" y1="12" x2="19" y2="12"/></svg>
-                Configure a provider
+              <button className={styles.recommendedBtn} onClick={() => openEditor('google')} type="button">
+                <ProviderLogo id="google" name="Google Gemini" color="#4285F4" className={styles.recommendedLogo} />
+                <span className={styles.recommendedText}>
+                  <span className={styles.recommendedTitle}>Start with Google Gemini</span>
+                  <span className={styles.recommendedSub}>Free to start — no credit card needed</span>
+                </span>
+                <span className={styles.freeBadgeSm}>Free</span>
+              </button>
+              <button className={styles.configureSecondary} onClick={() => setPickerOpen(true)} type="button">
+                or choose another provider
               </button>
             </div>
           )}
@@ -426,6 +433,36 @@ export default function ProvidersPage() {
                   <p className={styles.editorSubtitle}>Enter your API key to connect</p>
                 </div>
               </div>
+
+              {editingDef?.setupSteps && !savedKeys.some((k) => k.provider_id === editingProvider) && (
+                <div className={styles.setupGuide}>
+                  <div className={styles.setupGuideHeader}>
+                    <span className={styles.setupGuideTitle}>How to get your key</span>
+                    {editingDef.freeTier && <span className={styles.freeBadge}>Free to start</span>}
+                  </div>
+                  <ol className={styles.setupSteps}>
+                    {editingDef.setupSteps.map((step, i) => (
+                      <li key={i} className={styles.setupStep}>
+                        <span className={styles.setupStepNum}>{i + 1}</span>
+                        <span>{step}</span>
+                      </li>
+                    ))}
+                  </ol>
+                  {editingDef.getKeyUrl && (
+                    <a
+                      className={styles.setupGuideLink}
+                      href={editingDef.getKeyUrl}
+                      target="_blank"
+                      rel="noopener noreferrer"
+                    >
+                      Open {editingDef.name === 'Google Gemini' ? 'Google AI Studio' : editingDef.name}
+                      <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+                        <path d="M18 13v6a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V8a2 2 0 0 1 2-2h6"/><path d="M15 3h6v6"/><path d="M10 14L21 3"/>
+                      </svg>
+                    </a>
+                  )}
+                </div>
+              )}
 
               <div className={styles.editorFields}>
                 <div className={styles.field}>
@@ -602,7 +639,8 @@ export default function ProvidersPage() {
                       <ProviderLogo id={p.id} name={p.name} color={p.color} className={styles.pickerLogoImg} />
                     </div>
                     <span className={styles.pickerName}>{p.name}</span>
-                    {hasKey && <span className={styles.configuredBadge}>Key set</span>}
+                    {hasKey ? <span className={styles.configuredBadge}>Key set</span>
+                      : p.freeTier ? <span className={styles.freeBadgeSm}>Free</span> : null}
                   </button>
                 )
               })}
