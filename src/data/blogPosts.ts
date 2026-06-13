@@ -1,10 +1,4 @@
 import blogMeta from './blog-meta.json'
-import introducingOpenThornContent from '../content/blog/introducing-openthorn.md?raw'
-import whatIsByokContent from '../content/blog/what-is-a-byok-ai-website-builder.md?raw'
-import howToBuildContent from '../content/blog/how-to-build-a-website-with-ai-byok.md?raw'
-import howToKeyContent from '../content/blog/how-to-get-an-ai-api-key.md?raw'
-import bestByokContent from '../content/blog/best-byok-ai-website-builders-2026.md?raw'
-import lovableVsBoltVsV0Content from '../content/blog/lovable-vs-bolt-vs-v0-pricing.md?raw'
 
 export interface BlogPost {
   slug: string
@@ -27,17 +21,21 @@ export interface BlogPost {
   content: string
 }
 
+// Markdown bodies are loaded eagerly as raw strings. Vite turns the glob into
+// static imports at build time, so scripts/sync-blog.mjs can add/remove
+// <slug>.md files and they are bundled automatically — no per-post code change.
 // Post metadata lives in blog-meta.json so scripts/prerender.mjs can read the
-// same source for per-route meta tags, JSON-LD, and the sitemap. When adding a
-// post: create the markdown file, add its entry to blog-meta.json, and map its
-// content here.
-const contentBySlug: Record<string, string> = {
-  'introducing-openthorn': introducingOpenThornContent,
-  'what-is-a-byok-ai-website-builder': whatIsByokContent,
-  'how-to-build-a-website-with-ai-byok': howToBuildContent,
-  'how-to-get-an-ai-api-key': howToKeyContent,
-  'best-byok-ai-website-builders-2026': bestByokContent,
-  'lovable-vs-bolt-vs-v0-pricing': lovableVsBoltVsV0Content,
+// same source for per-route meta tags, JSON-LD, and the sitemap.
+const modules = import.meta.glob('../content/blog/*.md', {
+  query: '?raw',
+  import: 'default',
+  eager: true,
+}) as Record<string, string>
+
+const contentBySlug: Record<string, string> = {}
+for (const [path, raw] of Object.entries(modules)) {
+  const slug = path.split('/').pop()!.replace(/\.md$/, '')
+  contentBySlug[slug] = raw
 }
 
 export const blogPosts: BlogPost[] = blogMeta.map((meta) => ({
