@@ -15,6 +15,7 @@ import Footer from './components/Footer/Footer'
 import AuthModal from './components/AuthModal/AuthModal'
 import ProtectedRoute from './components/ProtectedRoute/ProtectedRoute'
 import AdminGuard from './components/AdminGuard/AdminGuard'
+import AnnouncementBanner from './components/AnnouncementBanner/AnnouncementBanner'
 import styles from './App.module.css'
 
 // Route pages are code-split so the heavy builder/preview stack (esbuild-wasm,
@@ -138,6 +139,7 @@ export default function App() {
   return (
     <ErrorBoundary>
       <div className={styles.app}>
+        <AnnouncementBanner />
         <Suspense fallback={<div className={styles.routeLoading}>Loading...</div>}>
           <Routes>
             <Route path="/" element={<Layout><HomePage /></Layout>} />

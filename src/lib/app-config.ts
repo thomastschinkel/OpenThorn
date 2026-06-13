@@ -40,10 +40,10 @@ let configPromise: Promise<AppConfigMap> | null = null
 
 export function loadAppConfig(force = false): Promise<AppConfigMap> {
   if (!configPromise || force) {
-    configPromise = supabase
-      .from('app_config')
-      .select('key, value')
-      .then(({ data }) => Object.fromEntries((data ?? []).map((r) => [r.key as string, r.value])))
+    configPromise = (async () => {
+      const { data } = await supabase.from('app_config').select('key, value')
+      return Object.fromEntries((data ?? []).map((r) => [r.key as string, r.value]))
+    })()
   }
   return configPromise
 }
