@@ -5,6 +5,7 @@ import { supabase } from '../lib/supabase'
 import { buildPreview } from '../lib/preview-bundle'
 import { usePageTitle } from '../lib/usePageTitle'
 import { TEMPLATES, type Template } from '../lib/templates'
+import { fetchPublishedTemplates } from '../lib/templates-db'
 import DashboardSidebar from '../components/DashboardSidebar/DashboardSidebar'
 import ModelSelector, { type SelectedModel } from '../components/ModelSelector/ModelSelector'
 import styles from './TemplatesPage.module.css'
@@ -35,17 +36,23 @@ export default function TemplatesPage() {
   const [selectedModel, setSelectedModel] = useState<SelectedModel | null>(null)
   const [launching, setLaunching] = useState(false)
   const [sidebarOpen, setSidebarOpen] = useState(false)
+  // Bundled templates render instantly; published DB templates replace them when present.
+  const [templates, setTemplates] = useState<Template[]>(TEMPLATES)
+
+  useEffect(() => {
+    fetchPublishedTemplates().then(t => { if (t && t.length) setTemplates(t) })
+  }, [])
 
   // Build live previews for all templates
   useEffect(() => {
-    for (const template of TEMPLATES) {
+    for (const template of templates) {
       buildPreview(template.files.map(f => ({ path: f.path, content: f.code }))).then(result => {
         if (!result.errors.length) {
           setHtmlMap(prev => ({ ...prev, [template.id]: result.html }))
         }
       })
     }
-  }, [])
+  }, [templates])
 
   // Close on Escape
   useEffect(() => {
@@ -117,7 +124,7 @@ export default function TemplatesPage() {
         </div>
 
         <div className={styles.grid}>
-          {TEMPLATES.map(template => {
+          {templates.map(template => {
             const colors = CATEGORY_COLORS[template.category] ?? CATEGORY_COLORS['SaaS']
             return (
               <div
