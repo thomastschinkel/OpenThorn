@@ -19,14 +19,16 @@ export function useIsAdmin(): { isAdmin: boolean; loading: boolean } {
       return
     }
     let cancelled = false
+    setIsAdmin(false)
+    setLoading(true)
     supabase
       .from('profiles')
       .select('is_admin')
       .eq('id', user.id)
       .single()
-      .then(({ data }) => {
+      .then(({ data, error }) => {
         if (!cancelled) {
-          setIsAdmin(Boolean(data?.is_admin))
+          setIsAdmin(error ? false : Boolean(data?.is_admin))
           setLoading(false)
         }
       })

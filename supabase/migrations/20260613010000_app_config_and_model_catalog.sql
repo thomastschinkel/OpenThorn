@@ -31,11 +31,19 @@ drop policy if exists "app_config_admin_delete" on public.app_config;
 create policy "app_config_admin_delete" on public.app_config
   for delete to authenticated using (public.is_admin());
 
--- 2. default_models: global model catalog (created via dashboard,
--- no prior migration). RLS is already enabled with a permissive
--- "Anyone can read default models" SELECT policy, so reads are covered;
--- we only add admin write access so the panel can edit without a redeploy.
+-- 2. default_models: global model catalog. This was originally created via
+-- the dashboard, but the migration now defines it so fresh resets work too.
+create table if not exists public.default_models (
+  provider_id text primary key,
+  models text not null,
+  updated_at timestamptz not null default now()
+);
+
 alter table public.default_models enable row level security;
+
+drop policy if exists "default_models_select_all" on public.default_models;
+create policy "default_models_select_all" on public.default_models
+  for select to anon, authenticated using (true);
 
 drop policy if exists "default_models_admin_insert" on public.default_models;
 create policy "default_models_admin_insert" on public.default_models
@@ -48,3 +56,10 @@ create policy "default_models_admin_update" on public.default_models
 drop policy if exists "default_models_admin_delete" on public.default_models;
 create policy "default_models_admin_delete" on public.default_models
   for delete to authenticated using (public.is_admin());
+
+-- Explicit Data API grants for projects created after Supabase's 2026 change
+-- where public tables are no longer automatically exposed to anon/auth roles.
+grant select on table public.app_config to anon, authenticated;
+grant insert, update, delete on table public.app_config to authenticated;
+grant select on table public.default_models to anon, authenticated;
+grant insert, update, delete on table public.default_models to authenticated;

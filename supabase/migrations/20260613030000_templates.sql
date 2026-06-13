@@ -43,3 +43,7 @@ create policy "templates_admin_update" on public.templates
 drop policy if exists "templates_admin_delete" on public.templates;
 create policy "templates_admin_delete" on public.templates
   for delete to authenticated using (public.is_admin());
+
+-- Explicit Data API grants for projects created after Supabase's 2026 change
+-- where public tables are no longer automatically exposed to anon/auth roles.
+grant select, insert, update, delete on table public.templates to authenticated;

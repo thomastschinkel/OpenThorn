@@ -47,3 +47,8 @@ create policy "blog_posts_admin_update" on public.blog_posts
 drop policy if exists "blog_posts_admin_delete" on public.blog_posts;
 create policy "blog_posts_admin_delete" on public.blog_posts
   for delete to authenticated using (public.is_admin());
+
+-- Explicit Data API grants for projects created after Supabase's 2026 change
+-- where public tables are no longer automatically exposed to anon/auth roles.
+grant select on table public.blog_posts to anon, authenticated;
+grant insert, update, delete on table public.blog_posts to authenticated;

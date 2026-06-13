@@ -77,6 +77,88 @@ create policy "profiles_update_admin" on public.profiles
   for update to authenticated using (public.is_admin());
 
 -- 6. Moderation columns on community_posts
+-- community_posts / community_likes were initially created from the dashboard.
+-- Keep the migration self-contained so a fresh database reset still supports
+-- the community and admin moderation surfaces.
+create table if not exists public.community_posts (
+  id uuid primary key default gen_random_uuid(),
+  project_id uuid references public.projects(id) on delete cascade not null,
+  user_id uuid references auth.users(id) on delete cascade not null,
+  title text not null,
+  description text,
+  preview_url text,
+  author_name text not null default '',
+  files_snapshot jsonb not null default '[]'::jsonb,
+  likes_count integer not null default 0,
+  published_at timestamptz not null default now()
+);
+
+create table if not exists public.community_likes (
+  id uuid primary key default gen_random_uuid(),
+  post_id uuid references public.community_posts(id) on delete cascade not null,
+  user_id uuid references auth.users(id) on delete cascade not null,
+  created_at timestamptz not null default now(),
+  unique (post_id, user_id)
+);
+
+alter table public.community_posts enable row level security;
+alter table public.community_likes enable row level security;
+
+drop policy if exists "community_posts_select" on public.community_posts;
+create policy "community_posts_select" on public.community_posts
+  for select to authenticated using (true);
+
+drop policy if exists "community_posts_insert" on public.community_posts;
+create policy "community_posts_insert" on public.community_posts
+  for insert to authenticated with check (user_id = auth.uid());
+
+drop policy if exists "community_posts_update" on public.community_posts;
+create policy "community_posts_update" on public.community_posts
+  for update to authenticated using (user_id = auth.uid());
+
+drop policy if exists "community_posts_delete" on public.community_posts;
+create policy "community_posts_delete" on public.community_posts
+  for delete to authenticated using (user_id = auth.uid());
+
+drop policy if exists "community_likes_select" on public.community_likes;
+create policy "community_likes_select" on public.community_likes
+  for select to authenticated using (true);
+
+drop policy if exists "community_likes_insert" on public.community_likes;
+create policy "community_likes_insert" on public.community_likes
+  for insert to authenticated with check (user_id = auth.uid());
+
+drop policy if exists "community_likes_delete" on public.community_likes;
+create policy "community_likes_delete" on public.community_likes
+  for delete to authenticated using (user_id = auth.uid());
+
+create or replace function public.update_community_likes_count()
+returns trigger
+language plpgsql
+security definer
+set search_path = public
+as $$
+begin
+  if tg_op = 'INSERT' then
+    update public.community_posts
+      set likes_count = likes_count + 1
+      where id = new.post_id;
+    return new;
+  elsif tg_op = 'DELETE' then
+    update public.community_posts
+      set likes_count = greatest(likes_count - 1, 0)
+      where id = old.post_id;
+    return old;
+  end if;
+  return null;
+end;
+$$;
+
+drop trigger if exists community_likes_count_trigger on public.community_likes;
+create trigger community_likes_count_trigger
+  after insert or delete on public.community_likes
+  for each row execute procedure public.update_community_likes_count();
+
 alter table public.community_posts
   add column if not exists hidden boolean not null default false,
   add column if not exists featured boolean not null default false;
@@ -135,3 +217,9 @@ $$;
 
 revoke all on function public.admin_list_users() from public, anon;
 grant execute on function public.admin_list_users() to authenticated;
+
+-- Explicit Data API grants for projects created after Supabase's 2026 change
+-- where public tables are no longer automatically exposed to anon/auth roles.
+grant select, insert, update, delete on table public.community_posts to authenticated;
+grant select, insert, delete on table public.community_likes to authenticated;
+grant select, update on table public.profiles to authenticated;
