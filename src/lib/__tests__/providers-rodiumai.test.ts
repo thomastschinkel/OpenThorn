@@ -22,7 +22,9 @@ describe('RodiumAi provider registry', () => {
 
   it('ships default models for offline picker fallback', () => {
     const models = DEFAULT_PROVIDER_MODELS.rodiumai
-    expect(models.length).toBeGreaterThanOrEqual(5)
+    expect(models.length).toBeGreaterThanOrEqual(10)
     expect(models.some((m) => m.id === 'anthropic/claude-sonnet-4-6')).toBe(true)
+    expect(models.some((m) => m.id === 'anthropic/claude-opus-4-8')).toBe(true)
+    expect(models.some((m) => m.id === 'anthropic/claude-fable-5')).toBe(false)
   })
 })

@@ -291,14 +291,34 @@ export const DEFAULT_PROVIDER_MODELS: Record<string, ProviderModel[]> = {
     { name: 'DeepSeek V4 Pro', id: 'deepseek/deepseek-v4-pro' },
   ],
   rodiumai: [
+    // Anthropic — full Claude lineup (tool_use); Fable excluded (creative/narrative, not ideal for site codegen)
+    { name: 'Claude Haiku 4.5', id: 'anthropic/claude-haiku-4-5-20251001' },
+    { name: 'Claude Sonnet 4.5', id: 'anthropic/claude-sonnet-4-5-20250929' },
     { name: 'Claude Sonnet 4.6', id: 'anthropic/claude-sonnet-4-6' },
-    { name: 'Claude Fable 5', id: 'anthropic/claude-fable-5' },
+    { name: 'Claude Opus 4.1', id: 'anthropic/claude-opus-4-1-20250805' },
+    { name: 'Claude Opus 4.5', id: 'anthropic/claude-opus-4-5-20251101' },
+    { name: 'Claude Opus 4.6', id: 'anthropic/claude-opus-4-6' },
+    { name: 'Claude Opus 4.7', id: 'anthropic/claude-opus-4-7' },
+    { name: 'Claude Opus 4.8', id: 'anthropic/claude-opus-4-8' },
+    // Google
     { name: 'Gemini 3.5 Flash', id: 'google/gemini-3.5-flash' },
+    { name: 'Gemini 2.5 Pro', id: 'google/gemini-2.5-pro' },
+    { name: 'Gemini 3.1 Pro Preview', id: 'google/gemini-3.1-pro-preview' },
+    // DeepSeek
     { name: 'DeepSeek V4 Pro', id: 'deepseek/deepseek-v4-pro' },
+    { name: 'DeepSeek V4 Flash', id: 'deepseek/deepseek-v4-flash' },
+    { name: 'DeepSeek V3.2', id: 'deepseek/deepseek-v3.2' },
+    // OpenAI
     { name: 'GPT-5.4 mini', id: 'openai/gpt-5.4-mini' },
+    { name: 'GPT-5.4', id: 'openai/gpt-5.4' },
+    { name: 'GPT-5.3 Codex', id: 'openai/gpt-5.3-codex' },
+    { name: 'GPT-5.5 Pro', id: 'openai/gpt-5.5-pro' },
+    // Moonshot, Mistral, Meta, xAI
     { name: 'Kimi K2.6', id: 'moonshot-ai/kimi-k2.6' },
+    { name: 'Kimi K2.5', id: 'moonshot-ai/kimi-k2.5' },
     { name: 'Mistral Large 3', id: 'mistral/mistral-large-3' },
     { name: 'Llama 3.3 70B Instruct', id: 'meta/llama-3.3-70b-instruct' },
+    { name: 'Grok 4.3', id: 'xai/grok-4.3' },
   ],
   ollama: [
     { name: 'Llama 3.3', id: 'llama3.3' },
