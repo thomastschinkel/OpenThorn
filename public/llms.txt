@@ -24,6 +24,7 @@ Key facts:
 - [OpenThorn vs Framer](https://www.openthorn.app/compare/framer): Honest comparison — owned code vs hosted design platform
 - [OpenThorn vs Durable](https://www.openthorn.app/compare/durable): Honest comparison — BYOK vs small-business site subscription
 - [OpenThorn vs Wix AI](https://www.openthorn.app/compare/wix): Honest comparison — BYOK vs the hosted incumbent
+- [How much does it cost to build a website with AI?](https://www.openthorn.app/blog/how-much-does-it-cost-to-build-a-website-with-ai): Token-level cost breakdown of a complete AI website build, per provider, vs subscription builders
 - [Best BYOK AI website builders in 2026](https://www.openthorn.app/blog/best-byok-ai-website-builders-2026): The BYOK field compared
 - [How to build a website with AI (BYOK)](https://www.openthorn.app/blog/how-to-build-a-website-with-ai-byok): Six-step guide
 - [How to get an AI API key](https://www.openthorn.app/blog/how-to-get-an-ai-api-key): OpenAI, Anthropic, and Gemini key setup
