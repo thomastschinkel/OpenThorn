@@ -49,6 +49,7 @@ const AdminUsersPage = lazy(() => import('./pages/admin/AdminUsersPage'))
 const AdminConfigPage = lazy(() => import('./pages/admin/AdminConfigPage'))
 const AdminBlogPage = lazy(() => import('./pages/admin/AdminBlogPage'))
 const AdminTemplatesPage = lazy(() => import('./pages/admin/AdminTemplatesPage'))
+const AdminNotificationsPage = lazy(() => import('./pages/admin/AdminNotificationsPage'))
 
 function HomePage() {
   usePageTitle()
@@ -172,6 +173,7 @@ export default function App() {
               <Route index element={<AdminModerationPage />} />
               <Route path="users" element={<AdminUsersPage />} />
               <Route path="config" element={<AdminConfigPage />} />
+              <Route path="notification" element={<AdminNotificationsPage />} />
               <Route path="blog" element={<AdminBlogPage />} />
               <Route path="templates" element={<AdminTemplatesPage />} />
             </Route>
