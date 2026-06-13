@@ -1,0 +1,275 @@
+.page {
+  max-width: 1200px;
+  display: flex;
+  flex-direction: column;
+  gap: 1rem;
+}
+
+.header,
+.editorHeader {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 1rem;
+  flex-wrap: wrap;
+}
+
+.heading {
+  font-size: 1.5rem;
+  margin: 0;
+}
+
+.muted {
+  opacity: 0.6;
+}
+
+.actions {
+  display: flex;
+  gap: 0.5rem;
+}
+
+.ok,
+.error {
+  padding: 0.6rem 0.9rem;
+  border-radius: 8px;
+}
+
+.ok {
+  background: color-mix(in srgb, #34c98a 15%, transparent);
+}
+
+.error {
+  background: color-mix(in srgb, #e0524f 15%, transparent);
+}
+
+.list {
+  display: flex;
+  flex-direction: column;
+  gap: 0.6rem;
+}
+
+.row {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 1rem;
+  padding: 0.85rem 1.1rem;
+  border: 1px solid color-mix(in srgb, var(--color-text) 12%, transparent);
+  border-radius: 8px;
+  flex-wrap: wrap;
+}
+
+.rowMain {
+  min-width: 0;
+}
+
+.rowTitle {
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+  font-weight: 600;
+  flex-wrap: wrap;
+}
+
+.rowMeta {
+  margin: 0.3rem 0 0;
+  font-size: 0.82rem;
+  opacity: 0.55;
+}
+
+.rowActions {
+  display: flex;
+  gap: 0.4rem;
+}
+
+.badge {
+  padding: 0.1rem 0.5rem;
+  border-radius: 999px;
+  font-size: 0.72rem;
+  font-weight: 600;
+}
+
+.badgePub {
+  background: color-mix(in srgb, #34c98a 22%, transparent);
+  color: #34c98a;
+}
+
+.badgeDraft {
+  background: color-mix(in srgb, var(--color-text) 12%, transparent);
+}
+
+.badgeFeatured {
+  background: color-mix(in srgb, var(--color-accent) 20%, transparent);
+  color: var(--color-accent);
+}
+
+.fieldRow {
+  display: flex;
+  gap: 0.75rem;
+  flex-wrap: wrap;
+}
+
+.field {
+  display: flex;
+  flex-direction: column;
+  gap: 0.3rem;
+  font-size: 0.85rem;
+  flex: 1;
+  min-width: 160px;
+}
+
+.field > span {
+  opacity: 0.7;
+}
+
+.checkField {
+  flex-direction: row;
+  align-items: center;
+  gap: 0.4rem;
+  flex: 0 0 auto;
+}
+
+.input,
+.textarea {
+  padding: 0.5rem 0.7rem;
+  border-radius: 8px;
+  border: 1px solid color-mix(in srgb, var(--color-text) 18%, transparent);
+  background: transparent;
+  color: var(--color-text);
+  font-family: inherit;
+}
+
+.textarea {
+  resize: vertical;
+}
+
+.split {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) minmax(320px, 1fr);
+  gap: 1rem;
+  min-height: 520px;
+}
+
+.filesPane {
+  display: flex;
+  flex-direction: column;
+  gap: 0.75rem;
+}
+
+.filesHeader {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  font-weight: 600;
+  font-size: 0.9rem;
+}
+
+.fileBlock {
+  border: 1px solid color-mix(in srgb, var(--color-text) 12%, transparent);
+  border-radius: 8px;
+  padding: 0.6rem;
+}
+
+.fileTop {
+  display: flex;
+  gap: 0.5rem;
+  margin-bottom: 0.5rem;
+}
+
+.filePath {
+  flex: 1;
+  min-width: 0;
+  padding: 0.35rem 0.6rem;
+  border-radius: 6px;
+  border: 1px solid color-mix(in srgb, var(--color-text) 18%, transparent);
+  background: transparent;
+  color: var(--color-text);
+  font-family: ui-monospace, SFMono-Regular, Menlo, monospace;
+  font-size: 0.8rem;
+}
+
+.codeArea {
+  width: 100%;
+  padding: 0.6rem;
+  border-radius: 8px;
+  border: 1px solid color-mix(in srgb, var(--color-text) 18%, transparent);
+  background: transparent;
+  color: var(--color-text);
+  font-family: ui-monospace, SFMono-Regular, Menlo, monospace;
+  font-size: 0.8rem;
+  line-height: 1.5;
+  resize: vertical;
+}
+
+.previewPane {
+  display: flex;
+  flex-direction: column;
+  gap: 0.5rem;
+  position: sticky;
+  top: 1rem;
+  align-self: start;
+}
+
+.previewLabel {
+  font-weight: 600;
+  font-size: 0.9rem;
+}
+
+.previewFrame {
+  width: 100%;
+  height: 480px;
+  border: 1px solid color-mix(in srgb, var(--color-text) 12%, transparent);
+  border-radius: 8px;
+  background: #fff;
+}
+
+.btn,
+.btnSmall {
+  border: 1px solid color-mix(in srgb, var(--color-text) 18%, transparent);
+  background: transparent;
+  color: var(--color-text);
+  cursor: pointer;
+}
+
+.btn {
+  padding: 0.4rem 0.85rem;
+  border-radius: 7px;
+  font-size: 0.88rem;
+}
+
+.btnSmall {
+  padding: 0.25rem 0.6rem;
+  border-radius: 6px;
+  font-size: 0.8rem;
+}
+
+.btn:hover:not(:disabled),
+.btnSmall:hover:not(:disabled) {
+  background: color-mix(in srgb, var(--color-text) 8%, transparent);
+}
+
+.btn:disabled {
+  opacity: 0.5;
+  cursor: default;
+}
+
+.btnPrimary {
+  background: color-mix(in srgb, var(--color-accent) 18%, transparent);
+  color: var(--color-accent);
+  border-color: color-mix(in srgb, var(--color-accent) 40%, transparent);
+}
+
+.btnDanger {
+  border-color: color-mix(in srgb, #e0524f 50%, transparent);
+  color: #e0524f;
+}
+
+@media (max-width: 860px) {
+  .split {
+    grid-template-columns: 1fr;
+  }
+
+  .previewPane {
+    position: static;
+  }
+}

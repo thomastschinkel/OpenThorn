@@ -7,6 +7,7 @@ const NAV_ITEMS = [
   { to: '/admin/users', label: 'Users', end: false },
   { to: '/admin/config', label: 'Config', end: false },
   { to: '/admin/blog', label: 'Blog', end: false },
+  { to: '/admin/templates', label: 'Templates', end: false },
 ]
 
 export default function AdminLayout() {
