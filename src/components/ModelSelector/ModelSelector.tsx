@@ -8,6 +8,7 @@ import {
   PROVIDER_DEFS,
   parseProviderModels,
 } from '../../lib/providers'
+import { getDisabledProviders } from '../../lib/app-config'
 import styles from './ModelSelector.module.css'
 
 // ── Types ──────────────────────────────────────────────
@@ -98,6 +99,8 @@ export default function ModelSelector({ page, selectedModel, onModelSelect, plac
       setLoading(true)
       setFetchError(false)
 
+      const disabled = new Set(await getDisabledProviders())
+
       if (page === 'landing') {
         const { data, error } = await supabase
           .from('default_models')
@@ -121,7 +124,7 @@ export default function ModelSelector({ page, selectedModel, onModelSelect, plac
               logo: LOGO_MAP[pid] ?? '',
               models: row ? parseProviderModels(row.models) : DEFAULT_PROVIDER_MODELS[pid] ?? [],
             }
-          }).filter((g) => g.models.length > 0)
+          }).filter((g) => g.models.length > 0 && !disabled.has(g.provider_id))
 
           setProviders(groups)
         }
@@ -169,7 +172,7 @@ export default function ModelSelector({ page, selectedModel, onModelSelect, plac
               logo: LOGO_MAP[k.provider_id] ?? '',
               models: merged,
             }
-          }).filter((g) => g.models.length > 0)
+          }).filter((g) => g.models.length > 0 && !disabled.has(g.provider_id))
 
           setProviders(groups)
         } else {

@@ -12,6 +12,7 @@ import {
   type ProviderModel,
 } from '../lib/providers'
 import DashboardSidebar from '../components/DashboardSidebar/DashboardSidebar'
+import { getDisabledProviders } from '../lib/app-config'
 import { usePageTitle } from '../lib/usePageTitle'
 import styles from './ProvidersPage.module.css'
 
@@ -98,6 +99,7 @@ export default function ProvidersPage() {
   const [saving, setSaving] = useState(false)
   const [showKey, setShowKey] = useState(false)
   const [defaultModels, setDefaultModels] = useState<Record<string, ProviderModel[]>>(DEFAULT_PROVIDER_MODELS)
+  const [disabledProviders, setDisabledProviders] = useState<Set<string>>(new Set())
   const [newModelName, setNewModelName] = useState('')
   const [newModelId, setNewModelId] = useState('')
   const [showAdvanced, setShowAdvanced] = useState(false)
@@ -118,6 +120,10 @@ export default function ProvidersPage() {
         setDefaultModels(map)
       }
     })
+  }, [])
+
+  useEffect(() => {
+    getDisabledProviders().then((ids) => setDisabledProviders(new Set(ids)))
   }, [])
 
   useEffect(() => {
@@ -586,7 +592,7 @@ export default function ProvidersPage() {
                 </div>
                 <span className={styles.pickerName}>Custom</span>
               </button>
-              {PROVIDERS.map((p) => {
+              {PROVIDERS.filter((p) => !disabledProviders.has(p.id)).map((p) => {
                 const saved = savedKeys.find((k) => k.provider_id === p.id)
                 const isEnabled = saved?.enabled ?? false
                 const hasKey = !!(saved?.api_key)
